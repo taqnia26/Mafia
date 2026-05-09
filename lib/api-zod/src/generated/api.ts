@@ -1001,3 +1001,171 @@ export const DeleteAdminGangParams = zod.object({
 export const DeleteAdminGangResponse = zod.object({
   message: zod.string(),
 });
+
+/**
+ * @summary List all weapons in catalog (admin only)
+ */
+export const GetAdminWeaponsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  type: zod.string(),
+  attackPower: zod.number(),
+  ammoType: zod.string(),
+  price: zod.number(),
+  description: zod.string(),
+});
+export const GetAdminWeaponsResponse = zod.array(GetAdminWeaponsResponseItem);
+
+/**
+ * @summary Create a new weapon (admin only)
+ */
+export const CreateAdminWeaponBody = zod.object({
+  name: zod.string(),
+  type: zod.string(),
+  attackPower: zod.number(),
+  ammoType: zod.string(),
+  price: zod.number(),
+  description: zod.string().optional(),
+});
+
+/**
+ * @summary Update a weapon (admin only)
+ */
+export const UpdateAdminWeaponParams = zod.object({
+  weaponId: zod.coerce.number(),
+});
+
+export const UpdateAdminWeaponBody = zod.object({
+  name: zod.string().optional(),
+  attackPower: zod.number().optional(),
+  price: zod.number().optional(),
+  description: zod.string().optional(),
+});
+
+export const UpdateAdminWeaponResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  type: zod.string(),
+  attackPower: zod.number(),
+  ammoType: zod.string(),
+  price: zod.number(),
+  description: zod.string(),
+});
+
+/**
+ * @summary Delete a weapon (admin only)
+ */
+export const DeleteAdminWeaponParams = zod.object({
+  weaponId: zod.coerce.number(),
+});
+
+export const DeleteAdminWeaponResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary List all ammo in catalog (admin only)
+ */
+export const GetAdminAmmoResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  type: zod.string(),
+  damageBonus: zod.number(),
+  price: zod.number(),
+});
+export const GetAdminAmmoResponse = zod.array(GetAdminAmmoResponseItem);
+
+/**
+ * @summary Update ammo stats/price (admin only)
+ */
+export const UpdateAdminAmmoParams = zod.object({
+  ammoId: zod.coerce.number(),
+});
+
+export const UpdateAdminAmmoBody = zod.object({
+  name: zod.string().optional(),
+  damageBonus: zod.number().optional(),
+  price: zod.number().optional(),
+});
+
+export const UpdateAdminAmmoResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  type: zod.string(),
+  damageBonus: zod.number(),
+  price: zod.number(),
+});
+
+/**
+ * @summary List all armor in catalog (admin only)
+ */
+export const GetAdminArmorResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  type: zod.string(),
+  defenseBonus: zod.number(),
+  price: zod.number(),
+  description: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+export const GetAdminArmorResponse = zod.array(GetAdminArmorResponseItem);
+
+/**
+ * @summary Update armor stats/price (admin only)
+ */
+export const UpdateAdminArmorParams = zod.object({
+  armorId: zod.coerce.number(),
+});
+
+export const UpdateAdminArmorBody = zod.object({
+  name: zod.string().optional(),
+  defenseBonus: zod.number().optional(),
+  price: zod.number().optional(),
+  description: zod.string().optional(),
+});
+
+export const UpdateAdminArmorResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  type: zod.string(),
+  defenseBonus: zod.number(),
+  price: zod.number(),
+  description: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+
+/**
+ * @summary List all cities with game settings (admin only)
+ */
+export const GetAdminCitiesResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  nameAr: zod.string(),
+  country: zod.string(),
+  description: zod.string(),
+  travelHoursBase: zod.number(),
+});
+export const GetAdminCitiesResponse = zod.array(GetAdminCitiesResponseItem);
+
+/**
+ * @summary Update city settings (admin only)
+ */
+export const UpdateAdminCityParams = zod.object({
+  cityId: zod.coerce.number(),
+});
+
+export const UpdateAdminCityBody = zod.object({
+  name: zod.string().optional(),
+  nameAr: zod.string().optional(),
+  description: zod.string().optional(),
+  travelHoursBase: zod.number().optional(),
+});
+
+export const UpdateAdminCityResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  nameAr: zod.string(),
+  country: zod.string(),
+  description: zod.string(),
+  travelHoursBase: zod.number(),
+});

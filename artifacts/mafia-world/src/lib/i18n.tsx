@@ -296,6 +296,27 @@ const translations: Translations = {
   "attack.free": { en: "Free", ar: "حر" },
 
   "players.noPlayers": { en: "No players found.", ar: "لم يتم العثور على لاعبين." },
+
+  "home.title": { en: "Mafia World", ar: "عالم المافيا" },
+  "home.signIn": { en: "Sign In", ar: "تسجيل الدخول" },
+  "home.playNow": { en: "Play Now", ar: "العب الآن" },
+  "home.hero1": { en: "Rule the", ar: "حكم" },
+  "home.hero2": { en: "Underworld", ar: "العالم السفلي" },
+  "home.tagline": { en: "Build your criminal empire, hire bodyguards, smuggle weapons, and eliminate rival bosses in the most ruthless browser-based mafia strategy game.", ar: "ابنِ إمبراطوريتك الإجرامية، وظّف حراساً شخصيين، هرّب الأسلحة، واقضِ على زعماء المنافسين في أشد لعبة استراتيجية مافيا قسوةً على المتصفح." },
+  "home.cta": { en: "Start Your Empire", ar: "ابدأ إمبراطوريتك" },
+  "home.rights": { en: "All rights reserved.", ar: "جميع الحقوق محفوظة." },
+
+  "admin.items": { en: "Item Catalog", ar: "كتالوج العناصر" },
+  "admin.weapons": { en: "Weapons", ar: "الأسلحة" },
+  "admin.ammo": { en: "Ammo", ar: "الذخيرة" },
+  "admin.armor": { en: "Armor", ar: "الدروع" },
+  "admin.cities": { en: "Cities", ar: "المدن" },
+  "admin.addItem": { en: "Add Item", ar: "إضافة عنصر" },
+  "admin.price": { en: "Price", ar: "السعر" },
+  "admin.power": { en: "Power", ar: "القوة" },
+  "admin.updateItem": { en: "Update Item", ar: "تحديث العنصر" },
+  "admin.deleteItem": { en: "Delete Item", ar: "حذف العنصر" },
+  "admin.travelHours": { en: "Travel Hours (Base)", ar: "ساعات السفر (الأساسية)" },
 };
 
 interface I18nContextType {

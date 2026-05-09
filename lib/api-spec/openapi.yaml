@@ -1080,6 +1080,200 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /admin/items/weapons:
+    get:
+      operationId: getAdminWeapons
+      tags: [admin]
+      summary: List all weapons in catalog (admin only)
+      responses:
+        "200":
+          description: Weapons list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminWeapon"
+    post:
+      operationId: createAdminWeapon
+      tags: [admin]
+      summary: Create a new weapon (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminWeaponCreate"
+      responses:
+        "201":
+          description: Weapon created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminWeapon"
+
+  /admin/items/weapons/{weaponId}:
+    patch:
+      operationId: updateAdminWeapon
+      tags: [admin]
+      summary: Update a weapon (admin only)
+      parameters:
+        - name: weaponId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminWeaponUpdate"
+      responses:
+        "200":
+          description: Updated weapon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminWeapon"
+    delete:
+      operationId: deleteAdminWeapon
+      tags: [admin]
+      summary: Delete a weapon (admin only)
+      parameters:
+        - name: weaponId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/items/ammo:
+    get:
+      operationId: getAdminAmmo
+      tags: [admin]
+      summary: List all ammo in catalog (admin only)
+      responses:
+        "200":
+          description: Ammo list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminAmmo"
+
+  /admin/items/ammo/{ammoId}:
+    patch:
+      operationId: updateAdminAmmo
+      tags: [admin]
+      summary: Update ammo stats/price (admin only)
+      parameters:
+        - name: ammoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAmmoUpdate"
+      responses:
+        "200":
+          description: Updated ammo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAmmo"
+
+  /admin/items/armor:
+    get:
+      operationId: getAdminArmor
+      tags: [admin]
+      summary: List all armor in catalog (admin only)
+      responses:
+        "200":
+          description: Armor list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminArmorItem"
+
+  /admin/items/armor/{armorId}:
+    patch:
+      operationId: updateAdminArmor
+      tags: [admin]
+      summary: Update armor stats/price (admin only)
+      parameters:
+        - name: armorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminArmorUpdate"
+      responses:
+        "200":
+          description: Updated armor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminArmorItem"
+
+  /admin/cities:
+    get:
+      operationId: getAdminCities
+      tags: [admin]
+      summary: List all cities with game settings (admin only)
+      responses:
+        "200":
+          description: Cities list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminCity"
+
+  /admin/cities/{cityId}:
+    patch:
+      operationId: updateAdminCity
+      tags: [admin]
+      summary: Update city settings (admin only)
+      parameters:
+        - name: cityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCityUpdate"
+      responses:
+        "200":
+          description: Updated city
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminCity"
+
 components:
   schemas:
     HealthStatus:
@@ -2182,4 +2376,167 @@ components:
         page:
           type: integer
         limit:
+          type: integer
+
+    AdminWeapon:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        attackPower:
+          type: integer
+        ammoType:
+          type: string
+        price:
+          type: integer
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - type
+        - attackPower
+        - ammoType
+        - price
+        - description
+
+    AdminWeaponCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        attackPower:
+          type: integer
+        ammoType:
+          type: string
+        price:
+          type: integer
+        description:
+          type: string
+      required:
+        - name
+        - type
+        - attackPower
+        - ammoType
+        - price
+
+    AdminWeaponUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        attackPower:
+          type: integer
+        price:
+          type: integer
+        description:
+          type: string
+
+    AdminAmmo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        damageBonus:
+          type: integer
+        price:
+          type: integer
+      required:
+        - id
+        - name
+        - type
+        - damageBonus
+        - price
+
+    AdminAmmoUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        damageBonus:
+          type: integer
+        price:
+          type: integer
+
+    AdminArmorItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        defenseBonus:
+          type: integer
+        price:
+          type: integer
+        description:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - type
+        - defenseBonus
+        - price
+        - description
+
+    AdminArmorUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        defenseBonus:
+          type: integer
+        price:
+          type: integer
+        description:
+          type: string
+
+    AdminCity:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nameAr:
+          type: string
+        country:
+          type: string
+        description:
+          type: string
+        travelHoursBase:
+          type: integer
+      required:
+        - id
+        - name
+        - nameAr
+        - country
+        - description
+        - travelHoursBase
+
+    AdminCityUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        nameAr:
+          type: string
+        description:
+          type: string
+        travelHoursBase:
           type: integer

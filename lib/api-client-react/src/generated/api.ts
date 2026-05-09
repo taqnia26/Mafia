@@ -18,10 +18,19 @@ import type {
 
 import type {
   ActivityItem,
+  AdminAmmo,
+  AdminAmmoUpdate,
+  AdminArmorItem,
+  AdminArmorUpdate,
+  AdminCity,
+  AdminCityUpdate,
   AdminGang,
   AdminPlayerListResponse,
   AdminPlayerUpdate,
   AdminStats,
+  AdminWeapon,
+  AdminWeaponCreate,
+  AdminWeaponUpdate,
   Ammo,
   AntiSpyToggle,
   ArmorItem,
@@ -4685,4 +4694,822 @@ export const useDeleteAdminGang = <
   TContext
 > => {
   return useMutation(getDeleteAdminGangMutationOptions(options));
+};
+
+/**
+ * @summary List all weapons in catalog (admin only)
+ */
+export const getGetAdminWeaponsUrl = () => {
+  return `/api/admin/items/weapons`;
+};
+
+export const getAdminWeapons = async (
+  options?: RequestInit,
+): Promise<AdminWeapon[]> => {
+  return customFetch<AdminWeapon[]>(getGetAdminWeaponsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminWeaponsQueryKey = () => {
+  return [`/api/admin/items/weapons`] as const;
+};
+
+export const getGetAdminWeaponsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminWeapons>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminWeapons>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminWeaponsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminWeapons>>> = ({
+    signal,
+  }) => getAdminWeapons({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminWeapons>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminWeaponsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminWeapons>>
+>;
+export type GetAdminWeaponsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all weapons in catalog (admin only)
+ */
+
+export function useGetAdminWeapons<
+  TData = Awaited<ReturnType<typeof getAdminWeapons>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminWeapons>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminWeaponsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a new weapon (admin only)
+ */
+export const getCreateAdminWeaponUrl = () => {
+  return `/api/admin/items/weapons`;
+};
+
+export const createAdminWeapon = async (
+  adminWeaponCreate: AdminWeaponCreate,
+  options?: RequestInit,
+): Promise<AdminWeapon> => {
+  return customFetch<AdminWeapon>(getCreateAdminWeaponUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminWeaponCreate),
+  });
+};
+
+export const getCreateAdminWeaponMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminWeapon>>,
+    TError,
+    { data: BodyType<AdminWeaponCreate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminWeapon>>,
+  TError,
+  { data: BodyType<AdminWeaponCreate> },
+  TContext
+> => {
+  const mutationKey = ["createAdminWeapon"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminWeapon>>,
+    { data: BodyType<AdminWeaponCreate> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAdminWeapon(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdminWeaponMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminWeapon>>
+>;
+export type CreateAdminWeaponMutationBody = BodyType<AdminWeaponCreate>;
+export type CreateAdminWeaponMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new weapon (admin only)
+ */
+export const useCreateAdminWeapon = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminWeapon>>,
+    TError,
+    { data: BodyType<AdminWeaponCreate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminWeapon>>,
+  TError,
+  { data: BodyType<AdminWeaponCreate> },
+  TContext
+> => {
+  return useMutation(getCreateAdminWeaponMutationOptions(options));
+};
+
+/**
+ * @summary Update a weapon (admin only)
+ */
+export const getUpdateAdminWeaponUrl = (weaponId: number) => {
+  return `/api/admin/items/weapons/${weaponId}`;
+};
+
+export const updateAdminWeapon = async (
+  weaponId: number,
+  adminWeaponUpdate: AdminWeaponUpdate,
+  options?: RequestInit,
+): Promise<AdminWeapon> => {
+  return customFetch<AdminWeapon>(getUpdateAdminWeaponUrl(weaponId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminWeaponUpdate),
+  });
+};
+
+export const getUpdateAdminWeaponMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminWeapon>>,
+    TError,
+    { weaponId: number; data: BodyType<AdminWeaponUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminWeapon>>,
+  TError,
+  { weaponId: number; data: BodyType<AdminWeaponUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminWeapon"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminWeapon>>,
+    { weaponId: number; data: BodyType<AdminWeaponUpdate> }
+  > = (props) => {
+    const { weaponId, data } = props ?? {};
+
+    return updateAdminWeapon(weaponId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminWeaponMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminWeapon>>
+>;
+export type UpdateAdminWeaponMutationBody = BodyType<AdminWeaponUpdate>;
+export type UpdateAdminWeaponMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a weapon (admin only)
+ */
+export const useUpdateAdminWeapon = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminWeapon>>,
+    TError,
+    { weaponId: number; data: BodyType<AdminWeaponUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminWeapon>>,
+  TError,
+  { weaponId: number; data: BodyType<AdminWeaponUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminWeaponMutationOptions(options));
+};
+
+/**
+ * @summary Delete a weapon (admin only)
+ */
+export const getDeleteAdminWeaponUrl = (weaponId: number) => {
+  return `/api/admin/items/weapons/${weaponId}`;
+};
+
+export const deleteAdminWeapon = async (
+  weaponId: number,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getDeleteAdminWeaponUrl(weaponId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdminWeaponMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminWeapon>>,
+    TError,
+    { weaponId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminWeapon>>,
+  TError,
+  { weaponId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminWeapon"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminWeapon>>,
+    { weaponId: number }
+  > = (props) => {
+    const { weaponId } = props ?? {};
+
+    return deleteAdminWeapon(weaponId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminWeaponMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminWeapon>>
+>;
+
+export type DeleteAdminWeaponMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a weapon (admin only)
+ */
+export const useDeleteAdminWeapon = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminWeapon>>,
+    TError,
+    { weaponId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminWeapon>>,
+  TError,
+  { weaponId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAdminWeaponMutationOptions(options));
+};
+
+/**
+ * @summary List all ammo in catalog (admin only)
+ */
+export const getGetAdminAmmoUrl = () => {
+  return `/api/admin/items/ammo`;
+};
+
+export const getAdminAmmo = async (
+  options?: RequestInit,
+): Promise<AdminAmmo[]> => {
+  return customFetch<AdminAmmo[]>(getGetAdminAmmoUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminAmmoQueryKey = () => {
+  return [`/api/admin/items/ammo`] as const;
+};
+
+export const getGetAdminAmmoQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminAmmo>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminAmmo>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminAmmoQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminAmmo>>> = ({
+    signal,
+  }) => getAdminAmmo({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminAmmo>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminAmmoQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminAmmo>>
+>;
+export type GetAdminAmmoQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all ammo in catalog (admin only)
+ */
+
+export function useGetAdminAmmo<
+  TData = Awaited<ReturnType<typeof getAdminAmmo>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminAmmo>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminAmmoQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update ammo stats/price (admin only)
+ */
+export const getUpdateAdminAmmoUrl = (ammoId: number) => {
+  return `/api/admin/items/ammo/${ammoId}`;
+};
+
+export const updateAdminAmmo = async (
+  ammoId: number,
+  adminAmmoUpdate: AdminAmmoUpdate,
+  options?: RequestInit,
+): Promise<AdminAmmo> => {
+  return customFetch<AdminAmmo>(getUpdateAdminAmmoUrl(ammoId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminAmmoUpdate),
+  });
+};
+
+export const getUpdateAdminAmmoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminAmmo>>,
+    TError,
+    { ammoId: number; data: BodyType<AdminAmmoUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminAmmo>>,
+  TError,
+  { ammoId: number; data: BodyType<AdminAmmoUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminAmmo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminAmmo>>,
+    { ammoId: number; data: BodyType<AdminAmmoUpdate> }
+  > = (props) => {
+    const { ammoId, data } = props ?? {};
+
+    return updateAdminAmmo(ammoId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminAmmoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminAmmo>>
+>;
+export type UpdateAdminAmmoMutationBody = BodyType<AdminAmmoUpdate>;
+export type UpdateAdminAmmoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update ammo stats/price (admin only)
+ */
+export const useUpdateAdminAmmo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminAmmo>>,
+    TError,
+    { ammoId: number; data: BodyType<AdminAmmoUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminAmmo>>,
+  TError,
+  { ammoId: number; data: BodyType<AdminAmmoUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminAmmoMutationOptions(options));
+};
+
+/**
+ * @summary List all armor in catalog (admin only)
+ */
+export const getGetAdminArmorUrl = () => {
+  return `/api/admin/items/armor`;
+};
+
+export const getAdminArmor = async (
+  options?: RequestInit,
+): Promise<AdminArmorItem[]> => {
+  return customFetch<AdminArmorItem[]>(getGetAdminArmorUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminArmorQueryKey = () => {
+  return [`/api/admin/items/armor`] as const;
+};
+
+export const getGetAdminArmorQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminArmor>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminArmor>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminArmorQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminArmor>>> = ({
+    signal,
+  }) => getAdminArmor({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminArmor>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminArmorQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminArmor>>
+>;
+export type GetAdminArmorQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all armor in catalog (admin only)
+ */
+
+export function useGetAdminArmor<
+  TData = Awaited<ReturnType<typeof getAdminArmor>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminArmor>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminArmorQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update armor stats/price (admin only)
+ */
+export const getUpdateAdminArmorUrl = (armorId: number) => {
+  return `/api/admin/items/armor/${armorId}`;
+};
+
+export const updateAdminArmor = async (
+  armorId: number,
+  adminArmorUpdate: AdminArmorUpdate,
+  options?: RequestInit,
+): Promise<AdminArmorItem> => {
+  return customFetch<AdminArmorItem>(getUpdateAdminArmorUrl(armorId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminArmorUpdate),
+  });
+};
+
+export const getUpdateAdminArmorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminArmor>>,
+    TError,
+    { armorId: number; data: BodyType<AdminArmorUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminArmor>>,
+  TError,
+  { armorId: number; data: BodyType<AdminArmorUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminArmor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminArmor>>,
+    { armorId: number; data: BodyType<AdminArmorUpdate> }
+  > = (props) => {
+    const { armorId, data } = props ?? {};
+
+    return updateAdminArmor(armorId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminArmorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminArmor>>
+>;
+export type UpdateAdminArmorMutationBody = BodyType<AdminArmorUpdate>;
+export type UpdateAdminArmorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update armor stats/price (admin only)
+ */
+export const useUpdateAdminArmor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminArmor>>,
+    TError,
+    { armorId: number; data: BodyType<AdminArmorUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminArmor>>,
+  TError,
+  { armorId: number; data: BodyType<AdminArmorUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminArmorMutationOptions(options));
+};
+
+/**
+ * @summary List all cities with game settings (admin only)
+ */
+export const getGetAdminCitiesUrl = () => {
+  return `/api/admin/cities`;
+};
+
+export const getAdminCities = async (
+  options?: RequestInit,
+): Promise<AdminCity[]> => {
+  return customFetch<AdminCity[]>(getGetAdminCitiesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminCitiesQueryKey = () => {
+  return [`/api/admin/cities`] as const;
+};
+
+export const getGetAdminCitiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminCities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminCities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminCitiesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminCities>>> = ({
+    signal,
+  }) => getAdminCities({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminCities>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminCitiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminCities>>
+>;
+export type GetAdminCitiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all cities with game settings (admin only)
+ */
+
+export function useGetAdminCities<
+  TData = Awaited<ReturnType<typeof getAdminCities>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminCities>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminCitiesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update city settings (admin only)
+ */
+export const getUpdateAdminCityUrl = (cityId: number) => {
+  return `/api/admin/cities/${cityId}`;
+};
+
+export const updateAdminCity = async (
+  cityId: number,
+  adminCityUpdate: AdminCityUpdate,
+  options?: RequestInit,
+): Promise<AdminCity> => {
+  return customFetch<AdminCity>(getUpdateAdminCityUrl(cityId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminCityUpdate),
+  });
+};
+
+export const getUpdateAdminCityMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminCity>>,
+    TError,
+    { cityId: number; data: BodyType<AdminCityUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminCity>>,
+  TError,
+  { cityId: number; data: BodyType<AdminCityUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminCity"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminCity>>,
+    { cityId: number; data: BodyType<AdminCityUpdate> }
+  > = (props) => {
+    const { cityId, data } = props ?? {};
+
+    return updateAdminCity(cityId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminCityMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminCity>>
+>;
+export type UpdateAdminCityMutationBody = BodyType<AdminCityUpdate>;
+export type UpdateAdminCityMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update city settings (admin only)
+ */
+export const useUpdateAdminCity = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminCity>>,
+    TError,
+    { cityId: number; data: BodyType<AdminCityUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminCity>>,
+  TError,
+  { cityId: number; data: BodyType<AdminCityUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminCityMutationOptions(options));
 };

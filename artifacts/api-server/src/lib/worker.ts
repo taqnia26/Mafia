@@ -96,67 +96,93 @@ async function processAttackArrivals(): Promise<void> {
         continue;
       }
 
-      const npcGuards = await db
-        .select({ defensePower: npcBodyguardsTable.defensePower })
-        .from(playerNpcGuardsTable)
-        .leftJoin(npcBodyguardsTable, eq(playerNpcGuardsTable.npcGuardId, npcBodyguardsTable.id))
-        .where(eq(playerNpcGuardsTable.playerId, target[0].id));
-
-      const guardBonus = npcGuards.reduce((sum, g) => sum + (g.defensePower ?? 0), 0);
-      const totalDefense = target[0].defensePower + guardBonus;
+      // target.defensePower already includes NPC guard bonuses (added on hire, removed on dismiss).
+      // Using it directly avoids double-counting guard stats.
+      const totalDefense = target[0].defensePower;
 
       const weaponBonus = weapon[0]?.attackPower ?? 0;
-      const attackPower = attacker[0].attackPower + weaponBonus + (attack.ammoUsed * 2);
-      const damage = Math.max(0, attackPower - totalDefense);
-      const targetSurvived = totalDefense >= attackPower;
+      const totalAttack = attacker[0].attackPower + weaponBonus + (attack.ammoUsed * 2);
+      const attackWins = totalAttack > totalDefense;
+      const damage = Math.max(0, totalAttack - totalDefense);
 
-      if (!targetSurvived) {
-        const moneyStolen = Math.min(
-          target[0].money,
-          Math.floor(damage * 10),
-        );
-        const xpGain = 50 + Math.floor(damage / 2);
+      if (attackWins) {
+        // Bodyguards absorb damage first — find target's first active NPC guard
+        const firstGuard = await db
+          .select({
+            id: playerNpcGuardsTable.id,
+            defensePower: npcBodyguardsTable.defensePower,
+            npcName: npcBodyguardsTable.name,
+          })
+          .from(playerNpcGuardsTable)
+          .leftJoin(npcBodyguardsTable, eq(playerNpcGuardsTable.npcGuardId, npcBodyguardsTable.id))
+          .where(eq(playerNpcGuardsTable.playerId, target[0].id))
+          .limit(1);
 
-        await db.transaction(async (tx) => {
-          await tx
-            .update(attacksTable)
-            .set({ status: "completed", damageDealt: damage, targetSurvived: false })
-            .where(eq(attacksTable.id, attack.id));
+        if (firstGuard[0]) {
+          // Guard absorbs the blow — dismiss them and reduce target's defensePower accordingly
+          const guardDef = firstGuard[0].defensePower ?? 0;
+          await db.transaction(async (tx) => {
+            await tx.delete(playerNpcGuardsTable).where(eq(playerNpcGuardsTable.id, firstGuard[0].id));
+            if (guardDef > 0) {
+              await tx.update(playersTable).set({
+                defensePower: sql`GREATEST(10, ${playersTable.defensePower} - ${guardDef})`,
+                updatedAt: new Date(),
+              }).where(eq(playersTable.id, target[0].id));
+            }
+            await tx.update(attacksTable)
+              .set({ status: "completed", damageDealt: damage, targetSurvived: true })
+              .where(eq(attacksTable.id, attack.id));
+          });
 
-          await tx
-            .update(playersTable)
-            .set({
+          await logActivity(
+            attacker[0].id,
+            "attack_repelled",
+            `Attack on ${target[0].username} was intercepted by their bodyguard`,
+          );
+          await logActivity(
+            target[0].id,
+            "attack_defended",
+            `Your bodyguard ${firstGuard[0].npcName ?? "Unknown"} sacrificed themselves to protect you from ${attacker[0].username}!`,
+          );
+        } else {
+          // No guards — player takes full damage
+          const moneyStolen = Math.min(target[0].money, Math.floor(damage * 10));
+          const xpGain = 50 + Math.floor(damage / 2);
+
+          await db.transaction(async (tx) => {
+            await tx.update(attacksTable)
+              .set({ status: "completed", damageDealt: damage, targetSurvived: false })
+              .where(eq(attacksTable.id, attack.id));
+
+            await tx.update(playersTable).set({
               killCount: sql`${playersTable.killCount} + 1`,
               money: sql`${playersTable.money} + ${moneyStolen}`,
               xp: sql`${playersTable.xp} + ${xpGain}`,
               level: sql`FLOOR((${playersTable.xp} + ${xpGain}) / 1000) + 1`,
               updatedAt: new Date(),
-            })
-            .where(eq(playersTable.id, attacker[0].id));
+            }).where(eq(playersTable.id, attacker[0].id));
 
-          await tx
-            .update(playersTable)
-            .set({
+            await tx.update(playersTable).set({
               deathCount: sql`${playersTable.deathCount} + 1`,
               money: sql`GREATEST(0, ${playersTable.money} - ${moneyStolen})`,
               updatedAt: new Date(),
-            })
-            .where(eq(playersTable.id, target[0].id));
-        });
+            }).where(eq(playersTable.id, target[0].id));
+          });
 
-        await logActivity(
-          attacker[0].id,
-          "attack_won",
-          `Won attack on ${target[0].username} — dealt ${damage} dmg, stole $${moneyStolen}`,
-        );
-        await logActivity(
-          target[0].id,
-          "attack_lost",
-          `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}`,
-        );
+          await logActivity(
+            attacker[0].id,
+            "attack_won",
+            `Won attack on ${target[0].username} — dealt ${damage} dmg, stole $${moneyStolen}`,
+          );
+          await logActivity(
+            target[0].id,
+            "attack_lost",
+            `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}`,
+          );
+        }
       } else {
-        await db
-          .update(attacksTable)
+        // Attack failed — target's defense held
+        await db.update(attacksTable)
           .set({ status: "completed", damageDealt: 0, targetSurvived: true })
           .where(eq(attacksTable.id, attack.id));
 

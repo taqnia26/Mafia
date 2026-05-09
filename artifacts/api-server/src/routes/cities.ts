@@ -37,7 +37,10 @@ router.post("/cities/travel", requireAuth, async (req, res) => {
     const toCity = await db.select().from(citiesTable).where(eq(citiesTable.id, targetCityId)).limit(1);
     if (!toCity[0]) return void res.status(404).json({ error: "City not found" });
 
-    const travelHours = (fromCity[0]?.travelHoursBase ?? 4) + Math.random() * 2;
+    // Travel time is distance-based using both cities' travelHoursBase — fully deterministic, no random
+    const fromBase = fromCity[0]?.travelHoursBase ?? 4;
+    const toBase = toCity[0]?.travelHoursBase ?? 4;
+    const travelHours = Math.round(((fromBase + toBase) / 2) * 10) / 10;
     const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
 
     await db.update(playersTable).set({

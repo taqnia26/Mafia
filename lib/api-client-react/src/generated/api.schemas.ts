@@ -584,6 +584,79 @@ export interface AdminPlayersParams {
   limit?: number;
 }
 
+export interface AdminWeapon {
+  id: number;
+  name: string;
+  type: string;
+  attackPower: number;
+  ammoType: string;
+  price: number;
+  description: string;
+}
+
+export interface AdminWeaponCreate {
+  name: string;
+  type: string;
+  attackPower: number;
+  ammoType: string;
+  price: number;
+  description?: string;
+}
+
+export interface AdminWeaponUpdate {
+  name?: string;
+  attackPower?: number;
+  price?: number;
+  description?: string;
+}
+
+export interface AdminAmmo {
+  id: number;
+  name: string;
+  type: string;
+  damageBonus: number;
+  price: number;
+}
+
+export interface AdminAmmoUpdate {
+  name?: string;
+  damageBonus?: number;
+  price?: number;
+}
+
+export interface AdminArmorItem {
+  id: number;
+  name: string;
+  type: string;
+  defenseBonus: number;
+  price: number;
+  description: string;
+  imageUrl?: string | null;
+}
+
+export interface AdminArmorUpdate {
+  name?: string;
+  defenseBonus?: number;
+  price?: number;
+  description?: string;
+}
+
+export interface AdminCity {
+  id: number;
+  name: string;
+  nameAr: string;
+  country: string;
+  description: string;
+  travelHoursBase: number;
+}
+
+export interface AdminCityUpdate {
+  name?: string;
+  nameAr?: string;
+  description?: string;
+  travelHoursBase?: number;
+}
+
 export type ListPlayersParams = {
   cityId?: number;
   search?: string;

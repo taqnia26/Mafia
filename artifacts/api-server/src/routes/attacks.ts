@@ -111,13 +111,20 @@ router.post("/attacks", requireAuth, async (req, res) => {
       return void res.status(400).json({ error: `Insufficient ammo — you have ${totalAmmo}, need ${ammoQty}` });
     }
 
-    const travelHours = 4 + Math.random() * 2;
-    const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
-
     const [fromCity, toCity] = await Promise.all([
       db.select().from(citiesTable).where(eq(citiesTable.id, player.cityId)).limit(1),
       db.select().from(citiesTable).where(eq(citiesTable.id, target[0].cityId)).limit(1),
     ]);
+
+    // Travel time is distance-based: sum of both cities' travelHoursBase, halved for attacks
+    // Same-city attacks arrive faster (min 1h); cross-city uses city travel time
+    const fromBase = fromCity[0]?.travelHoursBase ?? 4;
+    const toBase = toCity[0]?.travelHoursBase ?? 4;
+    const sameCityAttack = player.cityId === target[0].cityId;
+    const travelHours = sameCityAttack
+      ? 1 + Math.random() * 0.5
+      : Math.round(((fromBase + toBase) / 2) * 10) / 10;
+    const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
 
     const [attack] = await db.transaction(async (tx) => {
       let remaining = ammoQty;
