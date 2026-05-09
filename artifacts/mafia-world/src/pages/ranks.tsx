@@ -19,7 +19,32 @@ import {
   Skull,
   DollarSign,
   Zap,
+  Target,
+  Hand,
+  Hammer,
+  Bird,
+  Crown,
+  Gem,
+  Diamond,
+  Flame,
+  Swords,
+  type LucideIcon,
 } from "lucide-react";
+
+const RANK_ICONS: Record<string, LucideIcon> = {
+  rat: Target,
+  fist: Hand,
+  star: Star,
+  hammer: Hammer,
+  shield: Shield,
+  eagle: Bird,
+  crown: Crown,
+  king: Crown,
+  pasha: Gem,
+  pasha2: Diamond,
+  legend: Flame,
+  emperor: Swords,
+};
 
 interface RankData {
   id: number;
@@ -35,6 +60,7 @@ interface RankData {
   atkBonus: number;
   defBonus: number;
   color: string;
+  icon: string;
   perksEn: string;
   perksAr: string;
   isCurrentRank: boolean;
@@ -278,12 +304,17 @@ export default function Ranks() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="text-xs font-mono font-bold w-6 h-6 rounded-full flex items-center justify-center text-white"
-                        style={{ background: rank.color }}
-                      >
-                        {rank.rankNumber}
-                      </span>
+                      {(() => {
+                        const RankIcon = RANK_ICONS[rank.icon] ?? Award;
+                        return (
+                          <span
+                            className="w-6 h-6 rounded-full flex items-center justify-center"
+                            style={{ background: isLocked ? "#374151" : rank.color + "30", color: isLocked ? "#6b7280" : rank.color }}
+                          >
+                            <RankIcon className="w-3.5 h-3.5" />
+                          </span>
+                        );
+                      })()}
                       <span className="font-heading font-bold uppercase tracking-wide text-sm" style={{ color: isLocked ? undefined : rank.color }}>
                         {language === "ar" ? rank.nameAr : rank.nameEn}
                       </span>

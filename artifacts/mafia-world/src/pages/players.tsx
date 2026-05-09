@@ -23,7 +23,7 @@ type SpyResult = {
 };
 
 export default function Players() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -112,7 +112,7 @@ export default function Players() {
                               color: player.rankColor ?? "#9ca3af",
                             }}
                           >
-                            {player.rankNameEn}
+                            {language === "ar" ? (player.rankNameAr ?? player.rankNameEn) : player.rankNameEn}
                           </Badge>
                         )}
                       </div>
