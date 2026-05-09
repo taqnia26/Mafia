@@ -3,20 +3,40 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Mafia World Game API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: players
+    description: Player operations
+  - name: gangs
+    description: Gang operations
+  - name: weapons
+    description: Weapon and ammo operations
+  - name: bodyguards
+    description: Bodyguard operations
+  - name: attacks
+    description: Attack and spy operations
+  - name: blackmarket
+    description: Black market trading
+  - name: crimes
+    description: Crime and prison operations
+  - name: cities
+    description: City operations
+  - name: armor
+    description: Armor protection operations
+  - name: dashboard
+    description: Dashboard and stats
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +44,907 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # --- PLAYERS ---
+  /players/me:
+    get:
+      operationId: getMyProfile
+      tags: [players]
+      summary: Get current player profile
+      responses:
+        "200":
+          description: Player profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+    patch:
+      operationId: updateMyProfile
+      tags: [players]
+      summary: Update current player profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerUpdate"
+      responses:
+        "200":
+          description: Updated player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /players/me/anti-spy:
+    post:
+      operationId: toggleAntiSpy
+      tags: [players]
+      summary: Toggle anti-spy mode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AntiSpyToggle"
+      responses:
+        "200":
+          description: Updated player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /players:
+    get:
+      operationId: listPlayers
+      tags: [players]
+      summary: List all players
+      parameters:
+        - in: query
+          name: cityId
+          schema:
+            type: integer
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of players
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerListResponse"
+
+  /players/{playerId}:
+    get:
+      operationId: getPlayer
+      tags: [players]
+      summary: Get a player by ID
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  # --- DASHBOARD ---
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get player dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/activity:
+    get:
+      operationId: getRecentActivity
+      tags: [dashboard]
+      summary: Get recent activity feed for current player
+      responses:
+        "200":
+          description: Activity list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  /dashboard/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [dashboard]
+      summary: Get top players leaderboard
+      responses:
+        "200":
+          description: Leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  # --- GANGS ---
+  /gangs:
+    get:
+      operationId: listGangs
+      tags: [gangs]
+      summary: List all gangs
+      responses:
+        "200":
+          description: List of gangs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Gang"
+    post:
+      operationId: createGang
+      tags: [gangs]
+      summary: Create a new gang
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GangInput"
+      responses:
+        "201":
+          description: Created gang
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gang"
+
+  /gangs/{gangId}:
+    get:
+      operationId: getGang
+      tags: [gangs]
+      summary: Get gang details
+      parameters:
+        - in: path
+          name: gangId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Gang
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Gang"
+
+  /gangs/{gangId}/join:
+    post:
+      operationId: joinGang
+      tags: [gangs]
+      summary: Join a gang
+      parameters:
+        - in: path
+          name: gangId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GangMember"
+
+  /gangs/me/leave:
+    post:
+      operationId: leaveGang
+      tags: [gangs]
+      summary: Leave current gang
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /gangs/{gangId}/members:
+    get:
+      operationId: listGangMembers
+      tags: [gangs]
+      summary: List gang members
+      parameters:
+        - in: path
+          name: gangId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GangMember"
+
+  /gangs/{gangId}/members/{memberId}/promote:
+    post:
+      operationId: promoteMember
+      tags: [gangs]
+      summary: Promote a gang member
+      parameters:
+        - in: path
+          name: gangId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: memberId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoteMemberInput"
+      responses:
+        "200":
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GangMember"
+
+  /gangs/{gangId}/deposit:
+    post:
+      operationId: depositToGangTreasury
+      tags: [gangs]
+      summary: Deposit money to gang treasury
+      parameters:
+        - in: path
+          name: gangId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TreasuryDeposit"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # --- WEAPONS ---
+  /weapons:
+    get:
+      operationId: listWeapons
+      tags: [weapons]
+      summary: List all available weapons in the shop
+      responses:
+        "200":
+          description: Weapons list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Weapon"
+
+  /weapons/my:
+    get:
+      operationId: getMyWeapons
+      tags: [weapons]
+      summary: Get current player's weapons
+      responses:
+        "200":
+          description: Player weapons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerWeapon"
+
+  /weapons/{weaponId}/buy:
+    post:
+      operationId: buyWeapon
+      tags: [weapons]
+      summary: Buy a weapon from the shop
+      parameters:
+        - in: path
+          name: weaponId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyWeaponInput"
+      responses:
+        "200":
+          description: Purchased weapon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerWeapon"
+
+  /ammo:
+    get:
+      operationId: listAmmo
+      tags: [weapons]
+      summary: List all ammo types
+      responses:
+        "200":
+          description: Ammo types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ammo"
+
+  /ammo/my:
+    get:
+      operationId: getMyAmmo
+      tags: [weapons]
+      summary: Get current player's ammo inventory
+      responses:
+        "200":
+          description: Player ammo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerAmmo"
+
+  /ammo/{ammoId}/buy:
+    post:
+      operationId: buyAmmo
+      tags: [weapons]
+      summary: Buy ammo
+      parameters:
+        - in: path
+          name: ammoId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyAmmoInput"
+      responses:
+        "200":
+          description: Purchased ammo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerAmmo"
+
+  # --- ARMOR ---
+  /armor:
+    get:
+      operationId: listArmorItems
+      tags: [armor]
+      summary: List all armor items in the shop
+      responses:
+        "200":
+          description: Armor items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ArmorItem"
+
+  /armor/my:
+    get:
+      operationId: getMyArmor
+      tags: [armor]
+      summary: Get current player's armor items
+      responses:
+        "200":
+          description: Player armor
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerArmor"
+
+  /armor/{armorId}/buy:
+    post:
+      operationId: buyArmor
+      tags: [armor]
+      summary: Buy an armor item
+      parameters:
+        - in: path
+          name: armorId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyArmorInput"
+      responses:
+        "200":
+          description: Purchased armor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerArmor"
+
+  # --- BODYGUARDS ---
+  /bodyguards/npc:
+    get:
+      operationId: listNpcBodyguards
+      tags: [bodyguards]
+      summary: List available NPC bodyguards to hire
+      responses:
+        "200":
+          description: NPC bodyguards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NpcBodyguard"
+
+  /bodyguards/npc/{guardId}/hire:
+    post:
+      operationId: hireNpcBodyguard
+      tags: [bodyguards]
+      summary: Hire an NPC bodyguard
+      parameters:
+        - in: path
+          name: guardId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Hired guard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /bodyguards/requests:
+    get:
+      operationId: listBodyguardRequests
+      tags: [bodyguards]
+      summary: List bodyguard requests (sent and received)
+      responses:
+        "200":
+          description: Requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BodyguardRequestList"
+
+  /bodyguards/request:
+    post:
+      operationId: sendBodyguardRequest
+      tags: [bodyguards]
+      summary: Send a bodyguard request to another player
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BodyguardRequestInput"
+      responses:
+        "201":
+          description: Request sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BodyguardRequest"
+
+  /bodyguards/requests/{requestId}/respond:
+    post:
+      operationId: respondToBodyguardRequest
+      tags: [bodyguards]
+      summary: Accept or reject a bodyguard request
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BodyguardResponse"
+      responses:
+        "200":
+          description: Response processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /bodyguards/my:
+    get:
+      operationId: getMyBodyguards
+      tags: [bodyguards]
+      summary: Get current player's active bodyguards
+      responses:
+        "200":
+          description: My bodyguards
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyBodyguards"
+
+  /bodyguards/{bodyguardId}/dismiss:
+    delete:
+      operationId: dismissBodyguard
+      tags: [bodyguards]
+      summary: Dismiss a bodyguard
+      parameters:
+        - in: path
+          name: bodyguardId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dismissed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # --- ATTACKS & SPY ---
+  /attacks/spy/{targetPlayerId}:
+    post:
+      operationId: spyOnPlayer
+      tags: [attacks]
+      summary: Spy on another player to reveal their stats
+      parameters:
+        - in: path
+          name: targetPlayerId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Spy result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpyResult"
+
+  /attacks:
+    post:
+      operationId: initiateAttack
+      tags: [attacks]
+      summary: Initiate an attack on another player (starts travel timer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttackInput"
+      responses:
+        "201":
+          description: Attack initiated with travel timer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attack"
+
+  /attacks/my:
+    get:
+      operationId: getMyAttacks
+      tags: [attacks]
+      summary: Get current player's attack history
+      responses:
+        "200":
+          description: Attacks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attack"
+
+  /attacks/incoming:
+    get:
+      operationId: getIncomingAttacks
+      tags: [attacks]
+      summary: Get incoming attacks on current player
+      responses:
+        "200":
+          description: Incoming attacks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attack"
+
+  /attacks/{attackId}/cancel:
+    post:
+      operationId: cancelAttack
+      tags: [attacks]
+      summary: Cancel a pending attack (while still traveling)
+      parameters:
+        - in: path
+          name: attackId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # --- BLACK MARKET ---
+  /blackmarket:
+    get:
+      operationId: listBlackMarket
+      tags: [blackmarket]
+      summary: List all black market listings
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [weapon, ammo, armor]
+      responses:
+        "200":
+          description: Listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BlackMarketListing"
+    post:
+      operationId: createListing
+      tags: [blackmarket]
+      summary: Create a new black market listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingInput"
+      responses:
+        "201":
+          description: Created listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlackMarketListing"
+
+  /blackmarket/my:
+    get:
+      operationId: getMyListings
+      tags: [blackmarket]
+      summary: Get current player's black market listings
+      responses:
+        "200":
+          description: My listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BlackMarketListing"
+
+  /blackmarket/{listingId}/buy:
+    post:
+      operationId: buyListing
+      tags: [blackmarket]
+      summary: Buy a black market listing
+      parameters:
+        - in: path
+          name: listingId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Purchased
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /blackmarket/{listingId}:
+    delete:
+      operationId: cancelListing
+      tags: [blackmarket]
+      summary: Cancel (remove) a black market listing
+      parameters:
+        - in: path
+          name: listingId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # --- CRIMES ---
+  /crimes:
+    get:
+      operationId: listCrimes
+      tags: [crimes]
+      summary: List available crime types
+      responses:
+        "200":
+          description: Crime types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CrimeType"
+
+  /crimes/attempt:
+    post:
+      operationId: attemptCrime
+      tags: [crimes]
+      summary: Attempt a crime mission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrimeAttemptInput"
+      responses:
+        "200":
+          description: Crime result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CrimeResult"
+
+  /crimes/history:
+    get:
+      operationId: getCrimeHistory
+      tags: [crimes]
+      summary: Get player's crime history
+      responses:
+        "200":
+          description: Crime history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CrimeRecord"
+
+  # --- PRISON ---
+  /prison/status:
+    get:
+      operationId: getPrisonStatus
+      tags: [crimes]
+      summary: Get current player's prison status
+      responses:
+        "200":
+          description: Prison status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrisonStatus"
+
+  /prison/jailbreak/{targetPlayerId}:
+    post:
+      operationId: attemptJailbreak
+      tags: [crimes]
+      summary: Attempt to break a gang member out of prison
+      parameters:
+        - in: path
+          name: targetPlayerId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JailbreakInput"
+      responses:
+        "200":
+          description: Jailbreak result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JailbreakResult"
+
+  # --- CITIES ---
+  /cities:
+    get:
+      operationId: listCities
+      tags: [cities]
+      summary: List all cities
+      responses:
+        "200":
+          description: Cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/City"
+
+  /cities/travel:
+    post:
+      operationId: travelToCity
+      tags: [cities]
+      summary: Travel to another city
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TravelInput"
+      responses:
+        "200":
+          description: Travel initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +955,975 @@ components:
       required:
         - status
 
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        username:
+          type: string
+        level:
+          type: integer
+        xp:
+          type: integer
+        money:
+          type: integer
+        attackPower:
+          type: integer
+        defensePower:
+          type: integer
+        killCount:
+          type: integer
+        deathCount:
+          type: integer
+        cityId:
+          type: integer
+        cityName:
+          type: string
+        gangId:
+          type: ["integer", "null"]
+        gangName:
+          type: ["string", "null"]
+        gangRank:
+          type: ["string", "null"]
+        antiSpyEnabled:
+          type: boolean
+        isInPrison:
+          type: boolean
+        prisonReleaseAt:
+          type: ["string", "null"]
+        isTraveling:
+          type: boolean
+        travelArrivalAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - clerkId
+        - username
+        - level
+        - xp
+        - money
+        - attackPower
+        - defensePower
+        - killCount
+        - deathCount
+        - cityId
+        - cityName
+        - gangId
+        - gangName
+        - gangRank
+        - antiSpyEnabled
+        - isInPrison
+        - prisonReleaseAt
+        - isTraveling
+        - travelArrivalAt
+        - createdAt
+
+    PlayerUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+
+    AntiSpyToggle:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+      required:
+        - enabled
+
+    PlayerListResponse:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/Player"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - players
+        - total
+        - page
+        - limit
+
+    DashboardStats:
+      type: object
+      properties:
+        money:
+          type: integer
+        level:
+          type: integer
+        xp:
+          type: integer
+        xpToNextLevel:
+          type: integer
+        killCount:
+          type: integer
+        deathCount:
+          type: integer
+        attackPower:
+          type: integer
+        defensePower:
+          type: integer
+        gangName:
+          type: ["string", "null"]
+        gangRank:
+          type: ["string", "null"]
+        weaponCount:
+          type: integer
+        bodyguardCount:
+          type: integer
+        ammoCount:
+          type: integer
+        pendingAttacks:
+          type: integer
+        incomingAttacks:
+          type: integer
+        isInPrison:
+          type: boolean
+        prisonReleaseAt:
+          type: ["string", "null"]
+        cityName:
+          type: string
+        isTraveling:
+          type: boolean
+      required:
+        - money
+        - level
+        - xp
+        - xpToNextLevel
+        - killCount
+        - deathCount
+        - attackPower
+        - defensePower
+        - gangName
+        - gangRank
+        - weaponCount
+        - bodyguardCount
+        - ammoCount
+        - pendingAttacks
+        - incomingAttacks
+        - isInPrison
+        - prisonReleaseAt
+        - cityName
+        - isTraveling
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [attack_sent, attack_received, crime_success, crime_failed, jailed, released, joined_gang, left_gang, bodyguard_hired, black_market_sale, black_market_purchase, traveled]
+        description:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - type
+        - description
+        - createdAt
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        playerId:
+          type: integer
+        username:
+          type: string
+        level:
+          type: integer
+        killCount:
+          type: integer
+        gangName:
+          type: ["string", "null"]
+        cityName:
+          type: string
+      required:
+        - rank
+        - playerId
+        - username
+        - level
+        - killCount
+        - gangName
+        - cityName
+
+    Gang:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        treasury:
+          type: integer
+        memberCount:
+          type: integer
+        bossName:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - description
+        - treasury
+        - memberCount
+        - bossName
+        - createdAt
+
+    GangInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        description:
+          type: string
+      required:
+        - name
+        - description
+
+    GangMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        username:
+          type: string
+        level:
+          type: integer
+        rank:
+          type: string
+          enum: [Soldier, Capo, Underboss, Consigliere, Boss]
+        joinedAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - username
+        - level
+        - rank
+        - joinedAt
+
+    PromoteMemberInput:
+      type: object
+      properties:
+        rank:
+          type: string
+          enum: [Soldier, Capo, Underboss, Consigliere, Boss]
+      required:
+        - rank
+
+    TreasuryDeposit:
+      type: object
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+      required:
+        - amount
+
+    Weapon:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [pistol, shotgun, rifle, submachine_gun, sniper, rpg]
+        attackPower:
+          type: integer
+        price:
+          type: integer
+        ammoType:
+          type: string
+        description:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - type
+        - attackPower
+        - price
+        - ammoType
+        - description
+        - imageUrl
+
+    PlayerWeapon:
+      type: object
+      properties:
+        id:
+          type: integer
+        weaponId:
+          type: integer
+        weaponName:
+          type: string
+        weaponType:
+          type: string
+        attackPower:
+          type: integer
+        quantity:
+          type: integer
+        acquiredAt:
+          type: string
+      required:
+        - id
+        - weaponId
+        - weaponName
+        - weaponType
+        - attackPower
+        - quantity
+        - acquiredAt
+
+    BuyWeaponInput:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+      required:
+        - quantity
+
+    Ammo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        damageBonus:
+          type: integer
+        price:
+          type: integer
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - type
+        - damageBonus
+        - price
+        - description
+
+    PlayerAmmo:
+      type: object
+      properties:
+        id:
+          type: integer
+        ammoId:
+          type: integer
+        ammoName:
+          type: string
+        ammoType:
+          type: string
+        quantity:
+          type: integer
+      required:
+        - id
+        - ammoId
+        - ammoName
+        - ammoType
+        - quantity
+
+    BuyAmmoInput:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+      required:
+        - quantity
+
+    ArmorItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [armored_car, armored_helicopter, bulletproof_vest, reinforced_bunker]
+        defenseBonus:
+          type: integer
+        price:
+          type: integer
+        description:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+      required:
+        - id
+        - name
+        - type
+        - defenseBonus
+        - price
+        - description
+        - imageUrl
+
+    PlayerArmor:
+      type: object
+      properties:
+        id:
+          type: integer
+        armorId:
+          type: integer
+        armorName:
+          type: string
+        armorType:
+          type: string
+        defenseBonus:
+          type: integer
+        quantity:
+          type: integer
+        acquiredAt:
+          type: string
+      required:
+        - id
+        - armorId
+        - armorName
+        - armorType
+        - defenseBonus
+        - quantity
+        - acquiredAt
+
+    BuyArmorInput:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+          default: 1
+      required:
+        - quantity
+
+    NpcBodyguard:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        tier:
+          type: string
+          enum: [basic, advanced, elite]
+        defensePower:
+          type: integer
+        hirePrice:
+          type: integer
+        dailyCost:
+          type: integer
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - tier
+        - defensePower
+        - hirePrice
+        - dailyCost
+        - description
+
+    BodyguardRequestInput:
+      type: object
+      properties:
+        targetPlayerId:
+          type: integer
+        offeredMoney:
+          type: integer
+          minimum: 0
+      required:
+        - targetPlayerId
+        - offeredMoney
+
+    BodyguardRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+        fromPlayerId:
+          type: integer
+        fromUsername:
+          type: string
+        toPlayerId:
+          type: integer
+        toUsername:
+          type: string
+        offeredMoney:
+          type: integer
+        status:
+          type: string
+          enum: [pending, accepted, rejected, cancelled]
+        createdAt:
+          type: string
+      required:
+        - id
+        - fromPlayerId
+        - fromUsername
+        - toPlayerId
+        - toUsername
+        - offeredMoney
+        - status
+        - createdAt
+
+    BodyguardRequestList:
+      type: object
+      properties:
+        sent:
+          type: array
+          items:
+            $ref: "#/components/schemas/BodyguardRequest"
+        received:
+          type: array
+          items:
+            $ref: "#/components/schemas/BodyguardRequest"
+      required:
+        - sent
+        - received
+
+    BodyguardResponse:
+      type: object
+      properties:
+        accept:
+          type: boolean
+      required:
+        - accept
+
+    MyBodyguards:
+      type: object
+      properties:
+        npcGuards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActiveNpcGuard"
+        playerGuards:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivePlayerGuard"
+      required:
+        - npcGuards
+        - playerGuards
+
+    ActiveNpcGuard:
+      type: object
+      properties:
+        id:
+          type: integer
+        npcName:
+          type: string
+        tier:
+          type: string
+        defensePower:
+          type: integer
+        hiredAt:
+          type: string
+      required:
+        - id
+        - npcName
+        - tier
+        - defensePower
+        - hiredAt
+
+    ActivePlayerGuard:
+      type: object
+      properties:
+        id:
+          type: integer
+        guardPlayerId:
+          type: integer
+        guardUsername:
+          type: string
+        level:
+          type: integer
+        defensePower:
+          type: integer
+        startedAt:
+          type: string
+      required:
+        - id
+        - guardPlayerId
+        - guardUsername
+        - level
+        - defensePower
+        - startedAt
+
+    SpyResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        blocked:
+          type: boolean
+        targetPlayerId:
+          type: integer
+        targetUsername:
+          type: ["string", "null"]
+        level:
+          type: ["integer", "null"]
+        attackPower:
+          type: ["integer", "null"]
+        defensePower:
+          type: ["integer", "null"]
+        bodyguardCount:
+          type: ["integer", "null"]
+        armorItems:
+          type: ["array", "null"]
+          items:
+            type: string
+        weapons:
+          type: ["array", "null"]
+          items:
+            type: string
+        isInPrison:
+          type: ["boolean", "null"]
+        cityName:
+          type: ["string", "null"]
+      required:
+        - success
+        - blocked
+        - targetPlayerId
+        - targetUsername
+        - level
+        - attackPower
+        - defensePower
+        - bodyguardCount
+        - armorItems
+        - weapons
+        - isInPrison
+        - cityName
+
+    AttackInput:
+      type: object
+      properties:
+        targetPlayerId:
+          type: integer
+        weaponId:
+          type: integer
+        ammoQuantity:
+          type: integer
+          minimum: 1
+      required:
+        - targetPlayerId
+        - weaponId
+        - ammoQuantity
+
+    Attack:
+      type: object
+      properties:
+        id:
+          type: integer
+        attackerId:
+          type: integer
+        attackerUsername:
+          type: string
+        targetId:
+          type: integer
+        targetUsername:
+          type: string
+        status:
+          type: string
+          enum: [traveling, completed, cancelled, failed]
+        travelArrivalAt:
+          type: ["string", "null"]
+        ammoUsed:
+          type: integer
+        damageDealt:
+          type: ["integer", "null"]
+        targetSurvived:
+          type: ["boolean", "null"]
+        fromCityName:
+          type: string
+        toCityName:
+          type: string
+        weaponName:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - attackerId
+        - attackerUsername
+        - targetId
+        - targetUsername
+        - status
+        - travelArrivalAt
+        - ammoUsed
+        - damageDealt
+        - targetSurvived
+        - fromCityName
+        - toCityName
+        - weaponName
+        - createdAt
+
+    BlackMarketListing:
+      type: object
+      properties:
+        id:
+          type: integer
+        sellerId:
+          type: integer
+        sellerUsername:
+          type: string
+        itemType:
+          type: string
+          enum: [weapon, ammo, armor]
+        itemId:
+          type: integer
+        itemName:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - sellerId
+        - sellerUsername
+        - itemType
+        - itemId
+        - itemName
+        - quantity
+        - price
+        - createdAt
+
+    ListingInput:
+      type: object
+      properties:
+        itemType:
+          type: string
+          enum: [weapon, ammo, armor]
+        itemId:
+          type: integer
+        quantity:
+          type: integer
+          minimum: 1
+        price:
+          type: integer
+          minimum: 1
+      required:
+        - itemType
+        - itemId
+        - quantity
+        - price
+
+    CrimeType:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        minReward:
+          type: integer
+        maxReward:
+          type: integer
+        xpReward:
+          type: integer
+        successRate:
+          type: number
+        prisonTimeHours:
+          type: integer
+        cooldownMinutes:
+          type: integer
+        requiredLevel:
+          type: integer
+      required:
+        - id
+        - name
+        - description
+        - minReward
+        - maxReward
+        - xpReward
+        - successRate
+        - prisonTimeHours
+        - cooldownMinutes
+        - requiredLevel
+
+    CrimeAttemptInput:
+      type: object
+      properties:
+        crimeTypeId:
+          type: integer
+      required:
+        - crimeTypeId
+
+    CrimeResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        caught:
+          type: boolean
+        moneyEarned:
+          type: integer
+        xpEarned:
+          type: integer
+        prisonTimeHours:
+          type: ["integer", "null"]
+        message:
+          type: string
+        prisonReleaseAt:
+          type: ["string", "null"]
+      required:
+        - success
+        - caught
+        - moneyEarned
+        - xpEarned
+        - prisonTimeHours
+        - message
+        - prisonReleaseAt
+
+    CrimeRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        crimeName:
+          type: string
+        success:
+          type: boolean
+        caught:
+          type: boolean
+        moneyEarned:
+          type: integer
+        xpEarned:
+          type: integer
+        attemptedAt:
+          type: string
+      required:
+        - id
+        - crimeName
+        - success
+        - caught
+        - moneyEarned
+        - xpEarned
+        - attemptedAt
+
+    PrisonStatus:
+      type: object
+      properties:
+        isInPrison:
+          type: boolean
+        releaseAt:
+          type: ["string", "null"]
+        crimeCommitted:
+          type: ["string", "null"]
+        hoursRemaining:
+          type: ["number", "null"]
+      required:
+        - isInPrison
+        - releaseAt
+        - crimeCommitted
+        - hoursRemaining
+
+    JailbreakInput:
+      type: object
+      properties:
+        method:
+          type: string
+          enum: [bribe, raid]
+      required:
+        - method
+
+    JailbreakResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        moneyCost:
+          type: integer
+        message:
+          type: string
+      required:
+        - success
+        - moneyCost
+        - message
+
+    City:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nameAr:
+          type: string
+        country:
+          type: string
+        playerCount:
+          type: integer
+        description:
+          type: string
+      required:
+        - id
+        - name
+        - nameAr
+        - country
+        - playerCount
+        - description
+
+    TravelInput:
+      type: object
+      properties:
+        targetCityId:
+          type: integer
+      required:
+        - targetCityId
+
+    TravelResult:
+      type: object
+      properties:
+        travelTimeHours:
+          type: number
+        arrivalAt:
+          type: string
+        fromCityName:
+          type: string
+        toCityName:
+          type: string
+        message:
+          type: string
+      required:
+        - travelTimeHours
+        - arrivalAt
+        - fromCityName
+        - toCityName
+        - message

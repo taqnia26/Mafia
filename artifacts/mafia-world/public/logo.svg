@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <rect width="400" height="400" fill="#0a0a0a"/>
+  <path d="M 100 250 L 100 150 L 150 200 L 200 150 L 250 200 L 300 150 L 300 250" fill="none" stroke="#8B0000" stroke-width="24" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 100 150 L 100 100 L 150 150 L 200 100 L 250 150 L 300 100 L 300 150" fill="none" stroke="#8B0000" stroke-width="24" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="200" y="320" font-family="Oswald, sans-serif" font-size="48" font-weight="bold" fill="#eaeaea" text-anchor="middle" letter-spacing="4">MAFIA WORLD</text>
+</svg>
