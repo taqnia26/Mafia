@@ -8,6 +8,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
+import { createNotification } from "../lib/notifications";
 import { recordSpy, hasRecentSpy } from "../lib/spyCache";
 
 const router = Router();
@@ -158,6 +159,7 @@ router.post("/attacks", requireAuth, requireNotInPrison, async (req, res) => {
     await Promise.all([
       logActivity(player.id, "attack_sent", `Attacking ${target[0].username} — ETA ${arrivalAt.toISOString()}`),
       logActivity(target[0].id, "attack_received", `Under attack from ${player.username}!`),
+      createNotification(target[0].id, "incoming_attack", `⚠️ Incoming attack from ${player.username}!`, "/attack"),
     ]);
 
     res.status(201).json({

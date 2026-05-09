@@ -36,6 +36,16 @@ export const activityLogTable = pgTable("activity_log", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const notificationsTable = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => playersTable.id),
+  type: text("type").notNull(),
+  message: text("message").notNull(),
+  link: text("link").notNull().default("/dashboard"),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertCrimeTypeSchema = createInsertSchema(crimeTypesTable).omit({ id: true });
 export type InsertCrimeType = z.infer<typeof insertCrimeTypeSchema>;
 export type CrimeType = typeof crimeTypesTable.$inferSelect;

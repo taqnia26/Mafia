@@ -6,6 +6,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, lte, lt, sql, sum } from "drizzle-orm";
 import { logActivity } from "./activityLog";
+import { createNotification } from "./notifications";
 import { logger } from "./logger";
 
 const POLL_INTERVAL_MS = 30_000;
@@ -159,6 +160,10 @@ async function processAttackArrivals(): Promise<void> {
             "attack_defended",
             `Your bodyguard ${firstGuard.npcName ?? "Unknown"} sacrificed themselves to protect you from ${attacker[0].username}!`,
           );
+          await Promise.all([
+            createNotification(attacker[0].id, "attack_resolved", `🛡️ Your attack on ${target[0].username} was blocked by their bodyguard`, "/attack"),
+            createNotification(target[0].id, "attack_resolved", `🛡️ ${attacker[0].username}'s attack was intercepted by your bodyguard`, "/attack"),
+          ]);
         } else if (activePlayerGuards[0]) {
           // Player guard absorbs the blow — remove them from guard duty
           const pg = activePlayerGuards[0];
@@ -186,6 +191,10 @@ async function processAttackArrivals(): Promise<void> {
               `You took a hit for ${target[0].username} and were dismissed from guard duty.`,
             );
           }
+          await Promise.all([
+            createNotification(attacker[0].id, "attack_resolved", `🛡️ Your attack on ${target[0].username} was blocked by their player bodyguard`, "/attack"),
+            createNotification(target[0].id, "attack_resolved", `🛡️ ${attacker[0].username}'s attack was blocked by your guard`, "/attack"),
+          ]);
         } else {
           // No guards — player takes full damage to HP
           const newHealth = target[0].health - damage;
@@ -224,6 +233,24 @@ async function processAttackArrivals(): Promise<void> {
             "attack_lost",
             `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}${targetDied ? " (eliminated — HP reset to 50)" : ""}`,
           );
+          await Promise.all([
+            createNotification(
+              attacker[0].id,
+              "attack_resolved",
+              targetDied
+                ? `💀 You eliminated ${target[0].username}! +$${moneyStolen} stolen`
+                : `⚔️ Attack on ${target[0].username} landed — ${damage} dmg, $${moneyStolen} stolen`,
+              "/attack",
+            ),
+            createNotification(
+              target[0].id,
+              "attack_resolved",
+              targetDied
+                ? `💀 You were eliminated by ${attacker[0].username}! -$${moneyStolen}`
+                : `⚔️ ${attacker[0].username} attacked you — ${damage} dmg taken, -$${moneyStolen}`,
+              "/attack",
+            ),
+          ]);
         }
       } else {
         // Attack failed — target's defense held
@@ -241,6 +268,10 @@ async function processAttackArrivals(): Promise<void> {
           "attack_defended",
           `Repelled attack from ${attacker[0].username}`,
         );
+        await Promise.all([
+          createNotification(attacker[0].id, "attack_resolved", `🛡️ Your attack on ${target[0].username} was repelled`, "/attack"),
+          createNotification(target[0].id, "attack_resolved", `🛡️ You repelled an attack from ${attacker[0].username}`, "/attack"),
+        ]);
       }
     } catch (err) {
       logger.error({ err, attackId: attack.id }, "worker: error resolving attack");

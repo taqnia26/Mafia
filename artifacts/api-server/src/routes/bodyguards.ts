@@ -7,6 +7,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
+import { createNotification } from "../lib/notifications";
 type BodyguardRequest = typeof import("@workspace/db/schema").bodyguardRequestsTable.$inferSelect;
 
 const router = Router();
@@ -106,6 +107,14 @@ router.post("/bodyguards/request", requireAuth, requireNotInPrison, async (req, 
       db.select({ username: playersTable.username }).from(playersTable).where(eq(playersTable.id, player.id)).limit(1),
       db.select({ username: playersTable.username }).from(playersTable).where(eq(playersTable.id, targetPlayerId)).limit(1),
     ]);
+
+    const offerText = (offeredMoney ?? 0) > 0 ? ` for $${(offeredMoney ?? 0).toLocaleString()}` : "";
+    await createNotification(
+      targetPlayerId,
+      "bodyguard_request",
+      `🛡️ ${from[0]?.username ?? "Someone"} wants you as their bodyguard${offerText}`,
+      "/bodyguards",
+    );
 
     res.status(201).json({
       ...request,

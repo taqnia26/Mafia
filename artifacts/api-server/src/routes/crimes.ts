@@ -4,6 +4,7 @@ import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId }
 import { crimeTypesTable, crimeRecordsTable, playersTable } from "@workspace/db/schema";
 import { eq, and, desc, gte, inArray } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
+import { createNotification } from "../lib/notifications";
 
 const router = Router();
 
@@ -139,6 +140,7 @@ router.post("/crimes/attempt", requireAuth, requireNotInPrison, async (req, res)
       }).where(eq(playersTable.id, player.id));
 
       await logActivity(player.id, "crime_success", message);
+      await createNotification(player.id, "crime_completed", `✅ ${crime[0].name} succeeded! +$${moneyEarned.toLocaleString()}`, "/crimes");
     } else if (caught) {
       prisonTimeHours = crime[0].prisonTimeHours;
       const releaseAt = new Date(Date.now() + prisonTimeHours * 3600 * 1000);
@@ -153,9 +155,11 @@ router.post("/crimes/attempt", requireAuth, requireNotInPrison, async (req, res)
       }).where(eq(playersTable.id, player.id));
 
       await logActivity(player.id, "jailed", `Caught committing "${crime[0].name}" — ${prisonTimeHours}h sentence`);
+      await createNotification(player.id, "crime_completed", `🔒 Caught during ${crime[0].name} — ${prisonTimeHours}h in prison`, "/prison");
     } else {
       message = "The crime failed but you escaped.";
       await logActivity(player.id, "crime_failed", `Failed "${crime[0].name}" but escaped`);
+      await createNotification(player.id, "crime_completed", `❌ ${crime[0].name} failed — you escaped`, "/crimes");
     }
 
     await db.insert(crimeRecordsTable).values({
