@@ -29,4 +29,8 @@ export interface DashboardStats {
   prisonReleaseAt: string | null;
   cityName: string;
   isTraveling: boolean;
+  currentRank: number;
+  rankNameEn: string;
+  rankNameAr: string;
+  rankColor: string;
 }

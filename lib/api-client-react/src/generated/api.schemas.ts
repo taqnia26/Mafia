@@ -13,6 +13,10 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface ErrorResponse {
+  error: string;
+}
+
 export interface Player {
   id: number;
   clerkId: string;
@@ -40,6 +44,10 @@ export interface Player {
   /** @nullable */
   travelArrivalAt: string | null;
   createdAt: string;
+  currentRank: number;
+  rankNameEn: string;
+  rankNameAr: string;
+  rankColor: string;
 }
 
 export interface PlayerUpdate {
@@ -80,6 +88,10 @@ export interface DashboardStats {
   prisonReleaseAt: string | null;
   cityName: string;
   isTraveling: boolean;
+  currentRank: number;
+  rankNameEn: string;
+  rankNameAr: string;
+  rankColor: string;
 }
 
 export type ActivityItemType =
@@ -676,6 +688,53 @@ export interface AdminCityUpdate {
   nameAr?: string;
   description?: string;
   travelHoursBase?: number;
+}
+
+export interface PlayerRank {
+  id: number;
+  rankNumber: number;
+  nameEn: string;
+  nameAr: string;
+  subtitleEn: string;
+  subtitleAr: string;
+  requiredLevel: number;
+  requiredMoney: number;
+  requiredXp: number;
+  requiredKills: number;
+  atkBonus: number;
+  defBonus: number;
+  color: string;
+  perksEn: string;
+  perksAr: string;
+  isCurrentRank: boolean;
+  isNextRank: boolean;
+  canUpgrade: boolean;
+  missingRequirements: string[];
+  unlocked: boolean;
+}
+
+export type RanksResponsePlayer = {
+  level: number;
+  money: number;
+  xp: number;
+  killCount: number;
+};
+
+export interface RanksResponse {
+  ranks: PlayerRank[];
+  currentRank: number;
+  currentRankData?: PlayerRank | null;
+  nextRank?: PlayerRank | null;
+  player: RanksResponsePlayer;
+}
+
+export interface RankUpgradeResponse {
+  success: boolean;
+  newRank: number;
+  newRankName: string;
+  newRankNameAr: string;
+  atkIncrease: number;
+  defIncrease: number;
 }
 
 export type ListPlayersParams = {

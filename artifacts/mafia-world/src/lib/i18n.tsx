@@ -460,6 +460,7 @@ const translations: Translations = {
   "ranks.rankUp": { en: "Rank Up!", ar: "ارتقِ!" },
   "ranks.free": { en: "Free", ar: "مجاناً" },
   "ranks.startingRank": { en: "Starting Rank", ar: "الرتبة الابتدائية" },
+  "ranks.rankNum": { en: "Rank #{n}", ar: "رتبة #{n}" },
 };
 
 interface I18nContextType {

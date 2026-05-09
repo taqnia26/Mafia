@@ -19,6 +19,7 @@ import {
   Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -40,11 +41,25 @@ function useIsAdmin() {
   });
 }
 
+function usePlayerRank() {
+  return useQuery({
+    queryKey: ["layout-player-rank"],
+    queryFn: async () => {
+      const res = await fetch(`/api/players/me`, { credentials: "include" });
+      if (!res.ok) return null;
+      const data = await res.json() as { currentRank?: number; rankNameEn?: string; rankNameAr?: string; rankColor?: string };
+      return data;
+    },
+    staleTime: 30000,
+  });
+}
+
 export function Layout({ children }: LayoutProps) {
-  const { t, dir } = useI18n();
+  const { t, dir, language } = useI18n();
   const { signOut } = useClerk();
   const [location] = useLocation();
   const { data: isAdmin } = useIsAdmin();
+  const { data: rankInfo } = usePlayerRank();
 
   const navItems = [
     { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
@@ -112,6 +127,29 @@ export function Layout({ children }: LayoutProps) {
             </Link>
           )}
         </nav>
+
+        {rankInfo?.rankNameEn && (
+          <Link href="/ranks">
+            <div className="mx-4 mb-2 px-3 py-2 rounded-md bg-secondary/40 border border-border/50 hover:bg-secondary/70 transition-colors cursor-pointer">
+              <div className="flex items-center gap-2">
+                <Award className="w-4 h-4 shrink-0" style={{ color: rankInfo.rankColor ?? "#6b7280" }} />
+                <span
+                  className="text-xs font-heading font-bold uppercase tracking-wide truncate"
+                  style={{ color: rankInfo.rankColor ?? "#6b7280" }}
+                >
+                  {language === "ar" ? (rankInfo.rankNameAr ?? rankInfo.rankNameEn) : rankInfo.rankNameEn}
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-xs shrink-0 ml-auto"
+                  style={{ borderColor: rankInfo.rankColor ?? "#6b7280", color: rankInfo.rankColor ?? "#6b7280" }}
+                >
+                  #{rankInfo.currentRank}
+                </Badge>
+              </div>
+            </div>
+          </Link>
+        )}
 
         <div className="p-4 border-t border-border">
           <Button

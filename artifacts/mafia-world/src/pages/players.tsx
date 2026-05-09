@@ -103,16 +103,16 @@ export default function Players() {
                         {player.isInPrison && (
                           <Badge variant="outline" className="text-orange-400 border-orange-500/50 text-xs">{t("prison.incarcerated")}</Badge>
                         )}
-                        {(player as unknown as { rankNameEn?: string; rankColor?: string }).rankNameEn && (
+                        {player.rankNameEn && (
                           <Badge
                             variant="outline"
                             className="text-xs"
                             style={{
-                              borderColor: (player as unknown as { rankColor?: string }).rankColor ?? "#6b7280",
-                              color: (player as unknown as { rankColor?: string }).rankColor ?? "#9ca3af",
+                              borderColor: player.rankColor ?? "#6b7280",
+                              color: player.rankColor ?? "#9ca3af",
                             }}
                           >
-                            {(player as unknown as { rankNameEn?: string }).rankNameEn}
+                            {player.rankNameEn}
                           </Badge>
                         )}
                       </div>

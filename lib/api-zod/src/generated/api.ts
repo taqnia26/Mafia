@@ -39,6 +39,10 @@ export const GetMyProfileResponse = zod.object({
   isTraveling: zod.boolean(),
   travelArrivalAt: zod.string().nullable(),
   createdAt: zod.string(),
+  currentRank: zod.number(),
+  rankNameEn: zod.string(),
+  rankNameAr: zod.string(),
+  rankColor: zod.string(),
 });
 
 /**
@@ -70,6 +74,10 @@ export const UpdateMyProfileResponse = zod.object({
   isTraveling: zod.boolean(),
   travelArrivalAt: zod.string().nullable(),
   createdAt: zod.string(),
+  currentRank: zod.number(),
+  rankNameEn: zod.string(),
+  rankNameAr: zod.string(),
+  rankColor: zod.string(),
 });
 
 /**
@@ -101,6 +109,10 @@ export const ToggleAntiSpyResponse = zod.object({
   isTraveling: zod.boolean(),
   travelArrivalAt: zod.string().nullable(),
   createdAt: zod.string(),
+  currentRank: zod.number(),
+  rankNameEn: zod.string(),
+  rankNameAr: zod.string(),
+  rankColor: zod.string(),
 });
 
 /**
@@ -140,6 +152,10 @@ export const ListPlayersResponse = zod.object({
       isTraveling: zod.boolean(),
       travelArrivalAt: zod.string().nullable(),
       createdAt: zod.string(),
+      currentRank: zod.number(),
+      rankNameEn: zod.string(),
+      rankNameAr: zod.string(),
+      rankColor: zod.string(),
     }),
   ),
   total: zod.number(),
@@ -176,6 +192,107 @@ export const GetPlayerResponse = zod.object({
   isTraveling: zod.boolean(),
   travelArrivalAt: zod.string().nullable(),
   createdAt: zod.string(),
+  currentRank: zod.number(),
+  rankNameEn: zod.string(),
+  rankNameAr: zod.string(),
+  rankColor: zod.string(),
+});
+
+/**
+ * @summary Get all 12 ranks with current player eligibility
+ */
+export const ListRanksResponse = zod.object({
+  ranks: zod.array(
+    zod.object({
+      id: zod.number(),
+      rankNumber: zod.number(),
+      nameEn: zod.string(),
+      nameAr: zod.string(),
+      subtitleEn: zod.string(),
+      subtitleAr: zod.string(),
+      requiredLevel: zod.number(),
+      requiredMoney: zod.number(),
+      requiredXp: zod.number(),
+      requiredKills: zod.number(),
+      atkBonus: zod.number(),
+      defBonus: zod.number(),
+      color: zod.string(),
+      perksEn: zod.string(),
+      perksAr: zod.string(),
+      isCurrentRank: zod.boolean(),
+      isNextRank: zod.boolean(),
+      canUpgrade: zod.boolean(),
+      missingRequirements: zod.array(zod.string()),
+      unlocked: zod.boolean(),
+    }),
+  ),
+  currentRank: zod.number(),
+  currentRankData: zod
+    .object({
+      id: zod.number(),
+      rankNumber: zod.number(),
+      nameEn: zod.string(),
+      nameAr: zod.string(),
+      subtitleEn: zod.string(),
+      subtitleAr: zod.string(),
+      requiredLevel: zod.number(),
+      requiredMoney: zod.number(),
+      requiredXp: zod.number(),
+      requiredKills: zod.number(),
+      atkBonus: zod.number(),
+      defBonus: zod.number(),
+      color: zod.string(),
+      perksEn: zod.string(),
+      perksAr: zod.string(),
+      isCurrentRank: zod.boolean(),
+      isNextRank: zod.boolean(),
+      canUpgrade: zod.boolean(),
+      missingRequirements: zod.array(zod.string()),
+      unlocked: zod.boolean(),
+    })
+    .nullish(),
+  nextRank: zod
+    .object({
+      id: zod.number(),
+      rankNumber: zod.number(),
+      nameEn: zod.string(),
+      nameAr: zod.string(),
+      subtitleEn: zod.string(),
+      subtitleAr: zod.string(),
+      requiredLevel: zod.number(),
+      requiredMoney: zod.number(),
+      requiredXp: zod.number(),
+      requiredKills: zod.number(),
+      atkBonus: zod.number(),
+      defBonus: zod.number(),
+      color: zod.string(),
+      perksEn: zod.string(),
+      perksAr: zod.string(),
+      isCurrentRank: zod.boolean(),
+      isNextRank: zod.boolean(),
+      canUpgrade: zod.boolean(),
+      missingRequirements: zod.array(zod.string()),
+      unlocked: zod.boolean(),
+    })
+    .nullish(),
+  player: zod.object({
+    level: zod.number(),
+    money: zod.number(),
+    xp: zod.number(),
+    killCount: zod.number(),
+  }),
+});
+
+/**
+ * @summary Manually upgrade to the next rank (deducts money, adds ATK/DEF bonuses)
+ */
+export const UpgradeRankResponse = zod.object({
+  success: zod.boolean(),
+  newRank: zod.number(),
+  newRankName: zod.string(),
+  newRankNameAr: zod.string(),
+  atkIncrease: zod.number(),
+  defIncrease: zod.number(),
 });
 
 /**
@@ -201,6 +318,10 @@ export const GetDashboardStatsResponse = zod.object({
   prisonReleaseAt: zod.string().nullable(),
   cityName: zod.string(),
   isTraveling: zod.boolean(),
+  currentRank: zod.number(),
+  rankNameEn: zod.string(),
+  rankNameAr: zod.string(),
+  rankColor: zod.string(),
 });
 
 /**

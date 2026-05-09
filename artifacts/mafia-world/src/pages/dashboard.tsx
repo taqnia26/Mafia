@@ -12,8 +12,10 @@ import {
   Shield,
   Activity,
   AlertTriangle,
-  Lock
+  Lock,
+  Award,
 } from "lucide-react";
+import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { PageBanner } from "@/components/PageBanner";
 
@@ -96,6 +98,28 @@ export default function Dashboard() {
                       <AlertTriangle className="w-3 h-3" /> {t("dashboard.combatActive")}
                     </Badge>
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border col-span-full md:col-span-2 lg:col-span-1">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between space-y-0 pb-2">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("nav.ranks")}</p>
+                  <Award className="h-4 w-4" style={{ color: stats.rankColor }} />
+                </div>
+                <div className="mt-1">
+                  <Link href="/ranks">
+                    <span
+                      className="text-xl font-heading font-bold uppercase tracking-wide cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ color: stats.rankColor }}
+                    >
+                      {language === "ar" ? stats.rankNameAr : stats.rankNameEn}
+                    </span>
+                  </Link>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === "ar" ? `رتبة #${stats.currentRank}` : `Rank #${stats.currentRank}`}
+                  </p>
                 </div>
               </CardContent>
             </Card>

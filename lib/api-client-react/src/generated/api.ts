@@ -50,6 +50,7 @@ import type {
   CrimeResult,
   CrimeType,
   DashboardStats,
+  ErrorResponse,
   Gang,
   GangInput,
   GangMember,
@@ -72,6 +73,8 @@ import type {
   PlayerWeapon,
   PrisonStatus,
   PromoteMemberInput,
+  RankUpgradeResponse,
+  RanksResponse,
   SpyResult,
   TravelInput,
   TravelResult,
@@ -586,6 +589,154 @@ export function useGetPlayer<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get all 12 ranks with current player eligibility
+ */
+export const getListRanksUrl = () => {
+  return `/api/ranks`;
+};
+
+export const listRanks = async (
+  options?: RequestInit,
+): Promise<RanksResponse> => {
+  return customFetch<RanksResponse>(getListRanksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListRanksQueryKey = () => {
+  return [`/api/ranks`] as const;
+};
+
+export const getListRanksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRanks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listRanks>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRanksQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRanks>>> = ({
+    signal,
+  }) => listRanks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRanks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRanksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRanks>>
+>;
+export type ListRanksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all 12 ranks with current player eligibility
+ */
+
+export function useListRanks<
+  TData = Awaited<ReturnType<typeof listRanks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listRanks>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRanksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Manually upgrade to the next rank (deducts money, adds ATK/DEF bonuses)
+ */
+export const getUpgradeRankUrl = () => {
+  return `/api/ranks/upgrade`;
+};
+
+export const upgradeRank = async (
+  options?: RequestInit,
+): Promise<RankUpgradeResponse> => {
+  return customFetch<RankUpgradeResponse>(getUpgradeRankUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getUpgradeRankMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upgradeRank>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upgradeRank>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["upgradeRank"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upgradeRank>>,
+    void
+  > = () => {
+    return upgradeRank(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpgradeRankMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upgradeRank>>
+>;
+
+export type UpgradeRankMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Manually upgrade to the next rank (deducts money, adds ATK/DEF bonuses)
+ */
+export const useUpgradeRank = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upgradeRank>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upgradeRank>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getUpgradeRankMutationOptions(options));
+};
 
 /**
  * @summary Get player dashboard summary stats

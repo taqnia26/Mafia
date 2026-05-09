@@ -4,6 +4,7 @@ import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   playersTable, gangsTable, playerWeaponsTable, playerAmmoTable,
   attacksTable, activityLogTable, playerNpcGuardsTable, playerGuardsTable, citiesTable,
+  playerRankProgressTable, playerRanksTable,
 } from "@workspace/db/schema";
 import { eq, desc, count, and, or, sql } from "drizzle-orm";
 
@@ -16,7 +17,7 @@ router.get("/dashboard/stats", requireAuth, async (req, res) => {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
 
-    const [weapons, ammo, pendingAttacks, incomingAttacks, npcGuards, playerGuards, city] = await Promise.all([
+    const [weapons, ammo, pendingAttacks, incomingAttacks, npcGuards, playerGuards, city, rankProgress] = await Promise.all([
       db.select({ count: count() }).from(playerWeaponsTable).where(eq(playerWeaponsTable.playerId, player.id)),
       db.select({ totalQty: sql<number>`sum(quantity)` }).from(playerAmmoTable).where(eq(playerAmmoTable.playerId, player.id)),
       db.select({ count: count() }).from(attacksTable).where(and(eq(attacksTable.attackerId, player.id), eq(attacksTable.status, "traveling"))),
@@ -24,6 +25,10 @@ router.get("/dashboard/stats", requireAuth, async (req, res) => {
       db.select({ count: count() }).from(playerNpcGuardsTable).where(eq(playerNpcGuardsTable.playerId, player.id)),
       db.select({ count: count() }).from(playerGuardsTable).where(eq(playerGuardsTable.protectedPlayerId, player.id)),
       db.select().from(citiesTable).where(eq(citiesTable.id, player.cityId)).limit(1),
+      db.select({ currentRank: playerRankProgressTable.currentRank })
+        .from(playerRankProgressTable)
+        .where(eq(playerRankProgressTable.playerId, player.id))
+        .limit(1),
     ]);
 
     let gangName: string | null = null;
@@ -33,8 +38,13 @@ router.get("/dashboard/stats", requireAuth, async (req, res) => {
     }
 
     const bodyguardCount = (npcGuards[0]?.count ?? 0) + (playerGuards[0]?.count ?? 0);
+    const currentRankNum = rankProgress[0]?.currentRank ?? 1;
+    const rankData = await db.select({ nameEn: playerRanksTable.nameEn, nameAr: playerRanksTable.nameAr, color: playerRanksTable.color })
+      .from(playerRanksTable)
+      .where(eq(playerRanksTable.rankNumber, currentRankNum))
+      .limit(1);
 
-    res.json({
+    return void res.json({
       money: player.money,
       level: player.level,
       xp: player.xp,
@@ -54,6 +64,10 @@ router.get("/dashboard/stats", requireAuth, async (req, res) => {
       prisonReleaseAt: player.prisonReleaseAt?.toISOString() ?? null,
       cityName: city[0]?.name ?? "",
       isTraveling: player.isTraveling,
+      currentRank: currentRankNum,
+      rankNameEn: rankData[0]?.nameEn ?? "Street Rat",
+      rankNameAr: rankData[0]?.nameAr ?? "فأر الشوارع",
+      rankColor: rankData[0]?.color ?? "#6b7280",
     });
   } catch (e) {
     res.status(500).json({ error: String(e) });

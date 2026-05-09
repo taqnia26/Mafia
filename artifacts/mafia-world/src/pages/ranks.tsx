@@ -166,24 +166,48 @@ export default function Ranks() {
                   {language === "ar" ? nextRank.nameAr : nextRank.nameEn}
                 </h2>
                 <p className="text-muted-foreground text-sm">{language === "ar" ? nextRank.subtitleAr : nextRank.subtitleEn}</p>
-                <div className="flex flex-wrap gap-3 text-sm pt-1">
-                  <span className={`flex items-center gap-1 ${player.level >= nextRank.requiredLevel ? "text-green-400" : "text-red-400"}`}>
-                    <TrendingUp className="w-3 h-3" /> Lvl {nextRank.requiredLevel}
-                  </span>
+                <div className="space-y-2 pt-1">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground"><TrendingUp className="w-3 h-3" /> {t("ranks.reqLevel")}</span>
+                      <span className={player.level >= nextRank.requiredLevel ? "text-green-400" : "text-red-400"}>
+                        {player.level} / {nextRank.requiredLevel}
+                      </span>
+                    </div>
+                    <Progress value={Math.min(100, (player.level / nextRank.requiredLevel) * 100)} className="h-1.5 bg-secondary" indicatorClassName={player.level >= nextRank.requiredLevel ? "bg-green-500" : "bg-primary"} />
+                  </div>
                   {nextRank.requiredMoney > 0 && (
-                    <span className={`flex items-center gap-1 ${player.money >= nextRank.requiredMoney ? "text-green-400" : "text-red-400"}`}>
-                      <DollarSign className="w-3 h-3" /> {formatMoney(nextRank.requiredMoney)}
-                    </span>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground"><DollarSign className="w-3 h-3" /> {t("ranks.reqMoney")}</span>
+                        <span className={player.money >= nextRank.requiredMoney ? "text-green-400" : "text-red-400"}>
+                          {formatMoney(player.money)} / {formatMoney(nextRank.requiredMoney)}
+                        </span>
+                      </div>
+                      <Progress value={Math.min(100, (player.money / nextRank.requiredMoney) * 100)} className="h-1.5 bg-secondary" indicatorClassName={player.money >= nextRank.requiredMoney ? "bg-green-500" : "bg-yellow-500"} />
+                    </div>
                   )}
                   {nextRank.requiredXp > 0 && (
-                    <span className={`flex items-center gap-1 ${player.xp >= nextRank.requiredXp ? "text-green-400" : "text-red-400"}`}>
-                      <Zap className="w-3 h-3" /> {formatXp(nextRank.requiredXp)} XP
-                    </span>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground"><Zap className="w-3 h-3" /> {t("ranks.reqXp")}</span>
+                        <span className={player.xp >= nextRank.requiredXp ? "text-green-400" : "text-red-400"}>
+                          {formatXp(player.xp)} / {formatXp(nextRank.requiredXp)}
+                        </span>
+                      </div>
+                      <Progress value={Math.min(100, (player.xp / nextRank.requiredXp) * 100)} className="h-1.5 bg-secondary" indicatorClassName={player.xp >= nextRank.requiredXp ? "bg-green-500" : "bg-blue-500"} />
+                    </div>
                   )}
                   {nextRank.requiredKills > 0 && (
-                    <span className={`flex items-center gap-1 ${player.killCount >= nextRank.requiredKills ? "text-green-400" : "text-red-400"}`}>
-                      <Skull className="w-3 h-3" /> {nextRank.requiredKills} kills
-                    </span>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground"><Skull className="w-3 h-3" /> {t("ranks.reqKills")}</span>
+                        <span className={player.killCount >= nextRank.requiredKills ? "text-green-400" : "text-red-400"}>
+                          {player.killCount} / {nextRank.requiredKills}
+                        </span>
+                      </div>
+                      <Progress value={Math.min(100, (player.killCount / nextRank.requiredKills) * 100)} className="h-1.5 bg-secondary" indicatorClassName={player.killCount >= nextRank.requiredKills ? "bg-green-500" : "bg-red-500"} />
+                    </div>
                   )}
                 </div>
               </div>

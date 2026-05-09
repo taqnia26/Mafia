@@ -1380,6 +1380,14 @@ components:
           type: ["string", "null"]
         createdAt:
           type: string
+        currentRank:
+          type: integer
+        rankNameEn:
+          type: string
+        rankNameAr:
+          type: string
+        rankColor:
+          type: string
       required:
         - id
         - clerkId
@@ -1402,6 +1410,10 @@ components:
         - isTraveling
         - travelArrivalAt
         - createdAt
+        - currentRank
+        - rankNameEn
+        - rankNameAr
+        - rankColor
 
     PlayerUpdate:
       type: object
@@ -1477,6 +1489,14 @@ components:
           type: string
         isTraveling:
           type: boolean
+        currentRank:
+          type: integer
+        rankNameEn:
+          type: string
+        rankNameAr:
+          type: string
+        rankColor:
+          type: string
       required:
         - money
         - level
@@ -1497,6 +1517,10 @@ components:
         - prisonReleaseAt
         - cityName
         - isTraveling
+        - currentRank
+        - rankNameEn
+        - rankNameAr
+        - rankColor
 
     ActivityItem:
       type: object

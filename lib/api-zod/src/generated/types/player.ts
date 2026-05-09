@@ -33,4 +33,8 @@ export interface Player {
   /** @nullable */
   travelArrivalAt: string | null;
   createdAt: string;
+  currentRank: number;
+  rankNameEn: string;
+  rankNameAr: string;
+  rankColor: string;
 }
