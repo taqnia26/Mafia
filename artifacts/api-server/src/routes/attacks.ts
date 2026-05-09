@@ -3,9 +3,9 @@ import { db } from "../lib/db";
 import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   attacksTable, playersTable, weaponsTable, citiesTable,
-  playerAmmoTable, playerNpcGuardsTable, playerArmorTable, armorItemsTable,
+  playerWeaponsTable, playerAmmoTable, playerNpcGuardsTable, playerArmorTable, armorItemsTable,
 } from "@workspace/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sum } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
 
 const router = Router();
@@ -15,6 +15,8 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
     const targetId = parseInt(String(req.params.targetPlayerId));
+
+    if (targetId === player.id) return void res.status(400).json({ error: "Cannot spy on yourself" });
 
     const target = await db.select().from(playersTable).where(eq(playersTable.id, targetId)).limit(1);
     if (!target[0]) return void res.status(404).json({ error: "Target not found" });
@@ -38,10 +40,17 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
       });
     }
 
-    const [city, npcGuards, armor] = await Promise.all([
+    const [city, npcGuards, armor, playerWeapons] = await Promise.all([
       db.select().from(citiesTable).where(eq(citiesTable.id, t.cityId)).limit(1),
       db.select().from(playerNpcGuardsTable).where(eq(playerNpcGuardsTable.playerId, t.id)),
-      db.select({ armorName: armorItemsTable.name }).from(playerArmorTable).leftJoin(armorItemsTable, eq(playerArmorTable.armorId, armorItemsTable.id)).where(eq(playerArmorTable.playerId, t.id)),
+      db.select({ armorName: armorItemsTable.name })
+        .from(playerArmorTable)
+        .leftJoin(armorItemsTable, eq(playerArmorTable.armorId, armorItemsTable.id))
+        .where(eq(playerArmorTable.playerId, t.id)),
+      db.select({ weaponName: weaponsTable.name, quantity: playerWeaponsTable.quantity })
+        .from(playerWeaponsTable)
+        .leftJoin(weaponsTable, eq(playerWeaponsTable.weaponId, weaponsTable.id))
+        .where(eq(playerWeaponsTable.playerId, t.id)),
     ]);
 
     res.json({
@@ -54,7 +63,7 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
       defensePower: t.defensePower,
       bodyguardCount: npcGuards.length,
       armorItems: armor.map(a => a.armorName ?? "Unknown"),
-      weapons: null,
+      weapons: playerWeapons.map(w => `${w.weaponName ?? "Unknown"} x${w.quantity}`),
       isInPrison: t.isInPrison,
       cityName: city[0]?.name ?? "",
     });
@@ -72,44 +81,74 @@ router.post("/attacks", requireAuth, async (req, res) => {
     if (player.isTraveling) return void res.status(400).json({ error: "Cannot attack while traveling" });
 
     const { targetPlayerId, weaponId, ammoQuantity } = req.body;
+    const ammoQty = parseInt(String(ammoQuantity));
+    if (!targetPlayerId || !weaponId || !ammoQty || ammoQty < 1) {
+      return void res.status(400).json({ error: "targetPlayerId, weaponId, and ammoQuantity are required" });
+    }
 
-    const [target, weapon] = await Promise.all([
+    const [target, weaponCatalog, ownedWeapon] = await Promise.all([
       db.select().from(playersTable).where(eq(playersTable.id, targetPlayerId)).limit(1),
       db.select().from(weaponsTable).where(eq(weaponsTable.id, weaponId)).limit(1),
+      db.select().from(playerWeaponsTable)
+        .where(and(eq(playerWeaponsTable.playerId, player.id), eq(playerWeaponsTable.weaponId, weaponId)))
+        .limit(1),
     ]);
 
     if (!target[0]) return void res.status(404).json({ error: "Target not found" });
-    if (!weapon[0]) return void res.status(404).json({ error: "Weapon not found" });
+    if (!weaponCatalog[0]) return void res.status(404).json({ error: "Weapon not found" });
     if (target[0].id === player.id) return void res.status(400).json({ error: "Cannot attack yourself" });
 
-    const playerAmmo = await db.select().from(playerAmmoTable).where(eq(playerAmmoTable.playerId, player.id)).limit(1);
-    const totalAmmo = playerAmmo.reduce((sum, a) => sum + a.quantity, 0);
-    if (totalAmmo < ammoQuantity) return void res.status(400).json({ error: "Insufficient ammo" });
+    if (!ownedWeapon[0] || ownedWeapon[0].quantity < 1) {
+      return void res.status(400).json({ error: "You do not own that weapon" });
+    }
+
+    const allPlayerAmmo = await db.select().from(playerAmmoTable)
+      .where(eq(playerAmmoTable.playerId, player.id))
+      .orderBy(playerAmmoTable.id);
+
+    const totalAmmo = allPlayerAmmo.reduce((s, a) => s + a.quantity, 0);
+    if (totalAmmo < ammoQty) {
+      return void res.status(400).json({ error: `Insufficient ammo — you have ${totalAmmo}, need ${ammoQty}` });
+    }
 
     const travelHours = 4 + Math.random() * 2;
     const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
 
-    const fromCity = await db.select().from(citiesTable).where(eq(citiesTable.id, player.cityId)).limit(1);
-    const toCity = await db.select().from(citiesTable).where(eq(citiesTable.id, target[0].cityId)).limit(1);
+    const [fromCity, toCity] = await Promise.all([
+      db.select().from(citiesTable).where(eq(citiesTable.id, player.cityId)).limit(1),
+      db.select().from(citiesTable).where(eq(citiesTable.id, target[0].cityId)).limit(1),
+    ]);
 
-    const [attack] = await db.insert(attacksTable).values({
-      attackerId: player.id,
-      targetId: target[0].id,
-      weaponId,
-      ammoUsed: ammoQuantity,
-      fromCityId: player.cityId,
-      toCityId: target[0].cityId,
-      status: "traveling",
-      travelArrivalAt: arrivalAt,
-    }).returning();
+    const [attack] = await db.transaction(async (tx) => {
+      let remaining = ammoQty;
+      for (const row of allPlayerAmmo) {
+        if (remaining <= 0) break;
+        const deduct = Math.min(row.quantity, remaining);
+        const newQty = row.quantity - deduct;
+        if (newQty === 0) {
+          await tx.delete(playerAmmoTable).where(eq(playerAmmoTable.id, row.id));
+        } else {
+          await tx.update(playerAmmoTable).set({ quantity: newQty }).where(eq(playerAmmoTable.id, row.id));
+        }
+        remaining -= deduct;
+      }
 
-    if (playerAmmo[0]) {
-      const remainingAmmo = Math.max(0, playerAmmo[0].quantity - ammoQuantity);
-      await db.update(playerAmmoTable).set({ quantity: remainingAmmo }).where(eq(playerAmmoTable.id, playerAmmo[0].id));
-    }
+      return tx.insert(attacksTable).values({
+        attackerId: player.id,
+        targetId: target[0].id,
+        weaponId,
+        ammoUsed: ammoQty,
+        fromCityId: player.cityId,
+        toCityId: target[0].cityId,
+        status: "traveling",
+        travelArrivalAt: arrivalAt,
+      }).returning();
+    });
 
-    await logActivity(player.id, "attack_sent", `Attacking ${target[0].username} - arriving at ${arrivalAt.toISOString()}`);
-    await logActivity(target[0].id, "attack_received", `Under attack from ${player.username}!`);
+    await Promise.all([
+      logActivity(player.id, "attack_sent", `Attacking ${target[0].username} — ETA ${arrivalAt.toISOString()}`),
+      logActivity(target[0].id, "attack_received", `Under attack from ${player.username}!`),
+    ]);
 
     res.status(201).json({
       id: attack.id,
@@ -124,7 +163,7 @@ router.post("/attacks", requireAuth, async (req, res) => {
       targetSurvived: null,
       fromCityName: fromCity[0]?.name ?? "",
       toCityName: toCity[0]?.name ?? "",
-      weaponName: weapon[0].name,
+      weaponName: weaponCatalog[0].name,
       createdAt: attack.createdAt.toISOString(),
     });
   } catch (e) {
@@ -137,7 +176,11 @@ router.get("/attacks/my", requireAuth, async (req, res) => {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
 
-    const attacks = await db.select().from(attacksTable).where(eq(attacksTable.attackerId, player.id)).orderBy(desc(attacksTable.createdAt)).limit(20);
+    const attacks = await db.select().from(attacksTable)
+      .where(eq(attacksTable.attackerId, player.id))
+      .orderBy(desc(attacksTable.createdAt))
+      .limit(20);
+
     const formatted = await Promise.all(attacks.map(async (a) => {
       const [target, weapon, fromCity, toCity] = await Promise.all([
         db.select({ username: playersTable.username }).from(playersTable).where(eq(playersTable.id, a.targetId)).limit(1),
@@ -168,7 +211,11 @@ router.get("/attacks/incoming", requireAuth, async (req, res) => {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
 
-    const attacks = await db.select().from(attacksTable).where(eq(attacksTable.targetId, player.id)).orderBy(desc(attacksTable.createdAt)).limit(20);
+    const attacks = await db.select().from(attacksTable)
+      .where(eq(attacksTable.targetId, player.id))
+      .orderBy(desc(attacksTable.createdAt))
+      .limit(20);
+
     const formatted = await Promise.all(attacks.map(async (a) => {
       const [attacker, weapon, fromCity, toCity] = await Promise.all([
         db.select({ username: playersTable.username }).from(playersTable).where(eq(playersTable.id, a.attackerId)).limit(1),

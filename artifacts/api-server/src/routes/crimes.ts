@@ -196,6 +196,10 @@ router.post("/prison/jailbreak/:targetPlayerId", requireAuth, async (req, res) =
     if (!target[0]) return void res.status(404).json({ error: "Target not found" });
     if (!target[0].isInPrison) return void res.status(400).json({ error: "Target is not in prison" });
 
+    if (!player.gangId || player.gangId !== target[0].gangId) {
+      return void res.status(403).json({ error: "You can only jailbreak members of your own gang" });
+    }
+
     const bribeCost = 5000;
     const raidSuccessRate = 0.4;
 
