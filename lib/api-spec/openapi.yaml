@@ -34,6 +34,8 @@ tags:
     description: Admin operations
   - name: ranks
     description: Player rank progression
+  - name: properties
+    description: Real estate properties with passive income
 
 paths:
   /healthz:
@@ -149,6 +151,106 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Player"
+
+  # --- PROPERTIES ---
+  /properties/types:
+    get:
+      operationId: listPropertyTypes
+      tags: [properties]
+      summary: List all property types with player affordability info
+      responses:
+        "200":
+          description: Property types
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PropertyType"
+
+  /properties/my:
+    get:
+      operationId: getMyProperties
+      tags: [properties]
+      summary: Get player's owned properties
+      responses:
+        "200":
+          description: Owned properties
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerProperty"
+
+  /properties/buy:
+    post:
+      operationId: buyProperty
+      tags: [properties]
+      summary: Purchase a new property
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BuyPropertyInput"
+      responses:
+        "201":
+          description: Purchased property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProperty"
+        "400":
+          description: Cannot purchase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /properties/{id}/upgrade:
+    post:
+      operationId: upgradeProperty
+      tags: [properties]
+      summary: Upgrade a property to the next level
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Upgraded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpgradePropertyResult"
+        "400":
+          description: Cannot upgrade
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /properties/collect:
+    post:
+      operationId: collectPropertyIncome
+      tags: [properties]
+      summary: Manually collect accumulated income from all properties
+      responses:
+        "200":
+          description: Income collected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectIncomeResult"
+        "400":
+          description: Nothing to collect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # --- RANKS ---
   /ranks:
@@ -2745,6 +2847,163 @@ components:
               type: integer
           required: [level, money, xp, killCount]
       required: [ranks, currentRank, player]
+
+    PropertyType:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        price:
+          type: number
+        baseIncomePerHour:
+          type: number
+        requiredLevel:
+          type: integer
+        maxLevel:
+          type: integer
+        icon:
+          type: string
+        imageUrl:
+          type: string
+        perksEn:
+          type: string
+        perksAr:
+          type: string
+        ownedCount:
+          type: integer
+        canAfford:
+          type: boolean
+        levelMet:
+          type: boolean
+        rankSlotAvailable:
+          type: boolean
+        maxProperties:
+          type: integer
+        totalOwned:
+          type: integer
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - descriptionEn
+        - descriptionAr
+        - price
+        - baseIncomePerHour
+        - requiredLevel
+        - maxLevel
+        - icon
+        - imageUrl
+        - perksEn
+        - perksAr
+        - ownedCount
+        - canAfford
+        - levelMet
+        - rankSlotAvailable
+        - maxProperties
+        - totalOwned
+
+    PlayerProperty:
+      type: object
+      properties:
+        id:
+          type: integer
+        level:
+          type: integer
+        purchasedAt:
+          type: string
+        lastIncomeCollectedAt:
+          type: string
+        typeId:
+          type: ["integer", "null"]
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        icon:
+          type: string
+        imageUrl:
+          type: string
+        perksEn:
+          type: string
+        perksAr:
+          type: string
+        incomePerHour:
+          type: number
+        nextLevelIncome:
+          type: ["number", "null"]
+        upgradePrice:
+          type: ["number", "null"]
+        maxLevel:
+          type: integer
+        pendingIncome:
+          type: number
+        canCollect:
+          type: boolean
+      required:
+        - id
+        - level
+        - purchasedAt
+        - lastIncomeCollectedAt
+        - nameEn
+        - nameAr
+        - descriptionEn
+        - descriptionAr
+        - icon
+        - imageUrl
+        - perksEn
+        - perksAr
+        - incomePerHour
+        - maxLevel
+        - pendingIncome
+        - canCollect
+
+    BuyPropertyInput:
+      type: object
+      properties:
+        propertyTypeId:
+          type: integer
+      required:
+        - propertyTypeId
+
+    UpgradePropertyResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        newLevel:
+          type: integer
+        cost:
+          type: number
+      required:
+        - success
+        - newLevel
+        - cost
+
+    CollectIncomeResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        totalIncome:
+          type: number
+        propertiesCount:
+          type: integer
+      required:
+        - success
+        - totalIncome
+        - propertiesCount
 
     RankUpgradeResponse:
       type: object

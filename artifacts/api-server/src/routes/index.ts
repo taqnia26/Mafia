@@ -13,6 +13,7 @@ import citiesRouter from "./cities";
 import adminRouter from "./admin";
 import notificationsRouter from "./notifications";
 import ranksRouter from "./ranks";
+import propertiesRouter from "./properties";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(citiesRouter);
 router.use(adminRouter);
 router.use(notificationsRouter);
 router.use(ranksRouter);
+router.use(propertiesRouter);
 
 export default router;

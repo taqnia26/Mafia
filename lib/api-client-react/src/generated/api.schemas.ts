@@ -728,6 +728,69 @@ export interface RanksResponse {
   player: RanksResponsePlayer;
 }
 
+export interface PropertyType {
+  id: number;
+  nameEn: string;
+  nameAr: string;
+  descriptionEn: string;
+  descriptionAr: string;
+  price: number;
+  baseIncomePerHour: number;
+  requiredLevel: number;
+  maxLevel: number;
+  icon: string;
+  imageUrl: string;
+  perksEn: string;
+  perksAr: string;
+  ownedCount: number;
+  canAfford: boolean;
+  levelMet: boolean;
+  rankSlotAvailable: boolean;
+  maxProperties: number;
+  totalOwned: number;
+}
+
+export interface PlayerProperty {
+  id: number;
+  level: number;
+  purchasedAt: string;
+  lastIncomeCollectedAt: string;
+  /** @nullable */
+  typeId?: number | null;
+  nameEn: string;
+  nameAr: string;
+  descriptionEn: string;
+  descriptionAr: string;
+  icon: string;
+  imageUrl: string;
+  perksEn: string;
+  perksAr: string;
+  incomePerHour: number;
+  /** @nullable */
+  nextLevelIncome?: number | null;
+  /** @nullable */
+  upgradePrice?: number | null;
+  maxLevel: number;
+  pendingIncome: number;
+  canCollect: boolean;
+}
+
+export interface BuyPropertyInput {
+  propertyTypeId: number;
+}
+
+export interface UpgradePropertyResult {
+  success: boolean;
+  newLevel: number;
+  cost: number;
+}
+
+export interface CollectIncomeResult {
+  success: boolean;
+  totalIncome: number;
+  propertiesCount: number;
+}
+
 export interface RankUpgradeResponse {
   success: boolean;
   newRank: number;

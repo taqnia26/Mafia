@@ -43,8 +43,10 @@ import type {
   BodyguardResponse,
   BuyAmmoInput,
   BuyArmorInput,
+  BuyPropertyInput,
   BuyWeaponInput,
   City,
+  CollectIncomeResult,
   CrimeAttemptInput,
   CrimeRecord,
   CrimeResult,
@@ -69,16 +71,19 @@ import type {
   PlayerAmmo,
   PlayerArmor,
   PlayerListResponse,
+  PlayerProperty,
   PlayerUpdate,
   PlayerWeapon,
   PrisonStatus,
   PromoteMemberInput,
+  PropertyType,
   RankUpgradeResponse,
   RanksResponse,
   SpyResult,
   TravelInput,
   TravelResult,
   TreasuryDeposit,
+  UpgradePropertyResult,
   Weapon,
 } from "./api.schemas";
 
@@ -589,6 +594,407 @@ export function useGetPlayer<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all property types with player affordability info
+ */
+export const getListPropertyTypesUrl = () => {
+  return `/api/properties/types`;
+};
+
+export const listPropertyTypes = async (
+  options?: RequestInit,
+): Promise<PropertyType[]> => {
+  return customFetch<PropertyType[]>(getListPropertyTypesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPropertyTypesQueryKey = () => {
+  return [`/api/properties/types`] as const;
+};
+
+export const getListPropertyTypesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPropertyTypes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPropertyTypes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPropertyTypesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPropertyTypes>>
+  > = ({ signal }) => listPropertyTypes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPropertyTypes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPropertyTypesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPropertyTypes>>
+>;
+export type ListPropertyTypesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all property types with player affordability info
+ */
+
+export function useListPropertyTypes<
+  TData = Awaited<ReturnType<typeof listPropertyTypes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPropertyTypes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPropertyTypesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get player's owned properties
+ */
+export const getGetMyPropertiesUrl = () => {
+  return `/api/properties/my`;
+};
+
+export const getMyProperties = async (
+  options?: RequestInit,
+): Promise<PlayerProperty[]> => {
+  return customFetch<PlayerProperty[]>(getGetMyPropertiesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyPropertiesQueryKey = () => {
+  return [`/api/properties/my`] as const;
+};
+
+export const getGetMyPropertiesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyProperties>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyProperties>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyPropertiesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyProperties>>> = ({
+    signal,
+  }) => getMyProperties({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyProperties>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyPropertiesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyProperties>>
+>;
+export type GetMyPropertiesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get player's owned properties
+ */
+
+export function useGetMyProperties<
+  TData = Awaited<ReturnType<typeof getMyProperties>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyProperties>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyPropertiesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Purchase a new property
+ */
+export const getBuyPropertyUrl = () => {
+  return `/api/properties/buy`;
+};
+
+export const buyProperty = async (
+  buyPropertyInput: BuyPropertyInput,
+  options?: RequestInit,
+): Promise<PlayerProperty> => {
+  return customFetch<PlayerProperty>(getBuyPropertyUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(buyPropertyInput),
+  });
+};
+
+export const getBuyPropertyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof buyProperty>>,
+    TError,
+    { data: BodyType<BuyPropertyInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof buyProperty>>,
+  TError,
+  { data: BodyType<BuyPropertyInput> },
+  TContext
+> => {
+  const mutationKey = ["buyProperty"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof buyProperty>>,
+    { data: BodyType<BuyPropertyInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return buyProperty(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BuyPropertyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof buyProperty>>
+>;
+export type BuyPropertyMutationBody = BodyType<BuyPropertyInput>;
+export type BuyPropertyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Purchase a new property
+ */
+export const useBuyProperty = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof buyProperty>>,
+    TError,
+    { data: BodyType<BuyPropertyInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof buyProperty>>,
+  TError,
+  { data: BodyType<BuyPropertyInput> },
+  TContext
+> => {
+  return useMutation(getBuyPropertyMutationOptions(options));
+};
+
+/**
+ * @summary Upgrade a property to the next level
+ */
+export const getUpgradePropertyUrl = (id: number) => {
+  return `/api/properties/${id}/upgrade`;
+};
+
+export const upgradeProperty = async (
+  id: number,
+  options?: RequestInit,
+): Promise<UpgradePropertyResult> => {
+  return customFetch<UpgradePropertyResult>(getUpgradePropertyUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getUpgradePropertyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upgradeProperty>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upgradeProperty>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["upgradeProperty"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upgradeProperty>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return upgradeProperty(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpgradePropertyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upgradeProperty>>
+>;
+
+export type UpgradePropertyMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upgrade a property to the next level
+ */
+export const useUpgradeProperty = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upgradeProperty>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upgradeProperty>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUpgradePropertyMutationOptions(options));
+};
+
+/**
+ * @summary Manually collect accumulated income from all properties
+ */
+export const getCollectPropertyIncomeUrl = () => {
+  return `/api/properties/collect`;
+};
+
+export const collectPropertyIncome = async (
+  options?: RequestInit,
+): Promise<CollectIncomeResult> => {
+  return customFetch<CollectIncomeResult>(getCollectPropertyIncomeUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCollectPropertyIncomeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof collectPropertyIncome>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof collectPropertyIncome>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["collectPropertyIncome"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof collectPropertyIncome>>,
+    void
+  > = () => {
+    return collectPropertyIncome(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CollectPropertyIncomeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof collectPropertyIncome>>
+>;
+
+export type CollectPropertyIncomeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Manually collect accumulated income from all properties
+ */
+export const useCollectPropertyIncome = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof collectPropertyIncome>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof collectPropertyIncome>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCollectPropertyIncomeMutationOptions(options));
+};
 
 /**
  * @summary Get all 12 ranks with current player eligibility

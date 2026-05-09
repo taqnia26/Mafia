@@ -8,3 +8,4 @@ export * from "./attacks";
 export * from "./blackmarket";
 export * from "./crimes";
 export * from "./ranks";
+export * from "./properties";

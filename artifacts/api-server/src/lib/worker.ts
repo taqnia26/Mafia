@@ -2,9 +2,9 @@ import { db } from "./db";
 import {
   playersTable, attacksTable, weaponsTable,
   playerNpcGuardsTable, npcBodyguardsTable, playerGuardsTable,
-  activityLogTable,
+  activityLogTable, playerPropertiesTable, propertyTypesTable,
 } from "@workspace/db/schema";
-import { eq, and, lte, lt, sql, sum } from "drizzle-orm";
+import { eq, and, lte, lt, sql } from "drizzle-orm";
 import { logActivity } from "./activityLog";
 import { createNotification } from "./notifications";
 import { logger } from "./logger";
@@ -291,6 +291,55 @@ async function processAttackArrivals(): Promise<void> {
   }
 }
 
+async function collectPropertyIncome(): Promise<void> {
+  const MAX_HOURS = 24;
+  const now = new Date();
+
+  try {
+    const rows = await db
+      .select({
+        id: playerPropertiesTable.id,
+        playerId: playerPropertiesTable.playerId,
+        level: playerPropertiesTable.level,
+        lastIncomeCollectedAt: playerPropertiesTable.lastIncomeCollectedAt,
+        baseIncomePerHour: propertyTypesTable.baseIncomePerHour,
+      })
+      .from(playerPropertiesTable)
+      .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id));
+
+    const incomeByPlayer: Record<number, number> = {};
+
+    for (const r of rows) {
+      const base = r.baseIncomePerHour ?? 0;
+      const hoursElapsed = Math.min(
+        (now.getTime() - r.lastIncomeCollectedAt.getTime()) / 3600000,
+        MAX_HOURS,
+      );
+      const income = Math.floor(hoursElapsed * base * r.level);
+      if (income > 0) {
+        incomeByPlayer[r.playerId] = (incomeByPlayer[r.playerId] ?? 0) + income;
+        await db.update(playerPropertiesTable)
+          .set({ lastIncomeCollectedAt: now })
+          .where(eq(playerPropertiesTable.id, r.id));
+      }
+    }
+
+    for (const [playerIdStr, totalIncome] of Object.entries(incomeByPlayer)) {
+      const playerId = parseInt(playerIdStr);
+      await db.update(playersTable)
+        .set({ money: sql`${playersTable.money} + ${totalIncome}`, updatedAt: now })
+        .where(eq(playersTable.id, playerId));
+    }
+
+    const totalPlayers = Object.keys(incomeByPlayer).length;
+    if (totalPlayers > 0) {
+      logger.info({ totalPlayers }, "worker: property income collected");
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: property income collection error");
+  }
+}
+
 const EVENT_RETENTION_DAYS = 60;
 const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // run every 6 hours
 let lastCleanupAt = 0;
@@ -317,6 +366,7 @@ async function tick(): Promise<void> {
       processTravelArrivals(),
       processPrisonReleases(),
       processAttackArrivals(),
+      collectPropertyIncome(),
       cleanupOldEvents(),
     ]);
   } catch (err) {

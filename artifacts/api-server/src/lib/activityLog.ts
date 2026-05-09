@@ -22,7 +22,10 @@ export type ActivityType =
   | "attack_defended"
   | "guard_dismissed"
   | "attack_cancelled"
-  | "rank_upgrade";
+  | "rank_upgrade"
+  | "property_purchased"
+  | "property_upgraded"
+  | "income_collected";
 
 export async function logActivity(playerId: number, type: ActivityType, description: string) {
   await db.insert(activityLogTable).values({ playerId, type, description });

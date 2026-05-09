@@ -199,6 +199,89 @@ export const GetPlayerResponse = zod.object({
 });
 
 /**
+ * @summary List all property types with player affordability info
+ */
+export const ListPropertyTypesResponseItem = zod.object({
+  id: zod.number(),
+  nameEn: zod.string(),
+  nameAr: zod.string(),
+  descriptionEn: zod.string(),
+  descriptionAr: zod.string(),
+  price: zod.number(),
+  baseIncomePerHour: zod.number(),
+  requiredLevel: zod.number(),
+  maxLevel: zod.number(),
+  icon: zod.string(),
+  imageUrl: zod.string(),
+  perksEn: zod.string(),
+  perksAr: zod.string(),
+  ownedCount: zod.number(),
+  canAfford: zod.boolean(),
+  levelMet: zod.boolean(),
+  rankSlotAvailable: zod.boolean(),
+  maxProperties: zod.number(),
+  totalOwned: zod.number(),
+});
+export const ListPropertyTypesResponse = zod.array(
+  ListPropertyTypesResponseItem,
+);
+
+/**
+ * @summary Get player's owned properties
+ */
+export const GetMyPropertiesResponseItem = zod.object({
+  id: zod.number(),
+  level: zod.number(),
+  purchasedAt: zod.string(),
+  lastIncomeCollectedAt: zod.string(),
+  typeId: zod.number().nullish(),
+  nameEn: zod.string(),
+  nameAr: zod.string(),
+  descriptionEn: zod.string(),
+  descriptionAr: zod.string(),
+  icon: zod.string(),
+  imageUrl: zod.string(),
+  perksEn: zod.string(),
+  perksAr: zod.string(),
+  incomePerHour: zod.number(),
+  nextLevelIncome: zod.number().nullish(),
+  upgradePrice: zod.number().nullish(),
+  maxLevel: zod.number(),
+  pendingIncome: zod.number(),
+  canCollect: zod.boolean(),
+});
+export const GetMyPropertiesResponse = zod.array(GetMyPropertiesResponseItem);
+
+/**
+ * @summary Purchase a new property
+ */
+export const BuyPropertyBody = zod.object({
+  propertyTypeId: zod.number(),
+});
+
+/**
+ * @summary Upgrade a property to the next level
+ */
+export const UpgradePropertyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpgradePropertyResponse = zod.object({
+  success: zod.boolean(),
+  newLevel: zod.number(),
+  cost: zod.number(),
+});
+
+/**
+ * @summary Manually collect accumulated income from all properties
+ */
+export const CollectPropertyIncomeResponse = zod.object({
+  success: zod.boolean(),
+  totalIncome: zod.number(),
+  propertiesCount: zod.number(),
+});
+
+/**
  * @summary Get all 12 ranks with current player eligibility
  */
 export const ListRanksResponse = zod.object({

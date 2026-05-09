@@ -128,6 +128,78 @@ async function seed() {
     console.log("Crime types updated");
   }
 
+  const existingPropertyTypes = await db.select().from(schema.propertyTypesTable);
+  if (existingPropertyTypes.length === 0) {
+    await db.insert(schema.propertyTypesTable).values([
+      {
+        nameEn: "Safe House", nameAr: "بيت آمن",
+        descriptionEn: "A discreet hideout for low-profile operations. Your first step into the real estate game.",
+        descriptionAr: "مخبأ سري للعمليات الهادئة. خطوتك الأولى في عالم العقارات.",
+        price: 50000, baseIncomePerHour: 500, requiredLevel: 5, maxLevel: 4,
+        icon: "home", perksEn: "Passive income, safe storage", perksAr: "دخل سلبي، تخزين آمن",
+      },
+      {
+        nameEn: "Workshop", nameAr: "ورشة",
+        descriptionEn: "A mechanical workshop used for vehicle prep and weapons maintenance.",
+        descriptionAr: "ورشة ميكانيكية لتجهيز المركبات وصيانة الأسلحة.",
+        price: 100000, baseIncomePerHour: 1000, requiredLevel: 8, maxLevel: 4,
+        icon: "wrench", perksEn: "Steady income stream", perksAr: "دخل مستمر ومستقر",
+      },
+      {
+        nameEn: "Nightclub", nameAr: "نادٍ ليلي",
+        descriptionEn: "A popular nightclub that launders cash through legitimate entertainment revenue.",
+        descriptionAr: "نادٍ ليلي يُدر دخلاً من الترفيه ويُغسّل الأموال.",
+        price: 150000, baseIncomePerHour: 2000, requiredLevel: 10, maxLevel: 4,
+        icon: "music", perksEn: "High foot traffic income", perksAr: "دخل مرتفع من حركة الزبائن",
+      },
+      {
+        nameEn: "Drug Lab", nameAr: "مختبر",
+        descriptionEn: "A hidden lab producing high-value products for the underground market.",
+        descriptionAr: "مختبر سري يُنتج بضائع عالية القيمة للسوق السرية.",
+        price: 300000, baseIncomePerHour: 4000, requiredLevel: 15, maxLevel: 4,
+        icon: "flask-conical", perksEn: "High yield, high risk", perksAr: "عائد مرتفع ومخاطرة عالية",
+      },
+      {
+        nameEn: "Ammo Factory", nameAr: "مصنع ذخيرة",
+        descriptionEn: "Manufactures and supplies ammunition for the underworld's constant demands.",
+        descriptionAr: "يُصنّع الذخيرة ويُوردها لتلبية طلبات العالم السفلي.",
+        price: 350000, baseIncomePerHour: 3500, requiredLevel: 16, maxLevel: 4,
+        icon: "zap", perksEn: "Reliable war economy income", perksAr: "دخل ثابت من اقتصاد الحرب",
+      },
+      {
+        nameEn: "Weapons Warehouse", nameAr: "مستودع أسلحة",
+        descriptionEn: "A fortified storage and distribution hub for illegal arms trafficking.",
+        descriptionAr: "مستودع محصّن لتخزين وتوزيع الأسلحة غير المشروعة.",
+        price: 400000, baseIncomePerHour: 4500, requiredLevel: 18, maxLevel: 4,
+        icon: "shield", perksEn: "Arms trade profits", perksAr: "أرباح تجارة الأسلحة",
+      },
+      {
+        nameEn: "Casino", nameAr: "كازينو",
+        descriptionEn: "A glitzy casino that earns millions from gamblers day and night.",
+        descriptionAr: "كازينو فاخر يجني الملايين من المقامرين ليل نهار.",
+        price: 500000, baseIncomePerHour: 5000, requiredLevel: 20, maxLevel: 4,
+        icon: "dice-6", perksEn: "Highest entertainment income", perksAr: "أعلى دخل ترفيهي",
+      },
+      {
+        nameEn: "Hospital", nameAr: "مستشفى",
+        descriptionEn: "A private hospital that generates income while providing a clean cover.",
+        descriptionAr: "مستشفى خاص يُدر دخلاً ويوفر غطاءً نظيفاً.",
+        price: 600000, baseIncomePerHour: 6000, requiredLevel: 25, maxLevel: 4,
+        icon: "cross", perksEn: "Premium medical income", perksAr: "دخل طبي فاخر",
+      },
+      {
+        nameEn: "Bank", nameAr: "بنك",
+        descriptionEn: "A private bank that controls the flow of money across the underworld economy.",
+        descriptionAr: "بنك خاص يتحكم في تدفق الأموال في الاقتصاد السري.",
+        price: 1000000, baseIncomePerHour: 10000, requiredLevel: 30, maxLevel: 4,
+        icon: "landmark", perksEn: "Dominates financial income", perksAr: "يهيمن على الدخل المالي",
+      },
+    ]);
+    console.log("Property types seeded");
+  } else {
+    console.log("Property types already exist, skipping");
+  }
+
   const existingRanks = await db.select().from(schema.playerRanksTable);
   if (existingRanks.length === 0) {
     await db.insert(schema.playerRanksTable).values([
