@@ -36,21 +36,25 @@ type SpyData = {
 };
 
 function CountdownTimer({ targetDate }: { targetDate: string }) {
+  const { t } = useI18n();
   const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
     const updateTimer = () => {
       const diff = new Date(targetDate).getTime() - Date.now();
-      if (diff <= 0) { setTimeLeft("Arrived"); return; }
+      if (diff <= 0) { setTimeLeft(t("attack.arrived")); return; }
       const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
-      setTimeLeft(h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`);
+      const hs = t("common.hoursShort");
+      const ms = t("common.minutesShort");
+      const ss = t("common.secondsShort");
+      setTimeLeft(h > 0 ? `${h}${hs} ${m}${ms} ${s}${ss}` : `${m}${ms} ${s}${ss}`);
     };
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [targetDate]);
+  }, [targetDate, t]);
 
   return <span className="font-mono">{timeLeft}</span>;
 }
@@ -169,7 +173,7 @@ export default function Attack() {
               <div className="flex gap-2">
                 <Input
                   type="number"
-                  placeholder="e.g. 42"
+                  placeholder={t("common.targetIdPlaceholder")}
                   value={targetPlayerId}
                   onChange={(e) => { setTargetPlayerId(e.target.value); setSpyData(null); setSpiedTargetId(null); }}
                   className="bg-background border-border font-mono flex-1"
@@ -239,7 +243,7 @@ export default function Attack() {
                         {myWeapons && myWeapons.length > 0 ? (
                           myWeapons.map((w) => (
                             <SelectItem key={w.weaponId} value={String(w.weaponId)}>
-                              {w.weaponName} (x{w.quantity}) +{w.attackPower} ATK
+                              {w.weaponName} (x{w.quantity}) +{w.attackPower} {t("common.atkAbbr")}
                             </SelectItem>
                           ))
                         ) : (

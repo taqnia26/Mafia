@@ -78,11 +78,11 @@ export default function Gangs() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>{t("common.name")}</Label>
-                <Input value={newGangName} onChange={(e) => setNewGangName(e.target.value)} placeholder="e.g. The Sopranos" className="bg-background" />
+                <Input value={newGangName} onChange={(e) => setNewGangName(e.target.value)} placeholder={t("gangs.namePlaceholder")} className="bg-background" />
               </div>
               <div className="space-y-2">
                 <Label>{t("common.description")}</Label>
-                <Textarea value={newGangDesc} onChange={(e) => setNewGangDesc(e.target.value)} placeholder="Your gang's motto or rules..." className="bg-background resize-none" rows={3} />
+                <Textarea value={newGangDesc} onChange={(e) => setNewGangDesc(e.target.value)} placeholder={t("gangs.descriptionPlaceholder")} className="bg-background resize-none" rows={3} />
               </div>
             </div>
             <DialogFooter>

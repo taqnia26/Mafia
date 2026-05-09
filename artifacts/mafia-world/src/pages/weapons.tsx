@@ -30,7 +30,7 @@ export default function Weapons() {
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
         toast({ title: t("common.success"), description: t("weapons.buyWeaponSuccess") });
       },
-      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
+      onError: (err: unknown) => toast({ title: t("common.purchaseFailed"), description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -41,7 +41,7 @@ export default function Weapons() {
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
         toast({ title: t("common.success"), description: t("weapons.buyAmmoSuccess") });
       },
-      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
+      onError: (err: unknown) => toast({ title: t("common.purchaseFailed"), description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -71,7 +71,7 @@ export default function Weapons() {
                       onError={(e) => { (e.target as HTMLImageElement).src = getWeaponImage(w.name); }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-                    <Badge variant="outline" className="absolute top-2 right-2 font-mono text-destructive border-destructive/50 bg-card/80">+{w.attackPower} ATK</Badge>
+                    <Badge variant="outline" className="absolute top-2 right-2 font-mono text-destructive border-destructive/50 bg-card/80">+{w.attackPower} {t("common.atkAbbr")}</Badge>
                   </div>
                   <CardHeader className="pb-2 pt-3">
                     <CardTitle className="font-heading uppercase tracking-wider text-base">{w.name}</CardTitle>
@@ -147,7 +147,7 @@ export default function Weapons() {
                           <p className="font-bold font-heading uppercase">{w.weaponName}</p>
                           <p className="text-xs text-muted-foreground">{t("common.quantity")}: {w.quantity}</p>
                         </div>
-                        <Badge variant="outline" className="font-mono text-destructive border-destructive/50">+{w.attackPower} ATK</Badge>
+                        <Badge variant="outline" className="font-mono text-destructive border-destructive/50">+{w.attackPower} {t("common.atkAbbr")}</Badge>
                       </div>
                     ))}
                   </div>

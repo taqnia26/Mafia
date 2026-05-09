@@ -14,15 +14,22 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { ar as arLocale } from "date-fns/locale";
 import { getApiError } from "@/lib/apiError";
 import { PageBanner } from "@/components/PageBanner";
 
 type ItemType = "weapon" | "ammo" | "armor";
 
 export default function BlackMarket() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const getItemTypeLabel = (type: string) => {
+    if (type === "weapon") return t("blackmarket.typeWeapon");
+    if (type === "ammo") return t("blackmarket.typeAmmo");
+    if (type === "armor") return t("blackmarket.typeArmor");
+    return type;
+  };
   const [filterType, setFilterType] = useState<"all" | ItemType>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newItemType, setNewItemType] = useState<ItemType>("weapon");
@@ -44,7 +51,7 @@ export default function BlackMarket() {
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
         toast({ title: t("common.success"), description: t("blackmarket.buySuccess") });
       },
-      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
+      onError: (err: unknown) => toast({ title: t("common.purchaseFailed"), description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -55,7 +62,7 @@ export default function BlackMarket() {
         queryClient.invalidateQueries({ queryKey: getGetMyListingsQueryKey() });
         toast({ title: t("blackmarket.cancelledTitle"), description: t("blackmarket.cancelledDesc") });
       },
-      onError: (err: unknown) => toast({ title: "Cancel Failed", description: getApiError(err), variant: "destructive" })
+      onError: (err: unknown) => toast({ title: t("common.cancelFailed"), description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -70,7 +77,7 @@ export default function BlackMarket() {
         setNewPrice("");
         toast({ title: t("blackmarket.listedTitle"), description: t("blackmarket.listedDesc") });
       },
-      onError: (err: unknown) => toast({ title: "Create Failed", description: getApiError(err), variant: "destructive" })
+      onError: (err: unknown) => toast({ title: t("common.createFailed"), description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -170,7 +177,7 @@ export default function BlackMarket() {
                         <CardTitle className="font-heading uppercase tracking-wider">{item.itemName}</CardTitle>
                         <CardDescription className="text-xs mt-1">{t("blackmarket.seller")}: {item.sellerUsername}</CardDescription>
                       </div>
-                      <Badge variant="secondary" className="uppercase">{item.itemType}</Badge>
+                      <Badge variant="secondary" className="uppercase">{getItemTypeLabel(item.itemType)}</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 pb-2">
@@ -185,7 +192,7 @@ export default function BlackMarket() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-4 text-right">
-                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: language === "ar" ? arLocale : undefined })}
                     </p>
                   </CardContent>
                   <CardFooter>
@@ -227,15 +234,15 @@ export default function BlackMarket() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className="font-bold font-heading uppercase">{item.itemName}</p>
-                          <Badge variant="outline" className="text-[10px] h-5">{item.itemType}</Badge>
+                          <Badge variant="outline" className="text-[10px] h-5">{getItemTypeLabel(item.itemType)}</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: language === "ar" ? arLocale : undefined })}</p>
                       </div>
                       <div className="flex items-center gap-6">
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("common.quantity")} / {t("common.price")}</p>
                           <p className="font-mono text-sm">
-                            <span className="font-bold">x{item.quantity}</span> for <span className="text-green-500 font-bold">${item.price.toLocaleString()}</span>
+                            <span className="font-bold">x{item.quantity}</span> {t("common.for")} <span className="text-green-500 font-bold">${item.price.toLocaleString()}</span>
                           </p>
                         </div>
                         <Button 

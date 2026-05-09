@@ -28,7 +28,7 @@ export default function Armor() {
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
         toast({ title: t("common.success"), description: t("armor.purchased") });
       },
-      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
+      onError: (err: unknown) => toast({ title: t("common.purchaseFailed"), description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -56,7 +56,7 @@ export default function Armor() {
                     onError={(e) => { (e.target as HTMLImageElement).src = getArmorImage(a.name); }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-                  <Badge variant="outline" className="absolute top-2 right-2 font-mono text-blue-400 border-blue-400/50 bg-card/80">+{a.defenseBonus} DEF</Badge>
+                  <Badge variant="outline" className="absolute top-2 right-2 font-mono text-blue-400 border-blue-400/50 bg-card/80">+{a.defenseBonus} {t("common.defAbbr")}</Badge>
                 </div>
                 <CardHeader className="pb-2 pt-3">
                   <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
@@ -101,7 +101,7 @@ export default function Armor() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Package className="w-4 h-4 text-muted-foreground" />
-                        <Badge variant="outline" className="font-mono text-blue-400 border-blue-400/50">+{a.defenseBonus} DEF</Badge>
+                        <Badge variant="outline" className="font-mono text-blue-400 border-blue-400/50">+{a.defenseBonus} {t("common.defAbbr")}</Badge>
                       </div>
                     </div>
                   ))}

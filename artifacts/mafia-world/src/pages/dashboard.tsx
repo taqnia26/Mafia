@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { formatDistanceToNow } from "date-fns";
+import { ar as arLocale } from "date-fns/locale";
 import {
   Trophy,
   DollarSign,
@@ -17,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageBanner } from "@/components/PageBanner";
 
 export default function Dashboard() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { data: stats, isLoading: isStatsLoading } = useGetDashboardStats({ query: { queryKey: ["/api/dashboard/stats"] } });
   const { data: activity, isLoading: isActivityLoading } = useGetRecentActivity({ query: { queryKey: ["/api/dashboard/activity"] } });
   const { data: leaderboard, isLoading: isLeaderboardLoading } = useGetLeaderboard({ query: { queryKey: ["/api/dashboard/leaderboard"] } });
@@ -34,12 +35,12 @@ export default function Dashboard() {
             <Card className="bg-card border-border">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between space-y-0 pb-2">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Money</p>
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("common.money")}</p>
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
                 <div className="text-2xl font-bold font-mono text-green-400">${stats.money.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  City: <span className="text-foreground">{stats.cityName}</span>
+                  {t("dashboard.city")}: <span className="text-foreground">{stats.cityName}</span>
                 </p>
               </CardContent>
             </Card>
@@ -47,12 +48,12 @@ export default function Dashboard() {
             <Card className="bg-card border-border">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between space-y-0 pb-2">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Level {stats.level}</p>
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("common.level")} {stats.level}</p>
                   <Trophy className="h-4 w-4 text-primary" />
                 </div>
                 <div className="space-y-2 mt-2">
                   <Progress value={(stats.xp / (stats.xp + stats.xpToNextLevel)) * 100} className="h-2 bg-secondary" indicatorClassName="bg-primary" />
-                  <p className="text-xs text-muted-foreground text-right">{stats.xp.toLocaleString()} XP</p>
+                  <p className="text-xs text-muted-foreground text-right">{stats.xp.toLocaleString()} {t("dashboard.xp")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -60,16 +61,16 @@ export default function Dashboard() {
             <Card className="bg-card border-border">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between space-y-0 pb-2">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Combat Power</p>
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("dashboard.combatPower")}</p>
                   <Crosshair className="h-4 w-4 text-orange-500" />
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">Attack</span>
+                    <span className="text-xs text-muted-foreground">{t("common.attack")}</span>
                     <span className="font-mono text-lg">{stats.attackPower.toLocaleString()}</span>
                   </div>
                   <div className="flex flex-col text-right">
-                    <span className="text-xs text-muted-foreground">Defense</span>
+                    <span className="text-xs text-muted-foreground">{t("common.defense")}</span>
                     <span className="font-mono text-lg">{stats.defensePower.toLocaleString()}</span>
                   </div>
                 </div>
@@ -79,20 +80,20 @@ export default function Dashboard() {
             <Card className="bg-card border-border">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between space-y-0 pb-2">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Status</p>
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("common.status")}</p>
                   <Activity className="h-4 w-4 text-blue-500" />
                 </div>
                 <div className="flex flex-col gap-2 mt-2">
                   {stats.isInPrison ? (
-                    <Badge variant="destructive" className="w-fit flex gap-1"><Lock className="w-3 h-3"/> In Prison</Badge>
+                    <Badge variant="destructive" className="w-fit flex gap-1"><Lock className="w-3 h-3"/> {t("dashboard.inPrison")}</Badge>
                   ) : stats.isTraveling ? (
-                    <Badge variant="secondary" className="w-fit">Traveling</Badge>
+                    <Badge variant="secondary" className="w-fit">{t("dashboard.traveling")}</Badge>
                   ) : (
-                    <Badge variant="outline" className="w-fit border-green-500 text-green-500">Active</Badge>
+                    <Badge variant="outline" className="w-fit border-green-500 text-green-500">{t("dashboard.active")}</Badge>
                   )}
                   {(stats.incomingAttacks > 0 || stats.pendingAttacks > 0) && (
                     <Badge variant="destructive" className="w-fit flex gap-1 bg-orange-600">
-                      <AlertTriangle className="w-3 h-3" /> Combat Active
+                      <AlertTriangle className="w-3 h-3" /> {t("dashboard.combatActive")}
                     </Badge>
                   )}
                 </div>
@@ -107,7 +108,7 @@ export default function Dashboard() {
           <CardHeader className="border-b border-border/50 pb-4">
             <CardTitle className="font-heading uppercase tracking-wider flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary" />
-              Recent Activity
+              {t("dashboard.activity")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -124,14 +125,14 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <p className="text-sm text-foreground">{item.description}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: language === "ar" ? arLocale : undefined })}
                       </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-muted-foreground">No recent activity.</div>
+              <div className="p-8 text-center text-muted-foreground">{t("dashboard.noActivity")}</div>
             )}
           </CardContent>
         </Card>
@@ -140,7 +141,7 @@ export default function Dashboard() {
           <CardHeader className="border-b border-border/50 pb-4">
             <CardTitle className="font-heading uppercase tracking-wider flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
-              Top Bosses
+              {t("dashboard.topBosses")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -158,13 +159,13 @@ export default function Dashboard() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{player.username}</p>
-                      <p className="text-xs text-muted-foreground">Lvl {player.level} • {player.cityName}</p>
+                      <p className="text-xs text-muted-foreground">{t("dashboard.lvl")} {player.level} • {player.cityName}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center text-muted-foreground">No players found.</div>
+              <div className="p-8 text-center text-muted-foreground">{t("players.noPlayers")}</div>
             )}
           </CardContent>
         </Card>

@@ -45,7 +45,7 @@ export default function Players() {
           toast({ title: t("attack.spyBlocked"), description: t("attack.spyBlockedDesc"), variant: "destructive" });
         } else if (result.success && result.targetPlayerId != null) {
           setSpyResults(prev => new Map(prev).set(result.targetPlayerId!, result as SpyResult));
-          toast({ title: t("attack.spySuccess"), description: `ATK: ${result.attackPower} | DEF: ${result.defensePower}`, className: "bg-green-900 border-green-500" });
+          toast({ title: t("attack.spySuccess"), description: `${t("common.atkAbbr")}: ${result.attackPower} | ${t("common.defAbbr")}: ${result.defensePower}`, className: "bg-green-900 border-green-500" });
         }
       },
       onError: (err: unknown) => {

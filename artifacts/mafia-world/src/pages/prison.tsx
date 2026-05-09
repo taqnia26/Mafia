@@ -17,6 +17,7 @@ import { getApiError } from "@/lib/apiError";
 import { PageBanner } from "@/components/PageBanner";
 
 function PrisonTimer({ releaseAt, onExpired }: { releaseAt: string; onExpired: () => void }) {
+  const { t } = useI18n();
   const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
@@ -25,8 +26,12 @@ function PrisonTimer({ releaseAt, onExpired }: { releaseAt: string; onExpired: (
       const now = Date.now();
       const diff = target - now;
 
+      const hs = t("common.hoursShort");
+      const ms = t("common.minutesShort");
+      const ss = t("common.secondsShort");
+
       if (diff <= 0) {
-        setTimeLeft("00h 00m 00s");
+        setTimeLeft(`00${hs} 00${ms} 00${ss}`);
         onExpired();
         return;
       }
@@ -34,13 +39,13 @@ function PrisonTimer({ releaseAt, onExpired }: { releaseAt: string; onExpired: (
       const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
-      setTimeLeft(`${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m ${String(s).padStart(2, "0")}s`);
+      setTimeLeft(`${String(h).padStart(2, "0")}${hs} ${String(m).padStart(2, "0")}${ms} ${String(s).padStart(2, "0")}${ss}`);
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [releaseAt, onExpired]);
+  }, [releaseAt, onExpired, t]);
 
   return <span className="font-mono text-4xl font-bold text-destructive tracking-widest">{timeLeft}</span>;
 }

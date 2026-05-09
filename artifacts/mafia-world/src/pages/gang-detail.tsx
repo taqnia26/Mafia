@@ -24,6 +24,17 @@ export default function GangDetail() {
     }
   };
 
+  const getRankLabel = (rank: string) => {
+    const map: Record<string, string> = {
+      Boss: t("gangs.rankBoss"),
+      Consigliere: t("gangs.rankConsigliere"),
+      Underboss: t("gangs.rankUnderboss"),
+      Capo: t("gangs.rankCapo"),
+      Soldier: t("gangs.rankSoldier"),
+    };
+    return map[rank] ?? rank;
+  };
+
   if (!gangId) return <div className="text-center p-8 text-destructive">{t("gangs.invalidId")}</div>;
 
   return (
@@ -79,7 +90,7 @@ export default function GangDetail() {
                   </div>
                   <Badge variant="outline" className={`${getRankColor(member.rank)} font-bold tracking-wider uppercase`}>
                     {member.rank === "Boss" && <Crown className="w-3 h-3 mr-1" />}
-                    {member.rank}
+                    {getRankLabel(member.rank)}
                   </Badge>
                 </div>
               ))}

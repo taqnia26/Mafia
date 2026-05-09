@@ -373,6 +373,61 @@ const translations: Translations = {
   "admin.addListing": { en: "Add Listing as Admin", ar: "إضافة عرض كمشرف" },
   "admin.auditLog": { en: "Admin Audit Log", ar: "سجل إجراءات الإدارة" },
   "common.edit": { en: "Edit", ar: "تعديل" },
+
+  "dashboard.combatPower": { en: "Combat Power", ar: "قوة القتال" },
+  "dashboard.active": { en: "Active", ar: "نشط" },
+  "dashboard.combatActive": { en: "Combat Active", ar: "قتال نشط" },
+  "dashboard.topBosses": { en: "Top Bosses", ar: "أفضل الرؤساء" },
+  "dashboard.noActivity": { en: "No recent activity.", ar: "لا يوجد نشاط حديث." },
+  "dashboard.lvl": { en: "Lvl", ar: "مستوى" },
+  "dashboard.city": { en: "City", ar: "المدينة" },
+  "dashboard.inPrison": { en: "In Prison", ar: "في السجن" },
+  "dashboard.traveling": { en: "Traveling", ar: "مسافر" },
+
+  "attack.arrived": { en: "Arrived", ar: "وصل" },
+
+  "common.purchaseFailed": { en: "Purchase Failed", ar: "فشل الشراء" },
+  "common.cancelFailed": { en: "Cancel Failed", ar: "فشل الإلغاء" },
+  "common.createFailed": { en: "Create Failed", ar: "فشل الإنشاء" },
+
+  "profile.attackPower": { en: "Attack Power", ar: "قوة الهجوم" },
+  "profile.defensePower": { en: "Defense Power", ar: "قوة الدفاع" },
+  "profile.gangAffiliation": { en: "Gang Affiliation", ar: "انتساب العصابة" },
+  "profile.settingsSection": { en: "Settings", ar: "الإعدادات" },
+  "profile.antiSpyProtection": { en: "Anti-Spy Protection", ar: "الحماية من التجسس" },
+  "profile.antiSpyProtectionDesc": { en: "Block other players from spying on your stats. Costs money to maintain.", ar: "منع اللاعبين الآخرين من التجسس على إحصائياتك. يتطلب رسوماً للحفاظ عليه." },
+
+  "settings.preferences": { en: "Preferences", ar: "التفضيلات" },
+  "settings.preferencesDesc": { en: "Manage your game interface preferences", ar: "إدارة تفضيلات واجهة اللعبة" },
+  "settings.selectLanguage": { en: "Select Language", ar: "اختر اللغة" },
+  "settings.account": { en: "Account", ar: "الحساب" },
+  "settings.signOutBtn": { en: "Sign Out", ar: "تسجيل الخروج" },
+  "settings.englishLabel": { en: "English", ar: "الإنجليزية" },
+  "settings.arabicLabel": { en: "Arabic (العربية)", ar: "العربية (Arabic)" },
+
+  "crimes.lvlBadge": { en: "Lvl", ar: "مستوى" },
+
+  "common.atkAbbr": { en: "ATK", ar: "هجوم" },
+  "common.defAbbr": { en: "DEF", ar: "دفاع" },
+  "common.xpAbbr": { en: "XP", ar: "نقاط الخبرة" },
+  "common.hoursShort": { en: "h", ar: "س" },
+  "common.minutesShort": { en: "m", ar: "د" },
+  "common.secondsShort": { en: "s", ar: "ث" },
+  "common.for": { en: "for", ar: "مقابل" },
+  "common.targetIdPlaceholder": { en: "e.g. 42", ar: "مثال: 42" },
+
+  "gangs.namePlaceholder": { en: "e.g. The Sopranos", ar: "مثال: عائلة كورليوني" },
+  "gangs.descriptionPlaceholder": { en: "Your gang's motto or rules...", ar: "شعار عصابتك أو قواعدها..." },
+
+  "gangs.rankBoss": { en: "Boss", ar: "الزعيم" },
+  "gangs.rankConsigliere": { en: "Consigliere", ar: "المستشار" },
+  "gangs.rankUnderboss": { en: "Underboss", ar: "نائب الزعيم" },
+  "gangs.rankCapo": { en: "Capo", ar: "الكابو" },
+  "gangs.rankSoldier": { en: "Soldier", ar: "المقاتل" },
+
+  "blackmarket.typeWeapon": { en: "Weapon", ar: "سلاح" },
+  "blackmarket.typeAmmo": { en: "Ammo", ar: "ذخيرة" },
+  "blackmarket.typeArmor": { en: "Armor", ar: "درع" },
 };
 
 interface I18nContextType {

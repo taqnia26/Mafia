@@ -17,19 +17,19 @@ export default function Settings() {
 
       <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="font-heading uppercase tracking-wider text-lg">Preferences</CardTitle>
-          <CardDescription>Manage your game interface preferences</CardDescription>
+          <CardTitle className="font-heading uppercase tracking-wider text-lg">{t("settings.preferences")}</CardTitle>
+          <CardDescription>{t("settings.preferencesDesc")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label htmlFor="language">Language</Label>
+            <Label htmlFor="language">{t("settings.language")}</Label>
             <Select value={language} onValueChange={(val: "en" | "ar") => setLanguage(val)}>
               <SelectTrigger id="language" className="w-full bg-secondary border-border">
-                <SelectValue placeholder="Select Language" />
+                <SelectValue placeholder={t("settings.selectLanguage")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="ar">العربية (Arabic)</SelectItem>
+                <SelectItem value="en">{t("settings.englishLabel")}</SelectItem>
+                <SelectItem value="ar">{t("settings.arabicLabel")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -38,11 +38,11 @@ export default function Settings() {
 
       <Card className="bg-card border-destructive/20">
         <CardHeader>
-          <CardTitle className="font-heading uppercase tracking-wider text-lg text-destructive">Account</CardTitle>
+          <CardTitle className="font-heading uppercase tracking-wider text-lg text-destructive">{t("settings.account")}</CardTitle>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" onClick={() => signOut()} className="w-full sm:w-auto">
-            Sign Out
+            {t("settings.signOutBtn")}
           </Button>
         </CardContent>
       </Card>

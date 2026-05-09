@@ -150,7 +150,7 @@ export default function Bodyguards() {
                 <Label className="font-heading uppercase tracking-wider text-xs text-muted-foreground">{t("bodyguards.targetPlayerId")}</Label>
                 <Input
                   type="number"
-                  placeholder="e.g. 42"
+                  placeholder={t("common.targetIdPlaceholder")}
                   value={targetPlayerId}
                   onChange={(e) => setTargetPlayerId(e.target.value)}
                   className="bg-background border-border font-mono"

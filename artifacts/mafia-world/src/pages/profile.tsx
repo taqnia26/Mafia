@@ -54,8 +54,8 @@ export default function Profile() {
             
             <div className="w-full pt-4 border-t border-border/50">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium">Level {profile.level}</span>
-                <span className="text-sm text-muted-foreground">{profile.xp.toLocaleString()} XP</span>
+                <span className="text-sm font-medium">{t("common.level")} {profile.level}</span>
+                <span className="text-sm text-muted-foreground">{profile.xp.toLocaleString()} {t("dashboard.xp")}</span>
               </div>
               <Progress value={75} className="h-2 bg-secondary" indicatorClassName="bg-primary" />
             </div>
@@ -63,7 +63,7 @@ export default function Profile() {
             {profile.gangName && (
               <div className="w-full pt-4 border-t border-border/50">
                 <div className="bg-secondary/50 rounded-lg p-3 text-sm">
-                  <p className="text-muted-foreground">Gang Affiliation</p>
+                  <p className="text-muted-foreground">{t("profile.gangAffiliation")}</p>
                   <p className="font-bold text-primary">{profile.gangName}</p>
                   <p className="text-xs text-muted-foreground capitalize mt-1">{profile.gangRank}</p>
                 </div>
@@ -80,7 +80,7 @@ export default function Profile() {
                   <Crosshair className="w-6 h-6 text-orange-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Attack Power</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">{t("profile.attackPower")}</p>
                   <p className="text-2xl font-mono font-bold">{profile.attackPower.toLocaleString()}</p>
                 </div>
               </CardContent>
@@ -92,7 +92,7 @@ export default function Profile() {
                   <Shield className="w-6 h-6 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Defense Power</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">{t("profile.defensePower")}</p>
                   <p className="text-2xl font-mono font-bold">{profile.defensePower.toLocaleString()}</p>
                 </div>
               </CardContent>
@@ -104,7 +104,7 @@ export default function Profile() {
                   <Skull className="w-6 h-6 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Kills</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">{t("common.kills")}</p>
                   <p className="text-2xl font-mono font-bold">{profile.killCount}</p>
                 </div>
               </CardContent>
@@ -116,7 +116,7 @@ export default function Profile() {
                   <HeartPulse className="w-6 h-6 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Deaths</p>
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">{t("common.deaths")}</p>
                   <p className="text-2xl font-mono font-bold">{profile.deathCount}</p>
                 </div>
               </CardContent>
@@ -125,13 +125,13 @@ export default function Profile() {
 
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="font-heading uppercase tracking-wider text-lg">Settings</CardTitle>
+              <CardTitle className="font-heading uppercase tracking-wider text-lg">{t("profile.settingsSection")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border/50">
                 <div className="space-y-1">
-                  <Label htmlFor="anti-spy" className="text-base">Anti-Spy Protection</Label>
-                  <p className="text-sm text-muted-foreground">Block other players from spying on your stats. Costs money to maintain.</p>
+                  <Label htmlFor="anti-spy" className="text-base">{t("profile.antiSpyProtection")}</Label>
+                  <p className="text-sm text-muted-foreground">{t("profile.antiSpyProtectionDesc")}</p>
                 </div>
                 <Switch 
                   id="anti-spy" 

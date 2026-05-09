@@ -8,6 +8,7 @@ import { Briefcase, DollarSign, Clock, ShieldAlert, Lock, Star, Trophy } from "l
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { ar as arLocale } from "date-fns/locale";
 import { getApiError } from "@/lib/apiError";
 import { PageBanner } from "@/components/PageBanner";
 import { useEffect, useRef, useState } from "react";
@@ -35,10 +36,14 @@ function CooldownTimer({ endsAt, t, onExpire }: { endsAt: string; t: (key: strin
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
+  const hs = t("common.hoursShort");
+  const ms = t("common.minutesShort");
+  const ss = t("common.secondsShort");
+
   let timeStr: string;
-  if (hours > 0) timeStr = `${hours}h ${minutes}m`;
-  else if (minutes > 0) timeStr = `${minutes}m ${seconds}s`;
-  else timeStr = `${seconds}s`;
+  if (hours > 0) timeStr = `${hours}${hs} ${minutes}${ms}`;
+  else if (minutes > 0) timeStr = `${minutes}${ms} ${seconds}${ss}`;
+  else timeStr = `${seconds}${ss}`;
 
   return <span className="font-mono">{timeStr} {t("crimes.remaining")}</span>;
 }
@@ -70,7 +75,7 @@ function SuccessRateBar({ rate, t }: { rate: number; t: (key: string) => string 
 }
 
 export default function Crimes() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -90,7 +95,7 @@ export default function Crimes() {
         if (result.success) {
           toast({
             title: t("crimes.crimeSuccess"),
-            description: `+$${(result.moneyEarned ?? 0).toLocaleString()} | +${result.xpEarned ?? 0} XP`,
+            description: `+$${(result.moneyEarned ?? 0).toLocaleString()} | +${result.xpEarned ?? 0} ${t("common.xpAbbr")}`,
             className: "bg-green-900 border-green-500 text-white",
           });
 
@@ -188,7 +193,7 @@ export default function Crimes() {
                         </div>
                         {!isLocked && (
                           <Badge variant="outline" className="text-xs font-mono border-primary/30 text-primary/80 shrink-0">
-                            Lvl {crime.requiredLevel}+
+                            {t("crimes.lvlBadge")} {crime.requiredLevel}+
                           </Badge>
                         )}
                       </div>
@@ -204,12 +209,12 @@ export default function Crimes() {
                         </div>
                         <div className="flex items-center gap-1.5 text-blue-400">
                           <Star className="w-3.5 h-3.5" />
-                          <span className="font-mono text-xs">+{crime.xpReward} XP</span>
+                          <span className="font-mono text-xs">+{crime.xpReward} {t("common.xpAbbr")}</span>
                         </div>
                         {crime.prisonTimeHours > 0 && (
                           <div className="flex items-center gap-1.5 text-destructive/80">
                             <ShieldAlert className="w-3.5 h-3.5" />
-                            <span className="font-mono text-xs">{crime.prisonTimeHours}h {t("crimes.prisonRiskLabel")}</span>
+                            <span className="font-mono text-xs">{crime.prisonTimeHours}{t("common.hoursShort")} {t("crimes.prisonRiskLabel")}</span>
                           </div>
                         )}
                       </div>
@@ -250,7 +255,7 @@ export default function Crimes() {
                             {t("crimes.attempt")}
                           </Button>
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {crime.cooldownMinutes}m {t("crimes.cooldownLabel")}
+                            <Clock className="w-3 h-3" /> {crime.cooldownMinutes}{t("common.minutesShort")} {t("crimes.cooldownLabel")}
                           </p>
                         </>
                       )}
@@ -294,7 +299,7 @@ export default function Crimes() {
                         <p className="text-sm font-medium truncate">{record.crimeName}</p>
                         {record.success ? (
                           <p className="text-xs text-green-400 mt-1 font-mono">
-                            +${(record.moneyEarned ?? 0).toLocaleString()} &bull; +{record.xpEarned ?? 0} XP
+                            +${(record.moneyEarned ?? 0).toLocaleString()} &bull; +{record.xpEarned ?? 0} {t("common.xpAbbr")}
                           </p>
                         ) : record.caught ? (
                           <p className="text-xs text-destructive mt-1">{t("crimes.caughtByCops")}</p>
@@ -302,7 +307,7 @@ export default function Crimes() {
                           <p className="text-xs text-orange-400 mt-1">{t("crimes.failedEscaped")}</p>
                         )}
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          {formatDistanceToNow(new Date(record.attemptedAt), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(record.attemptedAt), { addSuffix: true, locale: language === "ar" ? arLocale : undefined })}
                         </p>
                       </div>
                     </div>
