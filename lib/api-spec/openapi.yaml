@@ -2093,13 +2093,26 @@ components:
         xpReward:
           type: integer
         successRate:
-          type: number
+          type: integer
+          description: Success rate as integer percentage (0-100)
         prisonTimeHours:
           type: integer
         cooldownMinutes:
           type: integer
         requiredLevel:
           type: integer
+        playerLevel:
+          type: integer
+          description: The current player's level
+        locked:
+          type: boolean
+          description: True if player level is below requiredLevel
+        onCooldown:
+          type: boolean
+          description: True if the player recently attempted this crime and cooldown has not expired
+        cooldownEndsAt:
+          type: ["string", "null"]
+          description: ISO timestamp when the cooldown expires, or null
       required:
         - id
         - name
@@ -2111,6 +2124,10 @@ components:
         - prisonTimeHours
         - cooldownMinutes
         - requiredLevel
+        - playerLevel
+        - locked
+        - onCooldown
+        - cooldownEndsAt
 
     CrimeAttemptInput:
       type: object
@@ -2137,6 +2154,17 @@ components:
           type: string
         prisonReleaseAt:
           type: ["string", "null"]
+        leveledUp:
+          type: boolean
+          description: True if this crime caused the player to level up
+        newLevel:
+          type: integer
+          description: The player's new level (same as old if no level-up)
+        unlockedCrimes:
+          type: array
+          items:
+            type: string
+          description: Names of crimes newly unlocked by the level-up (empty if no level-up)
       required:
         - success
         - caught
@@ -2145,6 +2173,9 @@ components:
         - prisonTimeHours
         - message
         - prisonReleaseAt
+        - leveledUp
+        - newLevel
+        - unlockedCrimes
 
     CrimeRecord:
       type: object

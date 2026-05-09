@@ -1,9 +1,20 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
+import { eq } from "drizzle-orm";
 import * as schema from "@workspace/db/schema";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool, { schema });
+
+const CRIME_DATA = [
+  { name: "Pickpocket", description: "Lift wallets from unsuspecting tourists. Low risk, low reward.", minReward: 100, maxReward: 500, xpReward: 10, successRate: 0.90, prisonTimeHours: 1, cooldownMinutes: 10, requiredLevel: 1 },
+  { name: "Car Theft", description: "Steal a vehicle and sell it for parts. Quick cash if you can hotwire it.", minReward: 600, maxReward: 2500, xpReward: 30, successRate: 0.78, prisonTimeHours: 3, cooldownMinutes: 25, requiredLevel: 2 },
+  { name: "Store Robbery", description: "Rob the register at gunpoint. Requires nerve and speed.", minReward: 2000, maxReward: 6000, xpReward: 70, successRate: 0.65, prisonTimeHours: 6, cooldownMinutes: 50, requiredLevel: 4 },
+  { name: "Armed Robbery", description: "Hold up a target at gunpoint. Higher stakes, bigger payout.", minReward: 5000, maxReward: 15000, xpReward: 130, successRate: 0.55, prisonTimeHours: 10, cooldownMinutes: 90, requiredLevel: 7 },
+  { name: "Bank Heist", description: "Plan and execute a full bank robbery. High risk, massive reward.", minReward: 12000, maxReward: 40000, xpReward: 220, successRate: 0.42, prisonTimeHours: 16, cooldownMinutes: 150, requiredLevel: 10 },
+  { name: "Arms Smuggling", description: "Move illegal weapons across state lines. Lucrative underworld trade.", minReward: 30000, maxReward: 90000, xpReward: 380, successRate: 0.32, prisonTimeHours: 20, cooldownMinutes: 240, requiredLevel: 15 },
+  { name: "Assassination Contract", description: "A contract killing for a rival family. The highest paying crime in the underworld.", minReward: 70000, maxReward: 200000, xpReward: 600, successRate: 0.22, prisonTimeHours: 24, cooldownMinutes: 360, requiredLevel: 20 },
+];
 
 async function seed() {
   console.log("Seeding database...");
@@ -86,17 +97,35 @@ async function seed() {
 
   const existingCrimes = await db.select().from(schema.crimeTypesTable);
   if (existingCrimes.length === 0) {
-    await db.insert(schema.crimeTypesTable).values([
-      { name: "Pickpocket", description: "Lift wallets from unsuspecting tourists. Low risk, low reward.", minReward: 100, maxReward: 500, xpReward: 10, successRate: 0.85, prisonTimeHours: 1, cooldownMinutes: 15, requiredLevel: 1 },
-      { name: "Car Theft", description: "Steal a vehicle and sell it for parts. Quick cash if you can hotwire it.", minReward: 500, maxReward: 2000, xpReward: 25, successRate: 0.75, prisonTimeHours: 3, cooldownMinutes: 30, requiredLevel: 1 },
-      { name: "Liquor Store Robbery", description: "Rob the register at gunpoint. Requires nerve and speed.", minReward: 1000, maxReward: 4000, xpReward: 50, successRate: 0.65, prisonTimeHours: 6, cooldownMinutes: 60, requiredLevel: 2 },
-      { name: "Bank Heist", description: "Plan and execute a full bank robbery. High risk, massive reward.", minReward: 5000, maxReward: 20000, xpReward: 150, successRate: 0.45, prisonTimeHours: 12, cooldownMinutes: 120, requiredLevel: 5 },
-      { name: "Arms Smuggling", description: "Move illegal weapons across state lines. Lucrative underworld trade.", minReward: 8000, maxReward: 30000, xpReward: 200, successRate: 0.40, prisonTimeHours: 18, cooldownMinutes: 180, requiredLevel: 8 },
-      { name: "Assassination Contract", description: "A contract killing for a rival family. The highest paying crime in the underworld.", minReward: 20000, maxReward: 80000, xpReward: 400, successRate: 0.30, prisonTimeHours: 24, cooldownMinutes: 360, requiredLevel: 15 },
-    ]);
+    await db.insert(schema.crimeTypesTable).values(CRIME_DATA);
     console.log("Crime types seeded");
   } else {
-    console.log("Crime types already exist, skipping");
+    for (const crime of CRIME_DATA) {
+      const existing = existingCrimes.find(c => c.name === crime.name);
+      if (existing) {
+        await db.update(schema.crimeTypesTable).set({
+          description: crime.description,
+          minReward: crime.minReward,
+          maxReward: crime.maxReward,
+          xpReward: crime.xpReward,
+          successRate: crime.successRate,
+          prisonTimeHours: crime.prisonTimeHours,
+          cooldownMinutes: crime.cooldownMinutes,
+          requiredLevel: crime.requiredLevel,
+        }).where(eq(schema.crimeTypesTable.id, existing.id));
+      } else {
+        await db.insert(schema.crimeTypesTable).values(crime);
+      }
+    }
+
+    const crimeNamesToKeep = new Set(CRIME_DATA.map(c => c.name));
+    for (const existing of existingCrimes) {
+      if (!crimeNamesToKeep.has(existing.name)) {
+        console.log(`Note: legacy crime "${existing.name}" left in DB (has history records)`);
+      }
+    }
+
+    console.log("Crime types updated");
   }
 
   console.log("Seeding complete!");

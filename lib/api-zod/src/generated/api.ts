@@ -805,10 +805,23 @@ export const ListCrimesResponseItem = zod.object({
   minReward: zod.number(),
   maxReward: zod.number(),
   xpReward: zod.number(),
-  successRate: zod.number(),
+  successRate: zod
+    .number()
+    .describe("Success rate as integer percentage (0-100)"),
   prisonTimeHours: zod.number(),
   cooldownMinutes: zod.number(),
   requiredLevel: zod.number(),
+  playerLevel: zod.number().describe("The current player's level"),
+  locked: zod.boolean().describe("True if player level is below requiredLevel"),
+  onCooldown: zod
+    .boolean()
+    .describe(
+      "True if the player recently attempted this crime and cooldown has not expired",
+    ),
+  cooldownEndsAt: zod
+    .string()
+    .nullable()
+    .describe("ISO timestamp when the cooldown expires, or null"),
 });
 export const ListCrimesResponse = zod.array(ListCrimesResponseItem);
 
@@ -827,6 +840,17 @@ export const AttemptCrimeResponse = zod.object({
   prisonTimeHours: zod.number().nullable(),
   message: zod.string(),
   prisonReleaseAt: zod.string().nullable(),
+  leveledUp: zod
+    .boolean()
+    .describe("True if this crime caused the player to level up"),
+  newLevel: zod
+    .number()
+    .describe("The player's new level (same as old if no level-up)"),
+  unlockedCrimes: zod
+    .array(zod.string())
+    .describe(
+      "Names of crimes newly unlocked by the level-up (empty if no level-up)",
+    ),
 });
 
 /**

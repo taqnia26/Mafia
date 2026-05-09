@@ -16,4 +16,10 @@ export interface CrimeResult {
   message: string;
   /** @nullable */
   prisonReleaseAt: string | null;
+  /** True if this crime caused the player to level up */
+  leveledUp: boolean;
+  /** The player's new level (same as old if no level-up) */
+  newLevel: number;
+  /** Names of crimes newly unlocked by the level-up (empty if no level-up) */
+  unlockedCrimes: string[];
 }

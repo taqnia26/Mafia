@@ -2,15 +2,70 @@ import { Router } from "express";
 import { db } from "../lib/db";
 import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import { crimeTypesTable, crimeRecordsTable, playersTable } from "@workspace/db/schema";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { eq, and, desc, gte, inArray } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
 
 const router = Router();
 
+const CANONICAL_CRIME_NAMES = [
+  "Pickpocket",
+  "Car Theft",
+  "Store Robbery",
+  "Armed Robbery",
+  "Bank Heist",
+  "Arms Smuggling",
+  "Assassination Contract",
+];
+
 router.get("/crimes", requireAuth, async (req, res) => {
   try {
-    const crimes = await db.select().from(crimeTypesTable);
-    res.json(crimes);
+    const clerkId = getCurrentClerkId(req);
+    const player = await getOrCreatePlayer(clerkId);
+
+    const allCrimes = await db.select().from(crimeTypesTable).orderBy(crimeTypesTable.requiredLevel);
+    const crimes = allCrimes.filter(c => CANONICAL_CRIME_NAMES.includes(c.name));
+
+    const crimeIds = crimes.map(c => c.id);
+    if (crimeIds.length === 0) return void res.json([]);
+
+    const now = new Date();
+    const recentAttempts = await db.select().from(crimeRecordsTable)
+      .where(and(
+        eq(crimeRecordsTable.playerId, player.id),
+        inArray(crimeRecordsTable.crimeTypeId, crimeIds),
+        gte(crimeRecordsTable.attemptedAt, new Date(now.getTime() - 24 * 60 * 60 * 1000)),
+      ))
+      .orderBy(desc(crimeRecordsTable.attemptedAt));
+
+    const latestAttemptByCrime: Record<number, Date> = {};
+    for (const attempt of recentAttempts) {
+      if (!latestAttemptByCrime[attempt.crimeTypeId]) {
+        latestAttemptByCrime[attempt.crimeTypeId] = attempt.attemptedAt;
+      }
+    }
+
+    const result = crimes.map(crime => {
+      const lastAttempt = latestAttemptByCrime[crime.id];
+      let cooldownEndsAt: string | null = null;
+      let onCooldown = false;
+      if (lastAttempt) {
+        const cooldownEnd = new Date(lastAttempt.getTime() + crime.cooldownMinutes * 60 * 1000);
+        if (cooldownEnd > now) {
+          onCooldown = true;
+          cooldownEndsAt = cooldownEnd.toISOString();
+        }
+      }
+      return {
+        ...crime,
+        successRate: Math.round(crime.successRate * 100),
+        playerLevel: player.level,
+        locked: player.level < crime.requiredLevel,
+        onCooldown,
+        cooldownEndsAt,
+      };
+    });
+
+    res.json(result);
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
@@ -55,14 +110,27 @@ router.post("/crimes/attempt", requireAuth, requireNotInPrison, async (req, res)
     let prisonReleaseAt: string | null = null;
     let prisonTimeHours: number | null = null;
     let message = "";
+    let leveledUp = false;
+    let newLevel = player.level;
+    let unlockedCrimes: string[] = [];
 
     if (success) {
       moneyEarned = Math.floor(crime[0].minReward + Math.random() * (crime[0].maxReward - crime[0].minReward));
       xpEarned = crime[0].xpReward;
-      message = `Crime successful! You earned $${moneyEarned}.`;
+      message = `Crime successful! You earned $${moneyEarned.toLocaleString()}.`;
 
       const newXp = player.xp + xpEarned;
-      const newLevel = Math.floor(newXp / 1000) + 1;
+      newLevel = Math.floor(newXp / 1000) + 1;
+      leveledUp = newLevel > player.level;
+
+      if (leveledUp) {
+        const allCrimes = await db.select().from(crimeTypesTable);
+        const canonicalCrimes = allCrimes.filter(c => CANONICAL_CRIME_NAMES.includes(c.name));
+        unlockedCrimes = canonicalCrimes
+          .filter(c => c.requiredLevel > player.level && c.requiredLevel <= newLevel)
+          .map(c => c.name);
+      }
+
       await db.update(playersTable).set({
         money: player.money + moneyEarned,
         xp: newXp,
@@ -100,7 +168,7 @@ router.post("/crimes/attempt", requireAuth, requireNotInPrison, async (req, res)
       xpEarned,
     });
 
-    res.json({ success, caught, moneyEarned, xpEarned, prisonTimeHours, message, prisonReleaseAt });
+    res.json({ success, caught, moneyEarned, xpEarned, prisonTimeHours, message, prisonReleaseAt, leveledUp, newLevel, unlockedCrimes });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

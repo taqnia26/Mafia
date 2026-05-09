@@ -454,10 +454,22 @@ export interface CrimeType {
   minReward: number;
   maxReward: number;
   xpReward: number;
+  /** Success rate as integer percentage (0-100) */
   successRate: number;
   prisonTimeHours: number;
   cooldownMinutes: number;
   requiredLevel: number;
+  /** The current player's level */
+  playerLevel: number;
+  /** True if player level is below requiredLevel */
+  locked: boolean;
+  /** True if the player recently attempted this crime and cooldown has not expired */
+  onCooldown: boolean;
+  /**
+   * ISO timestamp when the cooldown expires, or null
+   * @nullable
+   */
+  cooldownEndsAt: string | null;
 }
 
 export interface CrimeAttemptInput {
@@ -474,6 +486,12 @@ export interface CrimeResult {
   message: string;
   /** @nullable */
   prisonReleaseAt: string | null;
+  /** True if this crime caused the player to level up */
+  leveledUp: boolean;
+  /** The player's new level (same as old if no level-up) */
+  newLevel: number;
+  /** Names of crimes newly unlocked by the level-up (empty if no level-up) */
+  unlockedCrimes: string[];
 }
 
 export interface CrimeRecord {
