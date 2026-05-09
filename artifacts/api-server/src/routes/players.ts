@@ -109,7 +109,6 @@ router.get("/players", requireAuth, async (req, res) => {
     const [players, totalResult] = await Promise.all([
       db.select({
         id: playersTable.id,
-        clerkId: playersTable.clerkId,
         username: playersTable.username,
         level: playersTable.level,
         xp: playersTable.xp,
@@ -177,7 +176,6 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
     const playerId = parseInt(String(req.params.playerId));
     const rows = await db.select({
       id: playersTable.id,
-      clerkId: playersTable.clerkId,
       username: playersTable.username,
       level: playersTable.level,
       xp: playersTable.xp,

@@ -41,9 +41,10 @@ function CountdownTimer({ targetDate }: { targetDate: string }) {
     const updateTimer = () => {
       const diff = new Date(targetDate).getTime() - Date.now();
       if (diff <= 0) { setTimeLeft("Arrived"); return; }
+      const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
-      setTimeLeft(`${m}m ${s}s`);
+      setTimeLeft(h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`);
     };
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
