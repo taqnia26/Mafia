@@ -297,6 +297,33 @@ const translations: Translations = {
 
   "players.noPlayers": { en: "No players found.", ar: "لم يتم العثور على لاعبين." },
 
+  "gangs.joinedTitle": { en: "Joined Gang", ar: "انضممت للعصابة" },
+  "gangs.joinedDesc": { en: "You are now a member of the gang.", ar: "أصبحت عضواً في العصابة الآن." },
+  "gangs.joinError": { en: "Cannot join gang", ar: "تعذّر الانضمام للعصابة" },
+  "gangs.createdTitle": { en: "Gang Created", ar: "تم إنشاء العصابة" },
+  "gangs.createdDesc": { en: "Your gang has been established.", ar: "تم تأسيس عصابتك." },
+  "gangs.createError": { en: "Cannot create gang", ar: "تعذّر إنشاء العصابة" },
+  "gangs.invalidId": { en: "Invalid gang ID", ar: "معرّف العصابة غير صالح" },
+  "gangs.roster": { en: "Roster", ar: "قائمة الأعضاء" },
+  "gangs.noMembers": { en: "No members found.", ar: "لم يتم العثور على أعضاء." },
+
+  "profile.antiSpyUpdated": { en: "Anti-Spy Status Updated", ar: "تم تحديث حالة مكافحة التجسس" },
+  "profile.antiSpyOn": { en: "Anti-spy is now active.", ar: "مكافحة التجسس نشطة الآن." },
+  "profile.antiSpyOff": { en: "Anti-spy is now disabled.", ar: "تم تعطيل مكافحة التجسس." },
+  "profile.antiSpyError": { en: "Failed to update anti-spy status.", ar: "فشل تحديث حالة مكافحة التجسس." },
+
+  "weapons.buyWeaponSuccess": { en: "Weapon added to your arsenal.", ar: "تمت إضافة السلاح لترسانتك." },
+  "weapons.buyAmmoSuccess": { en: "Ammo added to stash.", ar: "تمت إضافة الذخيرة لمخزونك." },
+
+  "blackmarket.buySuccess": { en: "Item acquired from the Black Market.", ar: "تم الحصول على العنصر من السوق السوداء." },
+  "blackmarket.cancelledTitle": { en: "Listing Cancelled", ar: "تم إلغاء الإعلان" },
+  "blackmarket.cancelledDesc": { en: "Your listing has been removed.", ar: "تم حذف إعلانك." },
+  "blackmarket.listedTitle": { en: "Listing Created", ar: "تم إنشاء الإعلان" },
+  "blackmarket.listedDesc": { en: "Your item is now on the Black Market.", ar: "عنصرك الآن في السوق السوداء." },
+
+  "prison.jailbreakSuccess": { en: "Jailbreak Successful!", ar: "نجح اقتحام السجن!" },
+  "prison.jailbreakFailed": { en: "Jailbreak Failed", ar: "فشل اقتحام السجن" },
+
   "home.title": { en: "Mafia World", ar: "عالم المافيا" },
   "home.signIn": { en: "Sign In", ar: "تسجيل الدخول" },
   "home.playNow": { en: "Play Now", ar: "العب الآن" },

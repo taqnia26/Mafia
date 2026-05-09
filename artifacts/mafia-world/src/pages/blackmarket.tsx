@@ -41,7 +41,7 @@ export default function BlackMarket() {
         queryClient.invalidateQueries({ queryKey: getListBlackMarketQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
-        toast({ title: t("common.success"), description: "Item acquired from the Black Market." });
+        toast({ title: t("common.success"), description: t("blackmarket.buySuccess") });
       },
       onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
     }
@@ -52,7 +52,7 @@ export default function BlackMarket() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListBlackMarketQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyListingsQueryKey() });
-        toast({ title: "Listing Cancelled", description: "Your listing has been removed." });
+        toast({ title: t("blackmarket.cancelledTitle"), description: t("blackmarket.cancelledDesc") });
       },
       onError: (err: unknown) => toast({ title: "Cancel Failed", description: getApiError(err), variant: "destructive" })
     }
@@ -67,7 +67,7 @@ export default function BlackMarket() {
         setNewItemId("");
         setNewQuantity("1");
         setNewPrice("");
-        toast({ title: "Listing Created", description: "Your item is now on the Black Market." });
+        toast({ title: t("blackmarket.listedTitle"), description: t("blackmarket.listedDesc") });
       },
       onError: (err: unknown) => toast({ title: "Create Failed", description: getApiError(err), variant: "destructive" })
     }

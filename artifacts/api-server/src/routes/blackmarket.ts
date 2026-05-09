@@ -50,6 +50,7 @@ router.post("/blackmarket", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot list items while in prison" });
     const { itemType, itemId, quantity, price } = req.body as {
       itemType: ItemType;
       itemId: number;
@@ -170,6 +171,7 @@ router.post("/blackmarket/:listingId/buy", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot buy from the black market while in prison" });
     const listingId = parseInt(String(req.params.listingId));
 
     const listing = await db.select().from(blackMarketListingsTable)

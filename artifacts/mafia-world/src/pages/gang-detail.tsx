@@ -24,12 +24,12 @@ export default function GangDetail() {
     }
   };
 
-  if (!gangId) return <div className="text-center p-8 text-destructive">Invalid gang ID</div>;
+  if (!gangId) return <div className="text-center p-8 text-destructive">{t("gangs.invalidId")}</div>;
 
   return (
     <div className="space-y-6">
       <Link href="/gangs" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back to Gangs
+        <ArrowLeft className="w-4 h-4 mr-1" /> {t("common.back")}
       </Link>
 
       {isGangLoading ? (
@@ -44,14 +44,14 @@ export default function GangDetail() {
             <Card className="bg-card border-border min-w-[150px]">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <Coins className="w-8 h-8 text-yellow-500 mb-2" />
-                <span className="text-xs text-muted-foreground uppercase">Treasury</span>
+                <span className="text-xs text-muted-foreground uppercase">{t("gangs.treasury")}</span>
                 <span className="font-mono text-xl font-bold">${gang.treasury.toLocaleString()}</span>
               </CardContent>
             </Card>
             <Card className="bg-card border-border min-w-[150px]">
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <Users className="w-8 h-8 text-blue-500 mb-2" />
-                <span className="text-xs text-muted-foreground uppercase">Members</span>
+                <span className="text-xs text-muted-foreground uppercase">{t("gangs.members")}</span>
                 <span className="font-mono text-xl font-bold">{gang.memberCount}</span>
               </CardContent>
             </Card>
@@ -61,7 +61,7 @@ export default function GangDetail() {
 
       <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="font-heading uppercase tracking-wider">Roster</CardTitle>
+          <CardTitle className="font-heading uppercase tracking-wider">{t("gangs.roster")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {isMembersLoading ? (
@@ -75,7 +75,7 @@ export default function GangDetail() {
                 <div key={member.id} className="p-4 flex items-center justify-between">
                   <div>
                     <p className="font-bold text-foreground">{member.username}</p>
-                    <p className="text-xs text-muted-foreground">Level {member.level}</p>
+                    <p className="text-xs text-muted-foreground">{t("common.level")} {member.level}</p>
                   </div>
                   <Badge variant="outline" className={`${getRankColor(member.rank)} font-bold tracking-wider uppercase`}>
                     {member.rank === "Boss" && <Crown className="w-3 h-3 mr-1" />}
@@ -85,7 +85,7 @@ export default function GangDetail() {
               ))}
             </div>
           ) : (
-            <div className="p-6 text-center text-muted-foreground">No members found.</div>
+            <div className="p-6 text-center text-muted-foreground">{t("gangs.noMembers")}</div>
           )}
         </CardContent>
       </Card>

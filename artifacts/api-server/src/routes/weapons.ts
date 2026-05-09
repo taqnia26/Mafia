@@ -45,6 +45,7 @@ router.post("/weapons/:weaponId/buy", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot buy weapons while in prison" });
     const weaponId = parseInt(String(req.params.weaponId));
     const quantity = parseInt(String(req.body.quantity ?? "1"));
 
@@ -135,6 +136,7 @@ router.post("/ammo/:ammoId/buy", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot buy ammo while in prison" });
     const ammoId = parseInt(String(req.params.ammoId));
     const quantity = parseInt(String(req.body.quantity ?? "1"));
 

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useListPlayers, useSpyOnPlayer, getListPlayersQueryKey } from "@workspace/api-client-react";
+import { useListPlayers, useSpyOnPlayer, useAttemptJailbreak, getListPlayersQueryKey, getGetMyProfileQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGetMyProfile } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Eye, Swords, Crosshair, Shield, CheckCircle2, AlertCircle } from "lucide-react";
+import { Search, Eye, Swords, Crosshair, Shield, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -23,6 +25,7 @@ type SpyResult = {
 export default function Players() {
   const { t } = useI18n();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [spyResults, setSpyResults] = useState<Map<number, SpyResult>>(new Map());
@@ -32,35 +35,39 @@ export default function Players() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const { data: myProfile } = useGetMyProfile();
   const { data, isLoading } = useListPlayers({ search: debouncedSearch, limit: 20 }, { query: { queryKey: getListPlayersQueryKey({ search: debouncedSearch, limit: 20 }) } });
   
   const spy = useSpyOnPlayer({
     mutation: {
       onSuccess: (result) => {
         if (result.blocked) {
-          toast({
-            title: t("attack.spyBlocked"),
-            description: t("attack.spyBlockedDesc"),
-            variant: "destructive",
-          });
+          toast({ title: t("attack.spyBlocked"), description: t("attack.spyBlockedDesc"), variant: "destructive" });
         } else if (result.success && result.targetPlayerId != null) {
           setSpyResults(prev => new Map(prev).set(result.targetPlayerId!, result as SpyResult));
-          toast({
-            title: t("attack.spySuccess"),
-            description: `ATK: ${result.attackPower} | DEF: ${result.defensePower}`,
-            className: "bg-green-900 border-green-500",
-          });
+          toast({ title: t("attack.spySuccess"), description: `ATK: ${result.attackPower} | DEF: ${result.defensePower}`, className: "bg-green-900 border-green-500" });
         }
       },
       onError: (err: unknown) => {
-        toast({
-          title: t("attack.spyFailed"),
-          description: getApiError(err),
-          variant: "destructive",
-        });
+        toast({ title: t("attack.spyFailed"), description: getApiError(err), variant: "destructive" });
       }
     }
   });
+
+  const jailbreak = useAttemptJailbreak({
+    mutation: {
+      onSuccess: (result) => {
+        queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey({ search: debouncedSearch, limit: 20 }) });
+        queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
+        toast({ title: t("prison.jailbreakSuccess"), description: result.message, className: "bg-green-900 border-green-500" });
+      },
+      onError: (err: unknown) => {
+        toast({ title: t("prison.jailbreakFailed"), description: getApiError(err), variant: "destructive" });
+      }
+    }
+  });
+
+  const myGangId = myProfile?.gangId ?? null;
 
   return (
     <div className="space-y-6">
@@ -83,13 +90,20 @@ export default function Players() {
         ) : data?.players && data.players.length > 0 ? (
           data.players.map((player) => {
             const spyData = spyResults.get(player.id);
+            const isGangMate = myGangId !== null && myGangId !== undefined && player.gangId === myGangId;
+            const canJailbreak = player.isInPrison && isGangMate;
             return (
               <Card key={player.id} className="bg-card border-border hover:border-primary/50 transition-colors">
                 <CardContent className="p-5">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-lg font-heading uppercase">{player.username}</h3>
-                      <p className="text-sm text-muted-foreground">{t("common.level")} {player.level} • {player.cityName}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">{t("common.level")} {player.level} • {player.cityName}</p>
+                        {player.isInPrison && (
+                          <Badge variant="outline" className="text-orange-400 border-orange-500/50 text-xs">{t("prison.incarcerated")}</Badge>
+                        )}
+                      </div>
                     </div>
                     {player.gangName && (
                       <Badge variant="outline" className="border-primary/50 text-primary">{player.gangName}</Badge>
@@ -118,7 +132,7 @@ export default function Players() {
                     </div>
                   )}
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-4 flex gap-2 flex-wrap">
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -128,15 +142,23 @@ export default function Players() {
                     >
                       <Eye className="w-4 h-4 mr-2" /> {t("attack.spy")}
                     </Button>
-                    <Link href={`/attack?target=${player.id}`} className="flex-1">
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        className="w-full font-heading uppercase tracking-wider"
+                    {canJailbreak ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 font-heading uppercase tracking-wider border-green-700 text-green-500 hover:bg-green-900"
+                        onClick={() => jailbreak.mutate({ targetPlayerId: player.id, data: { method: "raid" } })}
+                        disabled={jailbreak.isPending}
                       >
-                        <Swords className="w-4 h-4 mr-2" /> {t("common.attack")}
+                        <KeyRound className="w-4 h-4 mr-2" /> {t("prison.jailbreak")}
                       </Button>
-                    </Link>
+                    ) : !player.isInPrison ? (
+                      <Link href={`/attack?target=${player.id}`} className="flex-1">
+                        <Button variant="destructive" size="sm" className="w-full font-heading uppercase tracking-wider">
+                          <Swords className="w-4 h-4 mr-2" /> {t("common.attack")}
+                        </Button>
+                      </Link>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

@@ -41,6 +41,7 @@ router.post("/bodyguards/npc/:guardId/hire", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot hire bodyguards while in prison" });
     const guardId = parseInt(String(req.params.guardId));
 
     const guard = await db.select().from(npcBodyguardsTable).where(eq(npcBodyguardsTable.id, guardId)).limit(1);

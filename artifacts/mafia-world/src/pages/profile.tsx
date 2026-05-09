@@ -19,10 +19,10 @@ export default function Profile() {
     mutation: {
       onSuccess: (updatedProfile) => {
         queryClient.setQueryData(getGetMyProfileQueryKey(), updatedProfile);
-        toast({ title: "Anti-Spy Status Updated", description: updatedProfile.antiSpyEnabled ? "Anti-spy is now active." : "Anti-spy is now disabled." });
+        toast({ title: t("profile.antiSpyUpdated"), description: updatedProfile.antiSpyEnabled ? t("profile.antiSpyOn") : t("profile.antiSpyOff") });
       },
       onError: () => {
-        toast({ title: "Error", description: "Failed to update anti-spy status.", variant: "destructive" });
+        toast({ title: t("common.error"), description: t("profile.antiSpyError"), variant: "destructive" });
       }
     }
   });

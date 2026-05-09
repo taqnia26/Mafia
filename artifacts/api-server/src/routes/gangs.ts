@@ -32,6 +32,7 @@ router.post("/gangs", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot create a gang while in prison" });
     if (player.gangId) return void res.status(400).json({ error: "Already in a gang" });
 
     const { name, description } = req.body as { name: string; description?: string };
@@ -90,6 +91,7 @@ router.post("/gangs/:gangId/join", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot join a gang while in prison" });
     if (player.gangId) return void res.status(400).json({ error: "Already in a gang" });
 
     const gangId = parseInt(String(req.params.gangId));

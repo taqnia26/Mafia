@@ -45,6 +45,7 @@ router.post("/armor/:armorId/buy", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot buy armor while in prison" });
     const armorId = parseInt(String(req.params.armorId));
     const quantity = parseInt(String(req.body.quantity ?? "1"));
 

@@ -116,14 +116,10 @@ router.post("/attacks", requireAuth, async (req, res) => {
       db.select().from(citiesTable).where(eq(citiesTable.id, target[0].cityId)).limit(1),
     ]);
 
-    // Travel time is distance-based: sum of both cities' travelHoursBase, halved for attacks
-    // Same-city attacks arrive faster (min 1h); cross-city uses city travel time
+    // Travel time is distance-based: average of both cities' travelHoursBase, clamped to [4, 6]h
     const fromBase = fromCity[0]?.travelHoursBase ?? 4;
     const toBase = toCity[0]?.travelHoursBase ?? 4;
-    const sameCityAttack = player.cityId === target[0].cityId;
-    const travelHours = sameCityAttack
-      ? 1 + Math.random() * 0.5
-      : Math.round(((fromBase + toBase) / 2) * 10) / 10;
+    const travelHours = Math.min(6, Math.max(4, Math.round(((fromBase + toBase) / 2) * 10) / 10));
     const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
 
     const [attack] = await db.transaction(async (tx) => {

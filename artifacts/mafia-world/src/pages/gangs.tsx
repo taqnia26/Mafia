@@ -30,10 +30,10 @@ export default function Gangs() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListGangsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
-        toast({ title: "Joined Gang", description: "You are now a member of the gang." });
+        toast({ title: t("gangs.joinedTitle"), description: t("gangs.joinedDesc") });
       },
       onError: (err: unknown) => {
-        toast({ title: "Cannot join gang", description: getApiError(err), variant: "destructive" });
+        toast({ title: t("gangs.joinError"), description: getApiError(err), variant: "destructive" });
       }
     }
   });
@@ -46,10 +46,10 @@ export default function Gangs() {
         setIsCreateOpen(false);
         setNewGangName("");
         setNewGangDesc("");
-        toast({ title: "Gang Created", description: "Your gang has been established." });
+        toast({ title: t("gangs.createdTitle"), description: t("gangs.createdDesc") });
       },
       onError: (err: unknown) => {
-        toast({ title: "Cannot create gang", description: getApiError(err), variant: "destructive" });
+        toast({ title: t("gangs.createError"), description: getApiError(err), variant: "destructive" });
       }
     }
   });

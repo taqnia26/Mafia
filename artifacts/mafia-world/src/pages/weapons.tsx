@@ -26,7 +26,7 @@ export default function Weapons() {
         queryClient.invalidateQueries({ queryKey: getGetMyWeaponsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
-        toast({ title: t("common.success"), description: "Weapon added to your arsenal." });
+        toast({ title: t("common.success"), description: t("weapons.buyWeaponSuccess") });
       },
       onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
     }
@@ -37,7 +37,7 @@ export default function Weapons() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetMyAmmoQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
-        toast({ title: t("common.success"), description: "Ammo added to stash." });
+        toast({ title: t("common.success"), description: t("weapons.buyAmmoSuccess") });
       },
       onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
     }
