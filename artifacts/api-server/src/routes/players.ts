@@ -92,6 +92,9 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
 
 router.get("/players", requireAuth, async (req, res) => {
   try {
+    const clerkId = getCurrentClerkId(req);
+    const viewer = await getOrCreatePlayer(clerkId);
+
     const { cityId, search, page = "1", limit = "20" } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, parseInt(limit));
@@ -142,15 +145,21 @@ router.get("/players", requireAuth, async (req, res) => {
     }
 
     res.json({
-      players: players.map(p => ({
-        ...p,
-        cityName: p.cityName ?? "",
-        gangName: p.gangId ? (gangMap[p.gangId] ?? null) : null,
-        gangRank: p.gangRank ?? null,
-        prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null,
-        travelArrivalAt: p.travelArrivalAt?.toISOString() ?? null,
-        createdAt: p.createdAt.toISOString(),
-      })),
+      players: players.map(p => {
+        const isSelf = p.id === viewer.id;
+        const redact = !isSelf && p.antiSpyEnabled;
+        return {
+          ...p,
+          attackPower: redact ? null : p.attackPower,
+          defensePower: redact ? null : p.defensePower,
+          cityName: p.cityName ?? "",
+          gangName: p.gangId ? (gangMap[p.gangId] ?? null) : null,
+          gangRank: p.gangRank ?? null,
+          prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null,
+          travelArrivalAt: p.travelArrivalAt?.toISOString() ?? null,
+          createdAt: p.createdAt.toISOString(),
+        };
+      }),
       total: totalResult[0]?.count ?? 0,
       page: pageNum,
       limit: limitNum,
@@ -162,6 +171,9 @@ router.get("/players", requireAuth, async (req, res) => {
 
 router.get("/players/:playerId", requireAuth, async (req, res) => {
   try {
+    const clerkId = getCurrentClerkId(req);
+    const viewer = await getOrCreatePlayer(clerkId);
+
     const playerId = parseInt(String(req.params.playerId));
     const rows = await db.select({
       id: playersTable.id,
@@ -193,6 +205,9 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
     if (!rows[0]) return void res.status(404).json({ error: "Player not found" });
 
     const p = rows[0];
+    const isSelf = p.id === viewer.id;
+    const redact = !isSelf && p.antiSpyEnabled;
+
     let gangName: string | null = null;
     if (p.gangId) {
       const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, p.gangId)).limit(1);
@@ -201,6 +216,8 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
 
     res.json({
       ...p,
+      attackPower: redact ? null : p.attackPower,
+      defensePower: redact ? null : p.defensePower,
       cityName: p.cityName ?? "",
       gangName,
       gangRank: p.gangRank ?? null,

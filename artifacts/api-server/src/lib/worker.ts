@@ -1,9 +1,9 @@
 import { db } from "./db";
 import {
   playersTable, attacksTable, weaponsTable,
-  playerNpcGuardsTable, npcBodyguardsTable,
+  playerNpcGuardsTable, npcBodyguardsTable, playerGuardsTable,
 } from "@workspace/db/schema";
-import { eq, and, lte, sql } from "drizzle-orm";
+import { eq, and, lte, sql, sum } from "drizzle-orm";
 import { logActivity } from "./activityLog";
 import { logger } from "./logger";
 
@@ -97,8 +97,20 @@ async function processAttackArrivals(): Promise<void> {
       }
 
       // target.defensePower already includes NPC guard bonuses (added on hire, removed on dismiss).
-      // Using it directly avoids double-counting guard stats.
-      const totalDefense = target[0].defensePower;
+      // Fetch active player guards and add their defensePower on top.
+      const activePlayerGuards = await db
+        .select({
+          id: playerGuardsTable.id,
+          guardPlayerId: playerGuardsTable.guardPlayerId,
+          guardDefense: playersTable.defensePower,
+          guardUsername: playersTable.username,
+        })
+        .from(playerGuardsTable)
+        .leftJoin(playersTable, eq(playerGuardsTable.guardPlayerId, playersTable.id))
+        .where(eq(playerGuardsTable.protectedPlayerId, target[0].id));
+
+      const playerGuardBonus = activePlayerGuards.reduce((s, g) => s + (g.guardDefense ?? 0), 0);
+      const totalDefense = target[0].defensePower + playerGuardBonus;
 
       const weaponBonus = weapon[0]?.attackPower ?? 0;
       const totalAttack = attacker[0].attackPower + weaponBonus + (attack.ammoUsed * 2);
@@ -106,8 +118,8 @@ async function processAttackArrivals(): Promise<void> {
       const damage = Math.max(0, totalAttack - totalDefense);
 
       if (attackWins) {
-        // Bodyguards absorb damage first — find target's first active NPC guard
-        const firstGuard = await db
+        // Guard absorption order: NPC guards first, then player guards
+        const firstNpcGuard = await db
           .select({
             id: playerNpcGuardsTable.id,
             defensePower: npcBodyguardsTable.defensePower,
@@ -118,11 +130,13 @@ async function processAttackArrivals(): Promise<void> {
           .where(eq(playerNpcGuardsTable.playerId, target[0].id))
           .limit(1);
 
-        if (firstGuard[0]) {
-          // Guard absorbs the blow — dismiss them and reduce target's defensePower accordingly
-          const guardDef = firstGuard[0].defensePower ?? 0;
+        const firstGuard = firstNpcGuard[0] ?? null;
+
+        if (firstGuard) {
+          // NPC guard absorbs the blow
+          const guardDef = firstGuard.defensePower ?? 0;
           await db.transaction(async (tx) => {
-            await tx.delete(playerNpcGuardsTable).where(eq(playerNpcGuardsTable.id, firstGuard[0].id));
+            await tx.delete(playerNpcGuardsTable).where(eq(playerNpcGuardsTable.id, firstGuard.id));
             if (guardDef > 0) {
               await tx.update(playersTable).set({
                 defensePower: sql`GREATEST(10, ${playersTable.defensePower} - ${guardDef})`,
@@ -137,13 +151,40 @@ async function processAttackArrivals(): Promise<void> {
           await logActivity(
             attacker[0].id,
             "attack_repelled",
-            `Attack on ${target[0].username} was intercepted by their bodyguard`,
+            `Attack on ${target[0].username} was intercepted by their NPC bodyguard`,
           );
           await logActivity(
             target[0].id,
             "attack_defended",
-            `Your bodyguard ${firstGuard[0].npcName ?? "Unknown"} sacrificed themselves to protect you from ${attacker[0].username}!`,
+            `Your bodyguard ${firstGuard.npcName ?? "Unknown"} sacrificed themselves to protect you from ${attacker[0].username}!`,
           );
+        } else if (activePlayerGuards[0]) {
+          // Player guard absorbs the blow — remove them from guard duty
+          const pg = activePlayerGuards[0];
+          await db.transaction(async (tx) => {
+            await tx.delete(playerGuardsTable).where(eq(playerGuardsTable.id, pg.id));
+            await tx.update(attacksTable)
+              .set({ status: "completed", damageDealt: damage, targetSurvived: true })
+              .where(eq(attacksTable.id, attack.id));
+          });
+
+          await logActivity(
+            attacker[0].id,
+            "attack_repelled",
+            `Attack on ${target[0].username} was intercepted by their player bodyguard`,
+          );
+          await logActivity(
+            target[0].id,
+            "attack_defended",
+            `Your guard ${pg.guardUsername ?? "Unknown"} stepped in and protected you from ${attacker[0].username}!`,
+          );
+          if (pg.guardPlayerId) {
+            await logActivity(
+              pg.guardPlayerId,
+              "guard_dismissed",
+              `You took a hit for ${target[0].username} and were dismissed from guard duty.`,
+            );
+          }
         } else {
           // No guards — player takes full damage
           const moneyStolen = Math.min(target[0].money, Math.floor(damage * 10));

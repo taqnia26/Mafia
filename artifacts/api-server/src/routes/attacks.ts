@@ -7,6 +7,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, desc, sum } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
+import { recordSpy, hasRecentSpy } from "../lib/spyCache";
 
 const router = Router();
 
@@ -53,6 +54,8 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
         .where(eq(playerWeaponsTable.playerId, t.id)),
     ]);
 
+    recordSpy(player.id, t.id);
+
     res.json({
       success: true,
       blocked: false,
@@ -81,6 +84,9 @@ router.post("/attacks", requireAuth, async (req, res) => {
     if (player.isTraveling) return void res.status(400).json({ error: "Cannot attack while traveling" });
 
     const { targetPlayerId, weaponId, ammoQuantity } = req.body;
+    if (!hasRecentSpy(player.id, parseInt(String(targetPlayerId)))) {
+      return void res.status(400).json({ error: "You must spy on your target before attacking" });
+    }
     const ammoQty = parseInt(String(ammoQuantity));
     if (!targetPlayerId || !weaponId || !ammoQty || ammoQty < 1) {
       return void res.status(400).json({ error: "targetPlayerId, weaponId, and ammoQuantity are required" });
