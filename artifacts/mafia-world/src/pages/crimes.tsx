@@ -1,13 +1,14 @@
 import { useListCrimes, useAttemptCrime, useGetCrimeHistory, getListCrimesQueryKey, getGetCrimeHistoryQueryKey, getGetMyProfileQueryKey, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Briefcase, DollarSign, AlertCircle, Clock, ShieldAlert } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { getApiError } from "@/lib/apiError";
 
 export default function Crimes() {
   const { t } = useI18n();
@@ -26,29 +27,28 @@ export default function Crimes() {
         
         if (result.success) {
           toast({ 
-            title: "Crime Successful", 
+            title: t("crimes.success"), 
             description: result.message,
-            variant: "default",
             className: "bg-green-900 border-green-500 text-white"
           });
         } else if (result.caught) {
           toast({ 
-            title: "Busted!", 
+            title: t("crimes.busted"), 
             description: result.message,
             variant: "destructive"
           });
         } else {
           toast({ 
-            title: "Crime Failed", 
+            title: t("crimes.failed"), 
             description: result.message,
             variant: "destructive"
           });
         }
       },
-      onError: (error: any) => {
+      onError: (err: unknown) => {
         toast({ 
-          title: "Cannot attempt crime", 
-          description: error?.response?.data?.error || "An error occurred",
+          title: t("crimes.cannotAttempt"), 
+          description: getApiError(err),
           variant: "destructive"
         });
       }
@@ -63,7 +63,7 @@ export default function Crimes() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-xl font-heading uppercase text-muted-foreground mb-4">Available Crimes</h2>
+          <h2 className="text-xl font-heading uppercase text-muted-foreground mb-4">{t("crimes.available")}</h2>
           
           {isLoading ? (
             <div className="space-y-4">
@@ -78,7 +78,7 @@ export default function Crimes() {
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-lg font-bold font-heading uppercase">{crime.name}</h3>
                     <Badge variant={crime.successRate > 70 ? "outline" : crime.successRate > 40 ? "secondary" : "destructive"} className="font-mono">
-                      {crime.successRate}% Success
+                      {crime.successRate}% {t("crimes.successRate")}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">{crime.description}</p>
@@ -95,7 +95,7 @@ export default function Crimes() {
                     {crime.prisonTimeHours > 0 && (
                       <div className="flex items-center gap-1.5 text-destructive">
                         <ShieldAlert className="w-4 h-4" />
-                        <span className="font-mono">{crime.prisonTimeHours}h Risk</span>
+                        <span className="font-mono">{crime.prisonTimeHours}h {t("crimes.prisonRisk")}</span>
                       </div>
                     )}
                   </div>
@@ -106,10 +106,10 @@ export default function Crimes() {
                     onClick={() => attemptCrime.mutate({ data: { crimeTypeId: crime.id } })}
                     disabled={attemptCrime.isPending}
                   >
-                    Attempt
+                    {t("crimes.attempt")}
                   </Button>
                   <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {crime.cooldownMinutes}m cooldown
+                    <Clock className="w-3 h-3" /> {crime.cooldownMinutes}m {t("crimes.cooldown")}
                   </p>
                 </div>
               </div>
@@ -120,8 +120,8 @@ export default function Crimes() {
         <div>
           <Card className="bg-card border-border sticky top-4">
             <CardHeader>
-              <CardTitle className="font-heading uppercase tracking-wider text-lg">Rap Sheet</CardTitle>
-              <CardDescription>Your recent criminal activity</CardDescription>
+              <CardTitle className="font-heading uppercase tracking-wider text-lg">{t("crimes.rapSheet")}</CardTitle>
+              <CardDescription>{t("crimes.rapSheetDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {isHistoryLoading ? (
@@ -143,9 +143,9 @@ export default function Crimes() {
                             +${record.moneyEarned} • +{record.xpEarned} XP
                           </p>
                         ) : record.caught ? (
-                          <p className="text-xs text-destructive mt-1">Busted by the cops</p>
+                          <p className="text-xs text-destructive mt-1">{t("crimes.caughtByCops")}</p>
                         ) : (
-                          <p className="text-xs text-orange-500 mt-1">Failed attempt</p>
+                          <p className="text-xs text-orange-500 mt-1">{t("crimes.failedEscaped")}</p>
                         )}
                         <p className="text-[10px] text-muted-foreground mt-1">
                           {formatDistanceToNow(new Date(record.attemptedAt), { addSuffix: true })}
@@ -156,7 +156,7 @@ export default function Crimes() {
                 </div>
               ) : (
                 <div className="p-6 text-center text-sm text-muted-foreground">
-                  You have a clean record. Time to get to work.
+                  {t("crimes.cleanRecord")}
                 </div>
               )}
             </CardContent>

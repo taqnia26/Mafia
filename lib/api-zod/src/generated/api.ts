@@ -852,6 +852,19 @@ export const GetPrisonStatusResponse = zod.object({
 });
 
 /**
+ * @summary Bribe guards to escape your own prison sentence
+ */
+export const SelfBribeEscapeBody = zod.object({
+  method: zod.enum(["bribe", "raid"]),
+});
+
+export const SelfBribeEscapeResponse = zod.object({
+  success: zod.boolean(),
+  moneyCost: zod.number(),
+  message: zod.string(),
+});
+
+/**
  * @summary Attempt to break a gang member out of prison
  */
 export const AttemptJailbreakParams = zod.object({

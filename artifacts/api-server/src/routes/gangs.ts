@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../lib/db";
 import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import { gangsTable, playersTable, gangRankEnum } from "@workspace/db/schema";
-import { eq, count, desc, sql } from "drizzle-orm";
+import { eq, and, count, desc, sql } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
 
 type GangRank = typeof gangRankEnum[number];
@@ -164,7 +164,7 @@ router.post("/gangs/:gangId/members/:memberId/promote", requireAuth, async (req,
 
     const [member] = await db.update(playersTable)
       .set({ gangRank: rank as GangRank, updatedAt: new Date() })
-      .where(eq(playersTable.id, memberId))
+      .where(and(eq(playersTable.id, memberId), eq(playersTable.gangId, gangId)))
       .returning();
 
     if (!member) return void res.status(404).json({ error: "Member not found" });

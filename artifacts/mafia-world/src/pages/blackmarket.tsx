@@ -14,19 +14,25 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { getApiError } from "@/lib/apiError";
+
+type ItemType = "weapon" | "ammo" | "armor";
 
 export default function BlackMarket() {
   const { t } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterType, setFilterType] = useState<"all" | ItemType>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newItemType, setNewItemType] = useState<"weapon" | "ammo" | "armor">("weapon");
+  const [newItemType, setNewItemType] = useState<ItemType>("weapon");
   const [newItemId, setNewItemId] = useState("");
   const [newQuantity, setNewQuantity] = useState("1");
   const [newPrice, setNewPrice] = useState("");
 
-  const { data: listings, isLoading: isListingsLoading } = useListBlackMarket({ type: filterType === "all" ? undefined : filterType as any }, { query: { queryKey: getListBlackMarketQueryKey({ type: filterType === "all" ? undefined : filterType as any }) } });
+  const { data: listings, isLoading: isListingsLoading } = useListBlackMarket(
+    { type: filterType === "all" ? undefined : filterType },
+    { query: { queryKey: getListBlackMarketQueryKey({ type: filterType === "all" ? undefined : filterType }) } }
+  );
   const { data: myListings, isLoading: isMyListingsLoading } = useGetMyListings({ query: { queryKey: getGetMyListingsQueryKey() } });
 
   const buyListing = useBuyListing({
@@ -35,9 +41,9 @@ export default function BlackMarket() {
         queryClient.invalidateQueries({ queryKey: getListBlackMarketQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
-        toast({ title: "Purchase Successful", description: "Item acquired from the Black Market." });
+        toast({ title: t("common.success"), description: "Item acquired from the Black Market." });
       },
-      onError: (err: any) => toast({ title: "Purchase Failed", description: err?.response?.data?.error || "Error", variant: "destructive" })
+      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -48,7 +54,7 @@ export default function BlackMarket() {
         queryClient.invalidateQueries({ queryKey: getGetMyListingsQueryKey() });
         toast({ title: "Listing Cancelled", description: "Your listing has been removed." });
       },
-      onError: (err: any) => toast({ title: "Cancel Failed", description: err?.response?.data?.error || "Error", variant: "destructive" })
+      onError: (err: unknown) => toast({ title: "Cancel Failed", description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -63,7 +69,7 @@ export default function BlackMarket() {
         setNewPrice("");
         toast({ title: "Listing Created", description: "Your item is now on the Black Market." });
       },
-      onError: (err: any) => toast({ title: "Create Failed", description: err?.response?.data?.error || "Error", variant: "destructive" })
+      onError: (err: unknown) => toast({ title: "Create Failed", description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -86,43 +92,43 @@ export default function BlackMarket() {
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="font-heading uppercase tracking-wider">
-              <Plus className="w-4 h-4 mr-2" /> Create Listing
+              <Plus className="w-4 h-4 mr-2" /> {t("blackmarket.createListing")}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="font-heading uppercase tracking-wider text-xl text-primary">Sell Item</DialogTitle>
+              <DialogTitle className="font-heading uppercase tracking-wider text-xl text-primary">{t("blackmarket.sellItem")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Item Type</Label>
-                <Select value={newItemType} onValueChange={(val: any) => setNewItemType(val)}>
+                <Label>{t("blackmarket.itemType")}</Label>
+                <Select value={newItemType} onValueChange={(val) => setNewItemType(val as ItemType)}>
                   <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="weapon">Weapon</SelectItem>
-                    <SelectItem value="ammo">Ammo</SelectItem>
-                    <SelectItem value="armor">Armor</SelectItem>
+                    <SelectItem value="weapon">{t("nav.weapons")}</SelectItem>
+                    <SelectItem value="ammo">{t("weapons.buyAmmo")}</SelectItem>
+                    <SelectItem value="armor">{t("nav.armor")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Item ID (Internal ID for now)</Label>
+                <Label>{t("blackmarket.itemId")}</Label>
                 <Input type="number" value={newItemId} onChange={(e) => setNewItemId(e.target.value)} className="bg-background" />
               </div>
               <div className="space-y-2">
-                <Label>Quantity</Label>
+                <Label>{t("common.quantity")}</Label>
                 <Input type="number" value={newQuantity} onChange={(e) => setNewQuantity(e.target.value)} className="bg-background" />
               </div>
               <div className="space-y-2">
-                <Label>Price (Total)</Label>
+                <Label>{t("common.price")}</Label>
                 <Input type="number" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} className="bg-background" />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={!newItemId || !newQuantity || !newPrice || createListing.isPending}>List Item</Button>
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>{t("common.cancel")}</Button>
+              <Button onClick={handleCreate} disabled={!newItemId || !newQuantity || !newPrice || createListing.isPending}>{t("blackmarket.listItem")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -130,22 +136,22 @@ export default function BlackMarket() {
 
       <Tabs defaultValue="browse" className="w-full">
         <TabsList className="w-full max-w-md grid grid-cols-2 bg-card border border-border">
-          <TabsTrigger value="browse" className="font-heading uppercase">Browse Market</TabsTrigger>
-          <TabsTrigger value="mylistings" className="font-heading uppercase">My Listings</TabsTrigger>
+          <TabsTrigger value="browse" className="font-heading uppercase">{t("blackmarket.browse")}</TabsTrigger>
+          <TabsTrigger value="mylistings" className="font-heading uppercase">{t("blackmarket.myListings")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse" className="space-y-6 mt-6">
           <div className="flex items-center gap-4 bg-card p-4 border border-border rounded-lg">
-            <Label className="font-heading uppercase tracking-wider">Filter:</Label>
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Label className="font-heading uppercase tracking-wider">{t("blackmarket.filter")}:</Label>
+            <Select value={filterType} onValueChange={(v) => setFilterType(v as "all" | ItemType)}>
               <SelectTrigger className="w-[180px] bg-background">
-                <SelectValue placeholder="All Items" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Items</SelectItem>
-                <SelectItem value="weapon">Weapons</SelectItem>
-                <SelectItem value="ammo">Ammunition</SelectItem>
-                <SelectItem value="armor">Armor</SelectItem>
+                <SelectItem value="all">{t("blackmarket.allItems")}</SelectItem>
+                <SelectItem value="weapon">{t("nav.weapons")}</SelectItem>
+                <SelectItem value="ammo">{t("weapons.buyAmmo")}</SelectItem>
+                <SelectItem value="armor">{t("nav.armor")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -160,7 +166,7 @@ export default function BlackMarket() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="font-heading uppercase tracking-wider">{item.itemName}</CardTitle>
-                        <CardDescription className="text-xs mt-1">Seller: {item.sellerUsername}</CardDescription>
+                        <CardDescription className="text-xs mt-1">{t("blackmarket.seller")}: {item.sellerUsername}</CardDescription>
                       </div>
                       <Badge variant="secondary" className="uppercase">{item.itemType}</Badge>
                     </div>
@@ -177,7 +183,7 @@ export default function BlackMarket() {
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-4 text-right">
-                      Listed {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                     </p>
                   </CardContent>
                   <CardFooter>
@@ -186,7 +192,7 @@ export default function BlackMarket() {
                       onClick={() => buyListing.mutate({ listingId: item.id })}
                       disabled={buyListing.isPending}
                     >
-                      Purchase
+                      {t("common.buy")}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -194,8 +200,8 @@ export default function BlackMarket() {
             ) : (
               <div className="col-span-full p-12 text-center border border-border border-dashed rounded-xl bg-card/50">
                 <ShoppingBag className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-heading uppercase text-muted-foreground">The market is dry.</p>
-                <p className="text-sm text-muted-foreground mt-2">No items match your filter criteria.</p>
+                <p className="text-lg font-heading uppercase text-muted-foreground">{t("blackmarket.marketDry")}</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("blackmarket.noItems")}</p>
               </div>
             )}
           </div>
@@ -204,8 +210,8 @@ export default function BlackMarket() {
         <TabsContent value="mylistings" className="space-y-6 mt-6">
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="font-heading uppercase flex items-center gap-2"><Tag className="w-5 h-5 text-primary" /> Active Listings</CardTitle>
-              <CardDescription>Items you are currently selling</CardDescription>
+              <CardTitle className="font-heading uppercase flex items-center gap-2"><Tag className="w-5 h-5 text-primary" /> {t("blackmarket.activeListings")}</CardTitle>
+              <CardDescription>{t("blackmarket.activeListingsDesc")}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {isMyListingsLoading ? (
@@ -221,11 +227,11 @@ export default function BlackMarket() {
                           <p className="font-bold font-heading uppercase">{item.itemName}</p>
                           <Badge variant="outline" className="text-[10px] h-5">{item.itemType}</Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">Listed {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}</p>
                       </div>
                       <div className="flex items-center gap-6">
                         <div className="text-right">
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Quantity / Price</p>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("common.quantity")} / {t("common.price")}</p>
                           <p className="font-mono text-sm">
                             <span className="font-bold">x{item.quantity}</span> for <span className="text-green-500 font-bold">${item.price.toLocaleString()}</span>
                           </p>
@@ -236,14 +242,14 @@ export default function BlackMarket() {
                           onClick={() => cancelListing.mutate({ listingId: item.id })}
                           disabled={cancelListing.isPending}
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="p-8 text-center text-muted-foreground">You don't have any items listed on the market.</div>
+                <div className="p-8 text-center text-muted-foreground">{t("blackmarket.noActiveListings")}</div>
               )}
             </CardContent>
           </Card>

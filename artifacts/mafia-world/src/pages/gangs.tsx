@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Shield, Plus } from "lucide-react";
+import { Users, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
+import { getApiError } from "@/lib/apiError";
 
 export default function Gangs() {
   const { t } = useI18n();
@@ -31,8 +32,8 @@ export default function Gangs() {
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
         toast({ title: "Joined Gang", description: "You are now a member of the gang." });
       },
-      onError: (err: any) => {
-        toast({ title: "Cannot join gang", description: err?.response?.data?.error || "Error", variant: "destructive" });
+      onError: (err: unknown) => {
+        toast({ title: "Cannot join gang", description: getApiError(err), variant: "destructive" });
       }
     }
   });
@@ -47,8 +48,8 @@ export default function Gangs() {
         setNewGangDesc("");
         toast({ title: "Gang Created", description: "Your gang has been established." });
       },
-      onError: (err: any) => {
-        toast({ title: "Cannot create gang", description: err?.response?.data?.error || "Error", variant: "destructive" });
+      onError: (err: unknown) => {
+        toast({ title: "Cannot create gang", description: getApiError(err), variant: "destructive" });
       }
     }
   });
@@ -65,26 +66,26 @@ export default function Gangs() {
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="font-heading uppercase tracking-wider">
-              <Plus className="w-4 h-4 mr-2" /> Create Gang
+              <Plus className="w-4 h-4 mr-2" /> {t("common.create")}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-card border-border sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="font-heading uppercase tracking-wider text-xl text-primary">Establish New Gang</DialogTitle>
+              <DialogTitle className="font-heading uppercase tracking-wider text-xl text-primary">{t("gangs.createGang")}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Gang Name</Label>
+                <Label>{t("common.name")}</Label>
                 <Input value={newGangName} onChange={(e) => setNewGangName(e.target.value)} placeholder="e.g. The Sopranos" className="bg-background" />
               </div>
               <div className="space-y-2">
-                <Label>Description</Label>
+                <Label>{t("common.description")}</Label>
                 <Textarea value={newGangDesc} onChange={(e) => setNewGangDesc(e.target.value)} placeholder="Your gang's motto or rules..." className="bg-background resize-none" rows={3} />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={!newGangName || createGang.isPending}>Form Gang</Button>
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>{t("common.cancel")}</Button>
+              <Button onClick={handleCreate} disabled={!newGangName || createGang.isPending}>{t("gangs.createGang")}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -103,7 +104,7 @@ export default function Gangs() {
                     <Users className="w-3 h-3" /> {gang.memberCount}
                   </Badge>
                 </div>
-                <CardDescription className="text-xs">Boss: <span className="font-bold text-foreground">{gang.bossName}</span></CardDescription>
+                <CardDescription className="text-xs">{t("gangs.boss")}: <span className="font-bold text-foreground">{gang.bossName}</span></CardDescription>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col pt-0">
                 <p className="text-sm text-muted-foreground flex-1 mb-4 line-clamp-2">{gang.description}</p>
@@ -114,10 +115,10 @@ export default function Gangs() {
                     onClick={() => joinGang.mutate({ gangId: gang.id })}
                     disabled={joinGang.isPending}
                   >
-                    Join
+                    {t("common.join")}
                   </Button>
                   <Link href={`/gang/${gang.id}`} className="flex-1">
-                    <Button variant="secondary" className="w-full">Details</Button>
+                    <Button variant="secondary" className="w-full">{t("gangs.members")}</Button>
                   </Link>
                 </div>
               </CardContent>
@@ -125,7 +126,7 @@ export default function Gangs() {
           ))
         ) : (
           <div className="col-span-full p-8 text-center text-muted-foreground">
-            No gangs found. Be the first to start one.
+            {t("gangs.noGangs")}
           </div>
         )}
       </div>

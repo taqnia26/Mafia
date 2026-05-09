@@ -155,6 +155,34 @@ router.get("/prison/status", requireAuth, async (req, res) => {
   }
 });
 
+router.post("/prison/escape", requireAuth, async (req, res) => {
+  try {
+    const clerkId = getCurrentClerkId(req);
+    const player = await getOrCreatePlayer(clerkId);
+
+    if (!player.isInPrison) return void res.status(400).json({ error: "You are not in prison" });
+
+    const bribeCost = 5000;
+    if (player.money < bribeCost) {
+      return void res.status(400).json({ error: `Bribe costs $${bribeCost.toLocaleString()} — you don't have enough` });
+    }
+
+    await db.update(playersTable).set({
+      money: player.money - bribeCost,
+      isInPrison: false,
+      prisonReleaseAt: null,
+      prisonCrime: null,
+      updatedAt: new Date(),
+    }).where(eq(playersTable.id, player.id));
+
+    await logActivity(player.id, "released", "Bribed the guards and walked free");
+
+    res.json({ success: true, moneyCost: bribeCost, message: "Guards bribed. You're a free man." });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
 router.post("/prison/jailbreak/:targetPlayerId", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);

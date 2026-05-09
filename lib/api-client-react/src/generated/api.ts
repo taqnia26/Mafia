@@ -3857,6 +3857,92 @@ export function useGetPrisonStatus<
 }
 
 /**
+ * @summary Bribe guards to escape your own prison sentence
+ */
+export const getSelfBribeEscapeUrl = () => {
+  return `/api/prison/escape`;
+};
+
+export const selfBribeEscape = async (
+  jailbreakInput: JailbreakInput,
+  options?: RequestInit,
+): Promise<JailbreakResult> => {
+  return customFetch<JailbreakResult>(getSelfBribeEscapeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(jailbreakInput),
+  });
+};
+
+export const getSelfBribeEscapeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selfBribeEscape>>,
+    TError,
+    { data: BodyType<JailbreakInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof selfBribeEscape>>,
+  TError,
+  { data: BodyType<JailbreakInput> },
+  TContext
+> => {
+  const mutationKey = ["selfBribeEscape"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof selfBribeEscape>>,
+    { data: BodyType<JailbreakInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return selfBribeEscape(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SelfBribeEscapeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof selfBribeEscape>>
+>;
+export type SelfBribeEscapeMutationBody = BodyType<JailbreakInput>;
+export type SelfBribeEscapeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Bribe guards to escape your own prison sentence
+ */
+export const useSelfBribeEscape = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof selfBribeEscape>>,
+    TError,
+    { data: BodyType<JailbreakInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof selfBribeEscape>>,
+  TError,
+  { data: BodyType<JailbreakInput> },
+  TContext
+> => {
+  return useMutation(getSelfBribeEscapeMutationOptions(options));
+};
+
+/**
  * @summary Attempt to break a gang member out of prison
  */
 export const getAttemptJailbreakUrl = (targetPlayerId: number) => {

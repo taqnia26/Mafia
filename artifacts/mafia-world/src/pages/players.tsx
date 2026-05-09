@@ -1,22 +1,31 @@
 import { useState, useEffect } from "react";
 import { useListPlayers, useSpyOnPlayer, getListPlayersQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Eye, Swords, Shield, Crosshair } from "lucide-react";
+import { Search, Eye, Swords, Crosshair, Shield, CheckCircle2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+import { getApiError } from "@/lib/apiError";
+
+type SpyResult = {
+  targetPlayerId: number;
+  blocked: boolean;
+  attackPower?: number | null;
+  defensePower?: number | null;
+  isInPrison?: boolean | null;
+  bodyguardCount?: number | null;
+};
 
 export default function Players() {
   const { t } = useI18n();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [spiedPlayerId, setSpyiedPlayerId] = useState<number | null>(null);
+  const [spyResults, setSpyResults] = useState<Map<number, SpyResult>>(new Map());
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 500);
@@ -28,25 +37,25 @@ export default function Players() {
   const spy = useSpyOnPlayer({
     mutation: {
       onSuccess: (result) => {
-        if (result.success && !result.blocked) {
+        if (result.blocked) {
           toast({
-            title: "Spy Successful",
-            description: `Target has ${result.attackPower} ATK and ${result.defensePower} DEF.`,
-            className: "bg-green-900 border-green-500",
-          });
-          // In a real app we'd open a modal with the full result. For now, simple toast.
-        } else if (result.blocked) {
-          toast({
-            title: "Spy Blocked",
-            description: "The target has Anti-Spy enabled.",
+            title: t("attack.spyBlocked"),
+            description: t("attack.spyBlockedDesc"),
             variant: "destructive",
+          });
+        } else if (result.success && result.targetPlayerId != null) {
+          setSpyResults(prev => new Map(prev).set(result.targetPlayerId!, result as SpyResult));
+          toast({
+            title: t("attack.spySuccess"),
+            description: `ATK: ${result.attackPower} | DEF: ${result.defensePower}`,
+            className: "bg-green-900 border-green-500",
           });
         }
       },
-      onError: (err: any) => {
+      onError: (err: unknown) => {
         toast({
-          title: "Spy Failed",
-          description: err?.response?.data?.error || "An error occurred",
+          title: t("attack.spyFailed"),
+          description: getApiError(err),
           variant: "destructive",
         });
       }
@@ -60,7 +69,7 @@ export default function Players() {
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search players..." 
+            placeholder={t("common.search") + "..."} 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-card border-border"
@@ -72,50 +81,70 @@ export default function Players() {
         {isLoading ? (
           Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 w-full bg-card" />)
         ) : data?.players && data.players.length > 0 ? (
-          data.players.map((player) => (
-            <Card key={player.id} className="bg-card border-border hover:border-primary/50 transition-colors">
-              <CardContent className="p-5">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-bold text-lg font-heading uppercase">{player.username}</h3>
-                    <p className="text-sm text-muted-foreground">Level {player.level} • {player.cityName}</p>
+          data.players.map((player) => {
+            const spyData = spyResults.get(player.id);
+            return (
+              <Card key={player.id} className="bg-card border-border hover:border-primary/50 transition-colors">
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-lg font-heading uppercase">{player.username}</h3>
+                      <p className="text-sm text-muted-foreground">{t("common.level")} {player.level} • {player.cityName}</p>
+                    </div>
+                    {player.gangName && (
+                      <Badge variant="outline" className="border-primary/50 text-primary">{player.gangName}</Badge>
+                    )}
                   </div>
-                  {player.gangName && (
-                    <Badge variant="outline" className="border-primary/50 text-primary">{player.gangName}</Badge>
-                  )}
-                </div>
-                
-                <div className="mt-4 flex gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><Crosshair className="w-3 h-3" /> {player.killCount}</span>
-                  <span className="flex items-center gap-1 text-destructive"><Swords className="w-3 h-3" /> {player.deathCount}</span>
-                </div>
+                  
+                  <div className="mt-3 flex gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1"><Crosshair className="w-3 h-3" /> {player.killCount}</span>
+                    <span className="flex items-center gap-1 text-destructive"><Swords className="w-3 h-3" /> {player.deathCount}</span>
+                  </div>
 
-                <div className="mt-6 flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1 font-heading uppercase tracking-wider"
-                    onClick={() => spy.mutate({ targetPlayerId: player.id })}
-                    disabled={spy.isPending}
-                  >
-                    <Eye className="w-4 h-4 mr-2" /> Spy
-                  </Button>
-                  <Link href={`/attack?target=${player.id}`} className="flex-1">
+                  {spyData && !spyData.blocked && (
+                    <div className="mt-3 p-2 rounded bg-green-500/10 border border-green-500/20 text-xs space-y-1">
+                      <div className="flex gap-4 font-mono">
+                        <span className="flex items-center gap-1 text-destructive"><Swords className="w-3 h-3" /> {t("common.attack")}: {spyData.attackPower ?? "?"}</span>
+                        <span className="flex items-center gap-1 text-blue-400"><Shield className="w-3 h-3" /> {t("common.defense")}: {spyData.defensePower ?? "?"}</span>
+                      </div>
+                      <div className="flex gap-3 text-muted-foreground">
+                        {spyData.isInPrison ? (
+                          <span className="flex items-center gap-1 text-orange-400"><AlertCircle className="w-3 h-3" /> {t("nav.prison")}</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-green-400"><CheckCircle2 className="w-3 h-3" /> {t("attack.free")}</span>
+                        )}
+                        <span>{t("nav.bodyguards")}: {spyData.bodyguardCount ?? 0}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex gap-2">
                     <Button 
-                      variant="destructive" 
+                      variant="outline" 
                       size="sm" 
-                      className="w-full font-heading uppercase tracking-wider"
+                      className="flex-1 font-heading uppercase tracking-wider"
+                      onClick={() => spy.mutate({ targetPlayerId: player.id })}
+                      disabled={spy.isPending}
                     >
-                      <Swords className="w-4 h-4 mr-2" /> Attack
+                      <Eye className="w-4 h-4 mr-2" /> {t("attack.spy")}
                     </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                    <Link href={`/attack?target=${player.id}`} className="flex-1">
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="w-full font-heading uppercase tracking-wider"
+                      >
+                        <Swords className="w-4 h-4 mr-2" /> {t("common.attack")}
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <div className="col-span-full p-8 text-center text-muted-foreground">
-            No players found.
+            {t("players.noPlayers")}
           </div>
         )}
       </div>

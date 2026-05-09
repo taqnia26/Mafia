@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Crosshair, Package, Shield, Swords, Battery } from "lucide-react";
+import { Package, Swords, Battery } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { getApiError } from "@/lib/apiError";
 
 export default function Weapons() {
   const { t } = useI18n();
@@ -25,9 +26,9 @@ export default function Weapons() {
         queryClient.invalidateQueries({ queryKey: getGetMyWeaponsQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
-        toast({ title: "Purchase Successful", description: "Weapon added to your arsenal." });
+        toast({ title: t("common.success"), description: "Weapon added to your arsenal." });
       },
-      onError: (err: any) => toast({ title: "Purchase Failed", description: err?.response?.data?.error || "Error", variant: "destructive" })
+      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -36,9 +37,9 @@ export default function Weapons() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetMyAmmoQueryKey() });
         queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
-        toast({ title: "Purchase Successful", description: "Ammo added to stash." });
+        toast({ title: t("common.success"), description: "Ammo added to stash." });
       },
-      onError: (err: any) => toast({ title: "Purchase Failed", description: err?.response?.data?.error || "Error", variant: "destructive" })
+      onError: (err: unknown) => toast({ title: "Purchase Failed", description: getApiError(err), variant: "destructive" })
     }
   });
 
@@ -50,36 +51,31 @@ export default function Weapons() {
 
       <Tabs defaultValue="shop" className="w-full">
         <TabsList className="w-full max-w-md grid grid-cols-2 bg-card border border-border">
-          <TabsTrigger value="shop" className="font-heading uppercase">Black Market Shop</TabsTrigger>
-          <TabsTrigger value="inventory" className="font-heading uppercase">My Arsenal</TabsTrigger>
+          <TabsTrigger value="shop" className="font-heading uppercase">{t("weapons.shop")}</TabsTrigger>
+          <TabsTrigger value="inventory" className="font-heading uppercase">{t("weapons.myWeapons")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="shop" className="space-y-8 mt-6">
           <div>
-            <h2 className="text-xl font-heading text-primary mb-4 flex items-center gap-2"><Swords className="w-5 h-5"/> Weapons</h2>
+            <h2 className="text-xl font-heading text-primary mb-4 flex items-center gap-2"><Swords className="w-5 h-5"/> {t("weapons.title")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isWeaponsLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full bg-card" />)
               ) : shopWeapons?.map((w) => (
                 <Card key={w.id} className="bg-card border-border flex flex-col hover:border-primary/50 transition-colors">
                   <CardHeader className="pb-2">
-                    <CardTitle className="font-heading uppercase">{w.name}</CardTitle>
-                    <Badge variant="outline" className="w-fit">{w.type.replace('_', ' ')}</Badge>
-                  </CardHeader>
-                  <CardContent className="flex-1 pb-2">
-                    <p className="text-sm text-muted-foreground mb-4">{w.description}</p>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-1 text-orange-500"><Crosshair className="w-4 h-4"/> +{w.attackPower} ATK</span>
-                      <span className="font-mono text-green-500 font-bold">${w.price.toLocaleString()}</span>
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="font-heading uppercase tracking-wider text-base">{w.name}</CardTitle>
+                      <Badge variant="outline" className="font-mono text-destructive border-destructive/50">+{w.attackPower} ATK</Badge>
                     </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 text-sm text-muted-foreground space-y-1">
+                    <p>{t("weapons.ammoType")}: <span className="text-foreground font-medium">{w.ammoType}</span></p>
                   </CardContent>
-                  <CardFooter>
-                    <Button 
-                      className="w-full font-heading uppercase" 
-                      onClick={() => buyWeapon.mutate({ weaponId: w.id, data: { quantity: 1 } })}
-                      disabled={buyWeapon.isPending}
-                    >
-                      Buy
+                  <CardFooter className="flex items-center justify-between pt-3 border-t border-border/50">
+                    <span className="text-green-500 font-mono font-bold">${w.price.toLocaleString()}</span>
+                    <Button size="sm" className="font-heading uppercase" onClick={() => buyWeapon.mutate({ weaponId: w.id, data: { quantity: 1 } })} disabled={buyWeapon.isPending}>
+                      {t("common.buy")}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -88,31 +84,22 @@ export default function Weapons() {
           </div>
 
           <div>
-            <h2 className="text-xl font-heading text-primary mb-4 flex items-center gap-2"><Battery className="w-5 h-5"/> Ammunition</h2>
+            <h2 className="text-xl font-heading text-primary mb-4 flex items-center gap-2"><Battery className="w-5 h-5"/> {t("weapons.buyAmmo")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isAmmoLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full bg-card" />)
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full bg-card" />)
               ) : shopAmmo?.map((a) => (
-                <Card key={a.id} className="bg-card border-border flex flex-col hover:border-primary/50 transition-colors">
+                <Card key={a.id} className="bg-card border-border hover:border-primary/50 transition-colors flex flex-col">
                   <CardHeader className="pb-2">
-                    <CardTitle className="font-heading uppercase">{a.name}</CardTitle>
-                    <Badge variant="secondary" className="w-fit">{a.type}</Badge>
+                    <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
                   </CardHeader>
-                  <CardContent className="flex-1 pb-2">
-                    <p className="text-sm text-muted-foreground mb-4">{a.description}</p>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-1 text-orange-400">+{a.damageBonus} DMG Bonus</span>
-                      <span className="font-mono text-green-500 font-bold">${a.price.toLocaleString()}</span>
-                    </div>
+                  <CardContent className="flex-1 text-sm text-muted-foreground">
+                    <p>{t("weapons.damageBonus")}: <span className="text-orange-400 font-bold">+{a.damageBonus}</span></p>
                   </CardContent>
-                  <CardFooter>
-                    <Button 
-                      variant="secondary"
-                      className="w-full font-heading uppercase" 
-                      onClick={() => buyAmmo.mutate({ ammoId: a.id, data: { quantity: 10 } })}
-                      disabled={buyAmmo.isPending}
-                    >
-                      Buy x10
+                  <CardFooter className="flex items-center justify-between pt-3 border-t border-border/50">
+                    <span className="text-green-500 font-mono font-bold">${a.price.toLocaleString()}</span>
+                    <Button size="sm" className="font-heading uppercase" onClick={() => buyAmmo.mutate({ ammoId: a.id, data: { quantity: 10 } })} disabled={buyAmmo.isPending}>
+                      {t("common.buy")}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -121,60 +108,51 @@ export default function Weapons() {
           </div>
         </TabsContent>
 
-        <TabsContent value="inventory" className="space-y-8 mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <TabsContent value="inventory" className="mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle className="font-heading uppercase flex items-center gap-2"><Package className="w-5 h-5 text-primary" /> Owned Weapons</CardTitle>
+                <CardTitle className="font-heading uppercase flex items-center gap-2"><Swords className="w-5 h-5 text-primary"/> {t("weapons.myWeapons")}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {isMyWeaponsLoading ? (
-                  <div className="p-6 space-y-4">
-                    <Skeleton className="h-12 w-full bg-secondary" />
-                  </div>
+                  <div className="p-4 space-y-2"><Skeleton className="h-12 w-full bg-secondary" /></div>
                 ) : myWeapons && myWeapons.length > 0 ? (
                   <div className="divide-y divide-border/50">
                     {myWeapons.map((w) => (
-                      <div key={w.id} className="p-4 flex items-center justify-between hover:bg-secondary/20">
+                      <div key={w.weaponId} className="p-4 flex justify-between items-center">
                         <div>
                           <p className="font-bold font-heading uppercase">{w.weaponName}</p>
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <Crosshair className="w-3 h-3 text-orange-500" /> +{w.attackPower} ATK
-                          </p>
+                          <p className="text-xs text-muted-foreground">{t("common.quantity")}: {w.quantity}</p>
                         </div>
-                        <Badge variant="outline" className="font-mono text-lg">x{w.quantity}</Badge>
+                        <Badge variant="outline" className="font-mono text-destructive border-destructive/50">+{w.attackPower} ATK</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-muted-foreground">No weapons in arsenal.</div>
+                  <div className="p-8 text-center text-muted-foreground">{t("weapons.noWeapons")}</div>
                 )}
               </CardContent>
             </Card>
 
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle className="font-heading uppercase flex items-center gap-2"><Battery className="w-5 h-5 text-yellow-500" /> Ammunition Stash</CardTitle>
+                <CardTitle className="font-heading uppercase flex items-center gap-2"><Package className="w-5 h-5 text-orange-500"/> {t("weapons.totalAmmo")}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 {isMyAmmoLoading ? (
-                  <div className="p-6 space-y-4">
-                    <Skeleton className="h-12 w-full bg-secondary" />
-                  </div>
+                  <div className="p-4 space-y-2"><Skeleton className="h-12 w-full bg-secondary" /></div>
                 ) : myAmmo && myAmmo.length > 0 ? (
                   <div className="divide-y divide-border/50">
                     {myAmmo.map((a) => (
-                      <div key={a.id} className="p-4 flex items-center justify-between hover:bg-secondary/20">
-                        <div>
-                          <p className="font-bold font-heading uppercase">{a.ammoName}</p>
-                          <p className="text-xs text-muted-foreground mt-1 capitalize">{a.ammoType} rounds</p>
-                        </div>
-                        <Badge className="bg-yellow-600 text-yellow-50 font-mono text-lg">x{a.quantity}</Badge>
+                      <div key={a.ammoId} className="p-4 flex justify-between items-center">
+                        <p className="font-bold font-heading uppercase">{a.ammoName}</p>
+                        <Badge variant="secondary" className="font-mono">x{a.quantity}</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="p-8 text-center text-muted-foreground">No ammo in stash.</div>
+                  <div className="p-8 text-center text-muted-foreground">{t("weapons.noAmmo")}</div>
                 )}
               </CardContent>
             </Card>
