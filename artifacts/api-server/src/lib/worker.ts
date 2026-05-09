@@ -113,9 +113,9 @@ async function processAttackArrivals(): Promise<void> {
       const totalDefense = target[0].defensePower + playerGuardBonus;
 
       const weaponBonus = weapon[0]?.attackPower ?? 0;
-      const totalAttack = attacker[0].attackPower + weaponBonus + (attack.ammoUsed * 2);
-      const attackWins = totalAttack > totalDefense;
-      const damage = Math.max(0, totalAttack - totalDefense);
+      const totalAttack = weaponBonus * attack.ammoUsed + attacker[0].attackPower;
+      const damage = Math.max(1, totalAttack - totalDefense);
+      const attackWins = damage > 0;
 
       if (attackWins) {
         // Guard absorption order: NPC guards first, then player guards
@@ -186,17 +186,19 @@ async function processAttackArrivals(): Promise<void> {
             );
           }
         } else {
-          // No guards — player takes full damage
+          // No guards — player takes full damage to HP
+          const newHealth = target[0].health - damage;
+          const targetDied = newHealth <= 0;
           const moneyStolen = Math.min(target[0].money, Math.floor(damage * 10));
           const xpGain = 50 + Math.floor(damage / 2);
 
           await db.transaction(async (tx) => {
             await tx.update(attacksTable)
-              .set({ status: "completed", damageDealt: damage, targetSurvived: false })
+              .set({ status: "completed", damageDealt: damage, targetSurvived: !targetDied })
               .where(eq(attacksTable.id, attack.id));
 
             await tx.update(playersTable).set({
-              killCount: sql`${playersTable.killCount} + 1`,
+              killCount: targetDied ? sql`${playersTable.killCount} + 1` : playersTable.killCount,
               money: sql`${playersTable.money} + ${moneyStolen}`,
               xp: sql`${playersTable.xp} + ${xpGain}`,
               level: sql`FLOOR((${playersTable.xp} + ${xpGain}) / 1000) + 1`,
@@ -204,7 +206,8 @@ async function processAttackArrivals(): Promise<void> {
             }).where(eq(playersTable.id, attacker[0].id));
 
             await tx.update(playersTable).set({
-              deathCount: sql`${playersTable.deathCount} + 1`,
+              health: targetDied ? 50 : Math.max(1, newHealth),
+              deathCount: targetDied ? sql`${playersTable.deathCount} + 1` : playersTable.deathCount,
               money: sql`GREATEST(0, ${playersTable.money} - ${moneyStolen})`,
               updatedAt: new Date(),
             }).where(eq(playersTable.id, target[0].id));
@@ -213,12 +216,12 @@ async function processAttackArrivals(): Promise<void> {
           await logActivity(
             attacker[0].id,
             "attack_won",
-            `Won attack on ${target[0].username} — dealt ${damage} dmg, stole $${moneyStolen}`,
+            `Won attack on ${target[0].username} — dealt ${damage} dmg, stole $${moneyStolen}${targetDied ? " (eliminated!)" : ""}`,
           );
           await logActivity(
             target[0].id,
             "attack_lost",
-            `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}`,
+            `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}${targetDied ? " (eliminated — HP reset to 50)" : ""}`,
           );
         }
       } else {

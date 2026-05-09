@@ -4,8 +4,9 @@ import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId }
 import {
   attacksTable, playersTable, weaponsTable, citiesTable,
   playerWeaponsTable, playerAmmoTable, playerNpcGuardsTable, playerArmorTable, armorItemsTable,
+  ammoTable,
 } from "@workspace/db/schema";
-import { eq, and, desc, sum } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
 import { recordSpy, hasRecentSpy } from "../lib/spyCache";
 
@@ -105,7 +106,7 @@ router.post("/attacks", requireAuth, requireNotInPrison, async (req, res) => {
     if (target[0].id === player.id) return void res.status(400).json({ error: "Cannot attack yourself" });
 
     if (!ownedWeapon[0] || ownedWeapon[0].quantity < 1) {
-      return void res.status(400).json({ error: "You do not own that weapon" });
+      return void res.status(403).json({ error: "You do not own that weapon" });
     }
 
     const allPlayerAmmo = await db.select().from(playerAmmoTable)
@@ -261,9 +262,46 @@ router.post("/attacks/:attackId/cancel", requireAuth, requireNotInPrison, async 
     if (attack[0].attackerId !== player.id) return void res.status(403).json({ error: "Not your attack" });
     if (attack[0].status !== "traveling") return void res.status(400).json({ error: "Cannot cancel completed attack" });
 
-    await db.update(attacksTable).set({ status: "cancelled" }).where(eq(attacksTable.id, attackId));
+    const ammoToReturn = attack[0].ammoUsed;
 
-    res.json({ message: "Attack cancelled" });
+    await db.transaction(async (tx) => {
+      await tx.update(attacksTable).set({ status: "cancelled" }).where(eq(attacksTable.id, attackId));
+
+      if (ammoToReturn > 0) {
+        const existingAmmoRow = await tx.select().from(playerAmmoTable)
+          .where(eq(playerAmmoTable.playerId, player.id))
+          .orderBy(playerAmmoTable.id)
+          .limit(1);
+
+        if (existingAmmoRow[0]) {
+          await tx.update(playerAmmoTable)
+            .set({ quantity: sql`${playerAmmoTable.quantity} + ${ammoToReturn}` })
+            .where(eq(playerAmmoTable.id, existingAmmoRow[0].id));
+        } else {
+          const weapon = await tx.select({ ammoType: weaponsTable.ammoType })
+            .from(weaponsTable)
+            .where(eq(weaponsTable.id, attack[0].weaponId))
+            .limit(1);
+
+          if (weapon[0]) {
+            const ammoCatalogRow = await tx.select().from(ammoTable)
+              .where(eq(ammoTable.type, weapon[0].ammoType))
+              .limit(1);
+            if (ammoCatalogRow[0]) {
+              await tx.insert(playerAmmoTable).values({
+                playerId: player.id,
+                ammoId: ammoCatalogRow[0].id,
+                quantity: ammoToReturn,
+              });
+            }
+          }
+        }
+      }
+    });
+
+    await logActivity(player.id, "attack_cancelled", `Cancelled attack #${attackId} — ${attack[0].ammoUsed} ammo returned`);
+
+    res.json({ message: "Attack cancelled", ammoReturned: attack[0].ammoUsed });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

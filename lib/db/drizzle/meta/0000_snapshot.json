@@ -1,0 +1,1458 @@
+{
+  "id": "f0243ea4-1bdf-4ac9-9eae-3b0b17cceaf4",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.cities": {
+      "name": "cities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_ar": {
+          "name": "name_ar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "travel_hours_base": {
+          "name": "travel_hours_base",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 4
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.players": {
+      "name": "players",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "clerk_id": {
+          "name": "clerk_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "xp": {
+          "name": "xp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "money": {
+          "name": "money",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 5000
+        },
+        "attack_power": {
+          "name": "attack_power",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 10
+        },
+        "defense_power": {
+          "name": "defense_power",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 10
+        },
+        "kill_count": {
+          "name": "kill_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "death_count": {
+          "name": "death_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "city_id": {
+          "name": "city_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gang_id": {
+          "name": "gang_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gang_rank": {
+          "name": "gang_rank",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "anti_spy_enabled": {
+          "name": "anti_spy_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_in_prison": {
+          "name": "is_in_prison",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "prison_release_at": {
+          "name": "prison_release_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prison_crime": {
+          "name": "prison_crime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_traveling": {
+          "name": "is_traveling",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "travel_to_city_id": {
+          "name": "travel_to_city_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "travel_arrival_at": {
+          "name": "travel_arrival_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "health": {
+          "name": "health",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 100
+        },
+        "max_health": {
+          "name": "max_health",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 100
+        },
+        "is_admin": {
+          "name": "is_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "players_city_id_cities_id_fk": {
+          "name": "players_city_id_cities_id_fk",
+          "tableFrom": "players",
+          "tableTo": "cities",
+          "columnsFrom": [
+            "city_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "players_clerk_id_unique": {
+          "name": "players_clerk_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "clerk_id"
+          ]
+        },
+        "players_username_unique": {
+          "name": "players_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.gangs": {
+      "name": "gangs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "treasury": {
+          "name": "treasury",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "boss_id": {
+          "name": "boss_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "gangs_name_unique": {
+          "name": "gangs_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ammo": {
+      "name": "ammo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "damage_bonus": {
+          "name": "damage_bonus",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_ammo": {
+      "name": "player_ammo",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ammo_id": {
+          "name": "ammo_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "player_ammo_player_id_players_id_fk": {
+          "name": "player_ammo_player_id_players_id_fk",
+          "tableFrom": "player_ammo",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "player_ammo_ammo_id_ammo_id_fk": {
+          "name": "player_ammo_ammo_id_ammo_id_fk",
+          "tableFrom": "player_ammo",
+          "tableTo": "ammo",
+          "columnsFrom": [
+            "ammo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_weapons": {
+      "name": "player_weapons",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weapon_id": {
+          "name": "weapon_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "acquired_at": {
+          "name": "acquired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "player_weapons_player_id_players_id_fk": {
+          "name": "player_weapons_player_id_players_id_fk",
+          "tableFrom": "player_weapons",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "player_weapons_weapon_id_weapons_id_fk": {
+          "name": "player_weapons_weapon_id_weapons_id_fk",
+          "tableFrom": "player_weapons",
+          "tableTo": "weapons",
+          "columnsFrom": [
+            "weapon_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.weapons": {
+      "name": "weapons",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attack_power": {
+          "name": "attack_power",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ammo_type": {
+          "name": "ammo_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.armor_items": {
+      "name": "armor_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defense_bonus": {
+          "name": "defense_bonus",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_armor": {
+      "name": "player_armor",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "armor_id": {
+          "name": "armor_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "acquired_at": {
+          "name": "acquired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "player_armor_player_id_players_id_fk": {
+          "name": "player_armor_player_id_players_id_fk",
+          "tableFrom": "player_armor",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "player_armor_armor_id_armor_items_id_fk": {
+          "name": "player_armor_armor_id_armor_items_id_fk",
+          "tableFrom": "player_armor",
+          "tableTo": "armor_items",
+          "columnsFrom": [
+            "armor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bodyguard_requests": {
+      "name": "bodyguard_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "from_player_id": {
+          "name": "from_player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_player_id": {
+          "name": "to_player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "offered_money": {
+          "name": "offered_money",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bodyguard_requests_from_player_id_players_id_fk": {
+          "name": "bodyguard_requests_from_player_id_players_id_fk",
+          "tableFrom": "bodyguard_requests",
+          "tableTo": "players",
+          "columnsFrom": [
+            "from_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bodyguard_requests_to_player_id_players_id_fk": {
+          "name": "bodyguard_requests_to_player_id_players_id_fk",
+          "tableFrom": "bodyguard_requests",
+          "tableTo": "players",
+          "columnsFrom": [
+            "to_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.npc_bodyguards": {
+      "name": "npc_bodyguards",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defense_power": {
+          "name": "defense_power",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hire_price": {
+          "name": "hire_price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "daily_cost": {
+          "name": "daily_cost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_guards": {
+      "name": "player_guards",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "protected_player_id": {
+          "name": "protected_player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "guard_player_id": {
+          "name": "guard_player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "player_guards_protected_player_id_players_id_fk": {
+          "name": "player_guards_protected_player_id_players_id_fk",
+          "tableFrom": "player_guards",
+          "tableTo": "players",
+          "columnsFrom": [
+            "protected_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "player_guards_guard_player_id_players_id_fk": {
+          "name": "player_guards_guard_player_id_players_id_fk",
+          "tableFrom": "player_guards",
+          "tableTo": "players",
+          "columnsFrom": [
+            "guard_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.player_npc_guards": {
+      "name": "player_npc_guards",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "npc_guard_id": {
+          "name": "npc_guard_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hired_at": {
+          "name": "hired_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "player_npc_guards_player_id_players_id_fk": {
+          "name": "player_npc_guards_player_id_players_id_fk",
+          "tableFrom": "player_npc_guards",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "player_npc_guards_npc_guard_id_npc_bodyguards_id_fk": {
+          "name": "player_npc_guards_npc_guard_id_npc_bodyguards_id_fk",
+          "tableFrom": "player_npc_guards",
+          "tableTo": "npc_bodyguards",
+          "columnsFrom": [
+            "npc_guard_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.attacks": {
+      "name": "attacks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "attacker_id": {
+          "name": "attacker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "weapon_id": {
+          "name": "weapon_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ammo_used": {
+          "name": "ammo_used",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_city_id": {
+          "name": "from_city_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_city_id": {
+          "name": "to_city_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'traveling'"
+        },
+        "travel_arrival_at": {
+          "name": "travel_arrival_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "damage_dealt": {
+          "name": "damage_dealt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_survived": {
+          "name": "target_survived",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "attacks_attacker_id_players_id_fk": {
+          "name": "attacks_attacker_id_players_id_fk",
+          "tableFrom": "attacks",
+          "tableTo": "players",
+          "columnsFrom": [
+            "attacker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attacks_target_id_players_id_fk": {
+          "name": "attacks_target_id_players_id_fk",
+          "tableFrom": "attacks",
+          "tableTo": "players",
+          "columnsFrom": [
+            "target_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attacks_weapon_id_weapons_id_fk": {
+          "name": "attacks_weapon_id_weapons_id_fk",
+          "tableFrom": "attacks",
+          "tableTo": "weapons",
+          "columnsFrom": [
+            "weapon_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attacks_from_city_id_cities_id_fk": {
+          "name": "attacks_from_city_id_cities_id_fk",
+          "tableFrom": "attacks",
+          "tableTo": "cities",
+          "columnsFrom": [
+            "from_city_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "attacks_to_city_id_cities_id_fk": {
+          "name": "attacks_to_city_id_cities_id_fk",
+          "tableFrom": "attacks",
+          "tableTo": "cities",
+          "columnsFrom": [
+            "to_city_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.black_market_listings": {
+      "name": "black_market_listings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "seller_id": {
+          "name": "seller_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_type": {
+          "name": "item_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_id": {
+          "name": "item_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "item_name": {
+          "name": "item_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price": {
+          "name": "price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "black_market_listings_seller_id_players_id_fk": {
+          "name": "black_market_listings_seller_id_players_id_fk",
+          "tableFrom": "black_market_listings",
+          "tableTo": "players",
+          "columnsFrom": [
+            "seller_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.activity_log": {
+      "name": "activity_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_log_player_id_players_id_fk": {
+          "name": "activity_log_player_id_players_id_fk",
+          "tableFrom": "activity_log",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crime_records": {
+      "name": "crime_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "crime_type_id": {
+          "name": "crime_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "crime_name": {
+          "name": "crime_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "success": {
+          "name": "success",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "caught": {
+          "name": "caught",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "money_earned": {
+          "name": "money_earned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "xp_earned": {
+          "name": "xp_earned",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "attempted_at": {
+          "name": "attempted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crime_records_player_id_players_id_fk": {
+          "name": "crime_records_player_id_players_id_fk",
+          "tableFrom": "crime_records",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "crime_records_crime_type_id_crime_types_id_fk": {
+          "name": "crime_records_crime_type_id_crime_types_id_fk",
+          "tableFrom": "crime_records",
+          "tableTo": "crime_types",
+          "columnsFrom": [
+            "crime_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crime_types": {
+      "name": "crime_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "min_reward": {
+          "name": "min_reward",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_reward": {
+          "name": "max_reward",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "xp_reward": {
+          "name": "xp_reward",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "success_rate": {
+          "name": "success_rate",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prison_time_hours": {
+          "name": "prison_time_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cooldown_minutes": {
+          "name": "cooldown_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "required_level": {
+          "name": "required_level",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

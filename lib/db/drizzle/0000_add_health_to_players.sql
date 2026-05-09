@@ -1,0 +1,3 @@
+ALTER TABLE "players"
+  ADD COLUMN IF NOT EXISTS "health" integer NOT NULL DEFAULT 100,
+  ADD COLUMN IF NOT EXISTS "max_health" integer NOT NULL DEFAULT 100;

@@ -26,6 +26,8 @@ export const playersTable = pgTable("players", {
   isTraveling: boolean("is_traveling").notNull().default(false),
   travelToCityId: integer("travel_to_city_id"),
   travelArrivalAt: timestamp("travel_arrival_at"),
+  health: integer("health").notNull().default(100),
+  maxHealth: integer("max_health").notNull().default(100),
   isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778357754572,
+      "tag": "0000_add_health_to_players",
+      "breakpoints": true
+    }
+  ]
+}
