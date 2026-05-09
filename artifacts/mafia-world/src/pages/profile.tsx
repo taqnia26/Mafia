@@ -1,19 +1,42 @@
 import { useGetMyProfile, useToggleAntiSpy, getGetMyProfileQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { User, Shield, Crosshair, Skull, HeartPulse, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { User, Shield, Crosshair, Skull, HeartPulse, MapPin, Award } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
+
+interface RankData {
+  rankNumber: number;
+  nameEn: string;
+  nameAr: string;
+  color: string;
+}
+
+interface RanksResponse {
+  currentRank: number;
+  currentRankData: RankData | null;
+}
 
 export default function Profile() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: profile, isLoading } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
+  const { data: ranksData } = useQuery<RanksResponse>({
+    queryKey: ["/api/ranks"],
+    queryFn: async () => {
+      const res = await fetch("/api/ranks", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json() as Promise<RanksResponse>;
+    },
+    staleTime: 60000,
+  });
   
   const toggleAntiSpy = useToggleAntiSpy({
     mutation: {
@@ -50,6 +73,19 @@ export default function Profile() {
               <p className="text-muted-foreground flex items-center justify-center gap-1 mt-1">
                 <MapPin className="w-4 h-4" /> {profile.cityName}
               </p>
+              {ranksData?.currentRankData && (
+                <Link href="/ranks">
+                  <Badge
+                    variant="outline"
+                    className="mt-2 cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1"
+                    style={{ borderColor: ranksData.currentRankData.color, color: ranksData.currentRankData.color }}
+                  >
+                    <Award className="w-3 h-3" />
+                    {language === "ar" ? ranksData.currentRankData.nameAr : ranksData.currentRankData.nameEn}
+                    <span className="text-xs opacity-60">#{ranksData.currentRank}</span>
+                  </Badge>
+                </Link>
+              )}
             </div>
             
             <div className="w-full pt-4 border-t border-border/50">

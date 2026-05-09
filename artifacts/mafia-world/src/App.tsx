@@ -25,6 +25,7 @@ import Bodyguards from "@/pages/bodyguards";
 import Attack from "@/pages/attack";
 import Prison from "@/pages/prison";
 import Admin from "@/pages/admin";
+import Ranks from "@/pages/ranks";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -192,6 +193,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/blackmarket"><ProtectedRoute component={BlackMarket} /></Route>
               <Route path="/prison"><ProtectedRoute component={Prison} /></Route>
               <Route path="/admin"><ProtectedRoute component={Admin} /></Route>
+              <Route path="/ranks"><ProtectedRoute component={Ranks} /></Route>
 
               <Route component={NotFound} />
             </Switch>

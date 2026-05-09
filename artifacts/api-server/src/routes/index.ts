@@ -12,6 +12,7 @@ import crimesRouter from "./crimes";
 import citiesRouter from "./cities";
 import adminRouter from "./admin";
 import notificationsRouter from "./notifications";
+import ranksRouter from "./ranks";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(crimesRouter);
 router.use(citiesRouter);
 router.use(adminRouter);
 router.use(notificationsRouter);
+router.use(ranksRouter);
 
 export default router;

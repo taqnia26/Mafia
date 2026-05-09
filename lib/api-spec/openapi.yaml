@@ -2580,3 +2580,118 @@ components:
           type: string
         travelHoursBase:
           type: integer
+
+    PlayerRank:
+      type: object
+      properties:
+        id:
+          type: integer
+        rankNumber:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        subtitleEn:
+          type: string
+        subtitleAr:
+          type: string
+        requiredLevel:
+          type: integer
+        requiredMoney:
+          type: number
+        requiredXp:
+          type: number
+        requiredKills:
+          type: integer
+        atkBonus:
+          type: integer
+        defBonus:
+          type: integer
+        color:
+          type: string
+        perksEn:
+          type: string
+        perksAr:
+          type: string
+        isCurrentRank:
+          type: boolean
+        isNextRank:
+          type: boolean
+        canUpgrade:
+          type: boolean
+        missingRequirements:
+          type: array
+          items:
+            type: string
+        unlocked:
+          type: boolean
+      required:
+        - id
+        - rankNumber
+        - nameEn
+        - nameAr
+        - subtitleEn
+        - subtitleAr
+        - requiredLevel
+        - requiredMoney
+        - requiredXp
+        - requiredKills
+        - atkBonus
+        - defBonus
+        - color
+        - perksEn
+        - perksAr
+        - isCurrentRank
+        - isNextRank
+        - canUpgrade
+        - missingRequirements
+        - unlocked
+
+    RanksResponse:
+      type: object
+      properties:
+        ranks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerRank"
+        currentRank:
+          type: integer
+        currentRankData:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlayerRank"
+        nextRank:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PlayerRank"
+        player:
+          type: object
+          properties:
+            level:
+              type: integer
+            money:
+              type: number
+            xp:
+              type: number
+            killCount:
+              type: integer
+          required: [level, money, xp, killCount]
+      required: [ranks, currentRank, player]
+
+    RankUpgradeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        newRank:
+          type: integer
+        newRankName:
+          type: string
+        newRankNameAr:
+          type: string
+        atkIncrease:
+          type: integer
+        defIncrease:
+          type: integer
+      required: [success, newRank, newRankName, newRankNameAr, atkIncrease, defIncrease]

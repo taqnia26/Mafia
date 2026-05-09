@@ -98,10 +98,15 @@ export default function Players() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-lg font-heading uppercase">{player.username}</h3>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm text-muted-foreground">{t("common.level")} {player.level} • {player.cityName}</p>
                         {player.isInPrison && (
                           <Badge variant="outline" className="text-orange-400 border-orange-500/50 text-xs">{t("prison.incarcerated")}</Badge>
+                        )}
+                        {(player as { rankNumber?: number; rankNameEn?: string }).rankNameEn && (
+                          <Badge variant="outline" className="text-xs" style={{ borderColor: "#6b7280", color: "#9ca3af" }}>
+                            {(player as { rankNumber?: number; rankNameEn?: string }).rankNameEn}
+                          </Badge>
                         )}
                       </div>
                     </div>

@@ -16,6 +16,7 @@ import {
   Briefcase,
   Lock,
   ShieldAlert,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/crimes", label: "nav.crimes", icon: Briefcase },
     { href: "/prison", label: "nav.prison", icon: Lock },
     { href: "/cities", label: "nav.cities", icon: Map },
+    { href: "/ranks", label: "nav.ranks", icon: Award },
     { href: "/settings", label: "nav.settings", icon: Settings },
   ];
 

@@ -21,7 +21,8 @@ export type ActivityType =
   | "attack_repelled"
   | "attack_defended"
   | "guard_dismissed"
-  | "attack_cancelled";
+  | "attack_cancelled"
+  | "rank_upgrade";
 
 export async function logActivity(playerId: number, type: ActivityType, description: string) {
   await db.insert(activityLogTable).values({ playerId, type, description });
