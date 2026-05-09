@@ -83,7 +83,7 @@
   --input: 0 0% 15%;
   --ring: 0 100% 27%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: 'Cairo', 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.5rem;

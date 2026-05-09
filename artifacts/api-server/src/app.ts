@@ -44,12 +44,18 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    secret: process.env.SUPER_ADMIN_SESSION_SECRET ?? "super-admin-dev-secret-change-in-production",
+    secret: process.env.SUPER_ADMIN_SESSION_SECRET ?? (() => {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("SUPER_ADMIN_SESSION_SECRET must be set in production");
+      }
+      console.warn("[WARN] SUPER_ADMIN_SESSION_SECRET not set — using insecure dev fallback");
+      return "super-admin-dev-secret-change-in-production";
+    })(),
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 8 * 60 * 60 * 1000,
     },

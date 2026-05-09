@@ -14,6 +14,14 @@ import { eq, desc, count, sql, and, ilike, gte, or } from "drizzle-orm";
 
 const router = Router();
 
+// ── In-memory recent-log buffer ───────────────────────────────────────────────
+const MAX_LOG_ENTRIES = 500;
+const recentLogs: { ts: string; level: string; msg: string }[] = [];
+export function pushAdminLog(level: string, msg: string) {
+  recentLogs.push({ ts: new Date().toISOString(), level, msg });
+  if (recentLogs.length > MAX_LOG_ENTRIES) recentLogs.shift();
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 router.post("/super-admin/auth/login", async (req, res) => {
@@ -39,10 +47,8 @@ router.post("/super-admin/auth/login", async (req, res) => {
     }
 
     await pool.query("UPDATE admin_credentials SET last_login_at = NOW() WHERE id = $1", [row.id]);
-
     req.session.superAdminId = row.id;
     req.session.superAdminUsername = row.username;
-
     return void res.json({ ok: true, username: row.username });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
@@ -50,9 +56,7 @@ router.post("/super-admin/auth/login", async (req, res) => {
 });
 
 router.post("/super-admin/auth/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.json({ ok: true });
-  });
+  req.session.destroy(() => res.json({ ok: true }));
 });
 
 router.get("/super-admin/auth/me", (req, res) => {
@@ -130,49 +134,53 @@ router.get("/super-admin/stats", requireSuperAdminSession, async (_req, res) => 
 
 router.get("/super-admin/players", requireSuperAdminSession, async (req, res) => {
   try {
-    const { page = "1", limit = "50", search, prisonFilter } = req.query as Record<string, string>;
+    const { page = "1", limit = "50", search, prisonFilter, bannedFilter } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(200, parseInt(limit));
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [];
-    if (search) conditions.push(ilike(playersTable.username, `%${search}%`));
-    if (prisonFilter === "true") conditions.push(eq(playersTable.isInPrison, true));
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    let whereClause = "WHERE 1=1";
+    const params: unknown[] = [];
+    if (search) { params.push(`%${search}%`); whereClause += ` AND p.username ILIKE $${params.length}`; }
+    if (prisonFilter === "true") whereClause += " AND p.is_in_prison = TRUE";
+    if (bannedFilter === "true") whereClause += " AND p.is_banned = TRUE";
 
-    const [players, totalResult] = await Promise.all([
-      db.select({
-        id: playersTable.id,
-        username: playersTable.username,
-        level: playersTable.level,
-        xp: playersTable.xp,
-        money: playersTable.money,
-        attackPower: playersTable.attackPower,
-        defensePower: playersTable.defensePower,
-        killCount: playersTable.killCount,
-        deathCount: playersTable.deathCount,
-        isInPrison: playersTable.isInPrison,
-        prisonReleaseAt: playersTable.prisonReleaseAt,
-        isAdmin: playersTable.isAdmin,
-        adminRole: playersTable.adminRole,
-        gangId: playersTable.gangId,
-        createdAt: playersTable.createdAt,
-        cityName: citiesTable.name,
-      }).from(playersTable)
-        .leftJoin(citiesTable, eq(playersTable.cityId, citiesTable.id))
-        .where(whereClause)
-        .orderBy(desc(playersTable.level))
-        .limit(limitNum).offset(offset),
-      db.select({ count: count() }).from(playersTable).where(whereClause),
+    const [rows, totalRows] = await Promise.all([
+      pool.query<{
+        id: number; username: string; level: number; xp: number; money: number;
+        attack_power: number; defense_power: number; kill_count: number; death_count: number;
+        is_in_prison: boolean; prison_release_at: string | null; is_admin: boolean;
+        admin_role: string | null; gang_id: number | null; created_at: string;
+        city_name: string; is_banned: boolean; ban_reason: string | null;
+      }>(
+        `SELECT p.id, p.username, p.level, p.xp, p.money, p.attack_power, p.defense_power,
+          p.kill_count, p.death_count, p.is_in_prison, p.prison_release_at, p.is_admin,
+          p.admin_role, p.gang_id, p.created_at, c.name AS city_name,
+          COALESCE(p.is_banned, FALSE) AS is_banned, p.ban_reason
+         FROM players p
+         LEFT JOIN cities c ON c.id = p.city_id
+         ${whereClause}
+         ORDER BY p.level DESC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limitNum, offset],
+      ),
+      pool.query<{ cnt: string }>(
+        `SELECT COUNT(*) AS cnt FROM players p ${whereClause}`,
+        params,
+      ),
     ]);
 
     return void res.json({
-      players: players.map(p => ({
-        ...p,
-        prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null,
-        createdAt: p.createdAt.toISOString(),
+      players: rows.rows.map(p => ({
+        id: p.id, username: p.username, level: p.level, xp: p.xp, money: p.money,
+        attackPower: p.attack_power, defensePower: p.defense_power,
+        killCount: p.kill_count, deathCount: p.death_count,
+        isInPrison: p.is_in_prison, prisonReleaseAt: p.prison_release_at,
+        isAdmin: p.is_admin, adminRole: p.admin_role, gangId: p.gang_id,
+        createdAt: p.created_at, cityName: p.city_name,
+        isBanned: p.is_banned, banReason: p.ban_reason,
       })),
-      total: Number(totalResult[0]?.count ?? 0),
+      total: Number(totalRows.rows[0]?.cnt ?? 0),
       page: pageNum,
       limit: limitNum,
     });
@@ -240,6 +248,33 @@ router.delete("/super-admin/players/:id/prison", requireSuperAdminSession, async
   }
 });
 
+router.post("/super-admin/players/:id/ban", requireSuperAdminSession, async (req, res) => {
+  try {
+    const playerId = parseInt(String(req.params.id));
+    const { reason = "Admin ban" } = req.body as { reason?: string };
+    await pool.query(
+      "UPDATE players SET is_banned = TRUE, ban_reason = $1, updated_at = NOW() WHERE id = $2",
+      [reason, playerId],
+    );
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.delete("/super-admin/players/:id/ban", requireSuperAdminSession, async (req, res) => {
+  try {
+    const playerId = parseInt(String(req.params.id));
+    await pool.query(
+      "UPDATE players SET is_banned = FALSE, ban_reason = NULL, updated_at = NOW() WHERE id = $1",
+      [playerId],
+    );
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
 router.delete("/super-admin/players/:id", requireSuperAdminSession, async (req, res) => {
   try {
     const playerId = parseInt(String(req.params.id));
@@ -289,21 +324,24 @@ router.post("/super-admin/players/:id/reset", requireSuperAdminSession, async (r
 router.get("/super-admin/gangs", requireSuperAdminSession, async (_req, res) => {
   try {
     const gangs = await db.select({
-      id: gangsTable.id,
-      name: gangsTable.name,
-      description: gangsTable.description,
-      treasury: gangsTable.treasury,
-      color: gangsTable.color,
-      bossId: gangsTable.bossId,
+      id: gangsTable.id, name: gangsTable.name, description: gangsTable.description,
+      treasury: gangsTable.treasury, color: gangsTable.color, bossId: gangsTable.bossId,
       createdAt: gangsTable.createdAt,
     }).from(gangsTable).orderBy(desc(gangsTable.treasury));
 
     const result = await Promise.all(gangs.map(async (g) => {
-      const [members, boss] = await Promise.all([
+      const [membersRes, bossRes, memberList] = await Promise.all([
         db.select({ count: count() }).from(playersTable).where(eq(playersTable.gangId, g.id)),
         db.select({ username: playersTable.username }).from(playersTable).where(eq(playersTable.id, g.bossId)).limit(1),
+        db.select({ id: playersTable.id, username: playersTable.username, gangRank: playersTable.gangRank })
+          .from(playersTable).where(eq(playersTable.gangId, g.id)).orderBy(playersTable.gangRank),
       ]);
-      return { ...g, memberCount: Number(members[0]?.count ?? 0), bossName: boss[0]?.username ?? "Unknown", createdAt: g.createdAt.toISOString() };
+      return {
+        ...g, memberCount: Number(membersRes[0]?.count ?? 0),
+        bossName: bossRes[0]?.username ?? "Unknown",
+        members: memberList,
+        createdAt: g.createdAt.toISOString(),
+      };
     }));
 
     return void res.json(result);
@@ -329,6 +367,43 @@ router.patch("/super-admin/gangs/:id", requireSuperAdminSession, async (req, res
   }
 });
 
+router.patch("/super-admin/gangs/:id/boss", requireSuperAdminSession, async (req, res) => {
+  try {
+    const gangId = parseInt(String(req.params.id));
+    const { newBossId } = req.body as { newBossId: number };
+    const [gang] = await db.select().from(gangsTable).where(eq(gangsTable.id, gangId)).limit(1);
+    if (!gang) return void res.status(404).json({ error: "Gang not found" });
+    const newBoss = await db.select().from(playersTable).where(eq(playersTable.id, newBossId)).limit(1);
+    if (!newBoss[0]) return void res.status(404).json({ error: "New boss player not found" });
+    await db.transaction(async (tx) => {
+      await tx.update(gangsTable).set({ bossId: newBossId }).where(eq(gangsTable.id, gangId));
+      await tx.update(playersTable).set({ gangRank: "Boss" }).where(eq(playersTable.id, newBossId));
+      await tx.update(playersTable)
+        .set({ gangRank: "Soldier" })
+        .where(and(eq(playersTable.id, gang.bossId), eq(playersTable.gangId, gangId)));
+    });
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.post("/super-admin/gangs/:gangId/kick/:playerId", requireSuperAdminSession, async (req, res) => {
+  try {
+    const gangId = parseInt(String(req.params.gangId));
+    const playerId = parseInt(String(req.params.playerId));
+    const [gang] = await db.select().from(gangsTable).where(eq(gangsTable.id, gangId)).limit(1);
+    if (!gang) return void res.status(404).json({ error: "Gang not found" });
+    if (gang.bossId === playerId) return void res.status(400).json({ error: "Cannot kick the gang boss. Change boss first." });
+    await db.update(playersTable)
+      .set({ gangId: null, gangRank: null, updatedAt: new Date() })
+      .where(and(eq(playersTable.id, playerId), eq(playersTable.gangId, gangId)));
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
 router.delete("/super-admin/gangs/:id", requireSuperAdminSession, async (req, res) => {
   try {
     const gangId = parseInt(String(req.params.id));
@@ -344,38 +419,56 @@ router.delete("/super-admin/gangs/:id", requireSuperAdminSession, async (req, re
 
 router.get("/super-admin/attacks", requireSuperAdminSession, async (req, res) => {
   try {
-    const { page = "1" } = req.query as Record<string, string>;
+    const { page = "1", status: statusFilter } = req.query as Record<string, string>;
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = 50;
     const offset = (pageNum - 1) * limitNum;
 
     const rows = await pool.query<{
-      id: number; status: string; outcome: string | null;
-      attacker_name: string; target_name: string;
-      created_at: Date; arrives_at: Date | null;
+      id: number; status: string; attacker_name: string; target_name: string;
+      created_at: Date; travel_arrival_at: Date | null; damage_dealt: number | null;
+      target_survived: boolean | null;
     }>(
-      `SELECT a.id, a.status, a.outcome,
+      `SELECT a.id, a.status,
         p1.username AS attacker_name, p2.username AS target_name,
-        a.created_at, a.arrives_at
+        a.created_at, a.travel_arrival_at, a.damage_dealt, a.target_survived
        FROM attacks a
        LEFT JOIN players p1 ON p1.id = a.attacker_id
        LEFT JOIN players p2 ON p2.id = a.target_id
+       ${statusFilter ? "WHERE a.status = $3" : ""}
        ORDER BY a.created_at DESC
        LIMIT $1 OFFSET $2`,
-      [limitNum, offset],
+      statusFilter ? [limitNum, offset, statusFilter] : [limitNum, offset],
     );
 
-    const totalRes = await db.select({ count: count() }).from(attacksTable);
+    const totalRes = await pool.query<{ cnt: string }>(
+      `SELECT COUNT(*) AS cnt FROM attacks ${statusFilter ? "WHERE status = $1" : ""}`,
+      statusFilter ? [statusFilter] : [],
+    );
 
     return void res.json({
       attacks: rows.rows.map(r => ({
         ...r,
         created_at: r.created_at.toISOString(),
-        arrives_at: r.arrives_at?.toISOString() ?? null,
+        travel_arrival_at: r.travel_arrival_at?.toISOString() ?? null,
       })),
-      total: Number(totalRes[0]?.count ?? 0),
+      total: Number(totalRes.rows[0]?.cnt ?? 0),
       page: pageNum,
     });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.patch("/super-admin/attacks/:id/cancel", requireSuperAdminSession, async (req, res) => {
+  try {
+    const attackId = parseInt(String(req.params.id));
+    const [updated] = await db.update(attacksTable)
+      .set({ status: "cancelled" })
+      .where(and(eq(attacksTable.id, attackId), eq(attacksTable.status, "traveling")))
+      .returning();
+    if (!updated) return void res.status(404).json({ error: "Attack not found or already resolved" });
+    return void res.json({ ok: true });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
   }
@@ -386,19 +479,10 @@ router.get("/super-admin/attacks", requireSuperAdminSession, async (req, res) =>
 router.get("/super-admin/prison", requireSuperAdminSession, async (_req, res) => {
   try {
     const prisoners = await db.select({
-      id: playersTable.id,
-      username: playersTable.username,
-      level: playersTable.level,
-      prisonReleaseAt: playersTable.prisonReleaseAt,
-      prisonCrime: playersTable.prisonCrime,
-    }).from(playersTable)
-      .where(eq(playersTable.isInPrison, true))
-      .orderBy(playersTable.prisonReleaseAt);
-
-    return void res.json(prisoners.map(p => ({
-      ...p,
-      prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null,
-    })));
+      id: playersTable.id, username: playersTable.username, level: playersTable.level,
+      prisonReleaseAt: playersTable.prisonReleaseAt, prisonCrime: playersTable.prisonCrime,
+    }).from(playersTable).where(eq(playersTable.isInPrison, true)).orderBy(playersTable.prisonReleaseAt);
+    return void res.json(prisoners.map(p => ({ ...p, prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null })));
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
   }
@@ -462,6 +546,71 @@ router.patch("/super-admin/cities/:id", requireSuperAdminSession, async (req, re
   }
 });
 
+// ── Items — Weapons & Armor Catalog ──────────────────────────────────────────
+
+router.get("/super-admin/items", requireSuperAdminSession, async (_req, res) => {
+  try {
+    const [weapons, armor, ammo] = await Promise.all([
+      db.select().from(weaponsTable).orderBy(weaponsTable.type, weaponsTable.price),
+      db.select().from(armorItemsTable).orderBy(armorItemsTable.type, armorItemsTable.price),
+      db.select().from(ammoTable).orderBy(ammoTable.type),
+    ]);
+    return void res.json({ weapons, armor, ammo });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.patch("/super-admin/items/weapons/:id", requireSuperAdminSession, async (req, res) => {
+  try {
+    const weaponId = parseInt(String(req.params.id));
+    const { name, attackPower, price, description } = req.body as Record<string, unknown>;
+    const updates: Record<string, unknown> = {};
+    if (typeof name === "string") updates.name = name;
+    if (typeof attackPower === "number") updates.attackPower = Math.max(1, attackPower);
+    if (typeof price === "number") updates.price = Math.max(1, price);
+    if (typeof description === "string") updates.description = description;
+    const [updated] = await db.update(weaponsTable).set(updates).where(eq(weaponsTable.id, weaponId)).returning();
+    if (!updated) return void res.status(404).json({ error: "Weapon not found" });
+    return void res.json(updated);
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.patch("/super-admin/items/armor/:id", requireSuperAdminSession, async (req, res) => {
+  try {
+    const armorId = parseInt(String(req.params.id));
+    const { name, defenseBonus, price, description } = req.body as Record<string, unknown>;
+    const updates: Record<string, unknown> = {};
+    if (typeof name === "string") updates.name = name;
+    if (typeof defenseBonus === "number") updates.defenseBonus = Math.max(1, defenseBonus);
+    if (typeof price === "number") updates.price = Math.max(1, price);
+    if (typeof description === "string") updates.description = description;
+    const [updated] = await db.update(armorItemsTable).set(updates).where(eq(armorItemsTable.id, armorId)).returning();
+    if (!updated) return void res.status(404).json({ error: "Armor not found" });
+    return void res.json(updated);
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.patch("/super-admin/items/ammo/:id", requireSuperAdminSession, async (req, res) => {
+  try {
+    const ammoId = parseInt(String(req.params.id));
+    const { name, damageBonus, price } = req.body as Record<string, unknown>;
+    const updates: Record<string, unknown> = {};
+    if (typeof name === "string") updates.name = name;
+    if (typeof damageBonus === "number") updates.damageBonus = Math.max(0, damageBonus);
+    if (typeof price === "number") updates.price = Math.max(1, price);
+    const [updated] = await db.update(ammoTable).set(updates).where(eq(ammoTable.id, ammoId)).returning();
+    if (!updated) return void res.status(404).json({ error: "Ammo not found" });
+    return void res.json(updated);
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
 // ── Black Market ──────────────────────────────────────────────────────────────
 
 router.get("/super-admin/blackmarket", requireSuperAdminSession, async (_req, res) => {
@@ -508,10 +657,8 @@ router.get("/super-admin/activity-log", requireSuperAdminSession, async (req, re
 
     const [events, totalResult] = await Promise.all([
       db.select({
-        id: activityLogTable.id,
-        type: activityLogTable.type,
-        description: activityLogTable.description,
-        createdAt: activityLogTable.createdAt,
+        id: activityLogTable.id, type: activityLogTable.type,
+        description: activityLogTable.description, createdAt: activityLogTable.createdAt,
         username: playersTable.username,
       }).from(activityLogTable)
         .leftJoin(playersTable, eq(activityLogTable.playerId, playersTable.id))
@@ -531,10 +678,9 @@ router.get("/super-admin/activity-log", requireSuperAdminSession, async (req, re
   }
 });
 
-// ── Dev Tools — SQL Console ───────────────────────────────────────────────────
+// ── Dev Tools ─────────────────────────────────────────────────────────────────
 
-const ALLOWED_STATEMENTS = /^\s*(SELECT|EXPLAIN)\s/i;
-const DANGEROUS_PATTERNS = /\b(DROP|TRUNCATE|DELETE|INSERT|UPDATE|ALTER|CREATE|GRANT|REVOKE)\b/i;
+const DANGEROUS_PATTERNS = /\b(DROP|TRUNCATE|DELETE\s+FROM|ALTER\s+TABLE|CREATE\s+TABLE|GRANT|REVOKE)\b/i;
 
 router.post("/super-admin/dev/sql", requireSuperAdminSession, async (req, res) => {
   try {
@@ -545,11 +691,8 @@ router.post("/super-admin/dev/sql", requireSuperAdminSession, async (req, res) =
       return void res.status(400).json({ error: "Dangerous query detected. Set confirm=true to proceed.", requiresConfirm: true });
     }
 
-    if (!ALLOWED_STATEMENTS.test(sqlQuery) && !confirm) {
-      return void res.status(400).json({ error: "Only SELECT/EXPLAIN allowed without confirm=true", requiresConfirm: true });
-    }
-
     const result = await pool.query(sqlQuery);
+    pushAdminLog("INFO", `SQL executed by admin: ${sqlQuery.slice(0, 80)}`);
     return void res.json({
       rows: result.rows,
       rowCount: result.rowCount,
@@ -560,13 +703,51 @@ router.post("/super-admin/dev/sql", requireSuperAdminSession, async (req, res) =
   }
 });
 
+router.get("/super-admin/dev/logs", requireSuperAdminSession, async (_req, res) => {
+  try {
+    const dbLogs = await pool.query<{ ts: string; action: string; description: string; admin_username: string }>(
+      `SELECT created_at AS ts, action, description, admin_username
+       FROM admin_actions_log
+       ORDER BY created_at DESC LIMIT 100`,
+    );
+    const combined = [
+      ...recentLogs.slice(-100).map(l => ({ ts: l.ts, level: l.level, source: "api", message: l.msg })),
+      ...dbLogs.rows.map(r => ({ ts: r.ts, level: "ADMIN", source: "audit", message: `[${r.admin_username}] ${r.action}: ${r.description}` })),
+    ].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 150);
+    return void res.json(combined);
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.post("/super-admin/dev/seed-data", requireSuperAdminSession, async (req, res) => {
+  try {
+    const { action } = req.body as { action: "reset-player-money" | "release-all-prison" | "cancel-traveling-attacks" };
+
+    if (action === "reset-player-money") {
+      const r = await pool.query("UPDATE players SET money = 5000 WHERE money < 100");
+      return void res.json({ ok: true, affected: r.rowCount, message: `Reset money for ${r.rowCount} broke players` });
+    }
+
+    if (action === "release-all-prison") {
+      const r = await pool.query("UPDATE players SET is_in_prison = FALSE, prison_release_at = NULL, prison_crime = NULL WHERE is_in_prison = TRUE");
+      return void res.json({ ok: true, affected: r.rowCount, message: `Released ${r.rowCount} prisoners` });
+    }
+
+    if (action === "cancel-traveling-attacks") {
+      const r = await pool.query("UPDATE attacks SET status = 'cancelled' WHERE status = 'traveling'");
+      return void res.json({ ok: true, affected: r.rowCount, message: `Cancelled ${r.rowCount} in-flight attacks` });
+    }
+
+    return void res.status(400).json({ error: "Unknown action" });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
 // ── Settings ──────────────────────────────────────────────────────────────────
 
-let gameSettings = {
-  xpMultiplier: 1.0,
-  moneyMultiplier: 1.0,
-  crimeSuccessBonus: 0,
-};
+let gameSettings = { xpMultiplier: 1.0, moneyMultiplier: 1.0, crimeSuccessBonus: 0 };
 
 router.get("/super-admin/settings", requireSuperAdminSession, (_req, res) => {
   res.json(gameSettings);

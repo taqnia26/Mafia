@@ -11,6 +11,7 @@ const NAV = [
   { href: "/super-admin/prison", label: "Prison", icon: "🔒" },
   { href: "/super-admin/crimes", label: "Crimes", icon: "💼" },
   { href: "/super-admin/cities", label: "Cities", icon: "🏙️" },
+  { href: "/super-admin/items", label: "Items", icon: "🗡️" },
   { href: "/super-admin/blackmarket", label: "Black Market", icon: "🛒" },
   { href: "/super-admin/activity-log", label: "Activity Log", icon: "📋" },
   { href: "/super-admin/settings", label: "Settings", icon: "⚙️" },

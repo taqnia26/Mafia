@@ -21,6 +21,7 @@ import SuperAdminBlackMarket from "@/pages/super-admin/blackmarket";
 import SuperAdminActivityLog from "@/pages/super-admin/activity-log";
 import SuperAdminSettings from "@/pages/super-admin/settings";
 import SuperAdminDev from "@/pages/super-admin/dev";
+import SuperAdminItems from "@/pages/super-admin/items";
 
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
@@ -181,6 +182,7 @@ function SuperAdminRoutes() {
       <Route path="/super-admin/cities" component={SuperAdminCities} />
       <Route path="/super-admin/blackmarket" component={SuperAdminBlackMarket} />
       <Route path="/super-admin/activity-log" component={SuperAdminActivityLog} />
+      <Route path="/super-admin/items" component={SuperAdminItems} />
       <Route path="/super-admin/settings" component={SuperAdminSettings} />
       <Route path="/super-admin/dev" component={SuperAdminDev} />
       <Route><Redirect to="/super-admin/login" /></Route>

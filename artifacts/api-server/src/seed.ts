@@ -224,12 +224,16 @@ async function seed() {
 
   const existingAdmin = await pool.query("SELECT id FROM admin_credentials LIMIT 1");
   if (existingAdmin.rows.length === 0) {
-    const hash = await bcrypt.hash("Admin@2025", 10);
+    const adminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "Admin@2025";
+    if (!process.env.SUPER_ADMIN_PASSWORD) {
+      console.warn("[WARN] SUPER_ADMIN_PASSWORD env var not set — using default dev password. Set this in production.");
+    }
+    const hash = await bcrypt.hash(adminPassword, 10);
     await pool.query(
       "INSERT INTO admin_credentials (username, password_hash) VALUES ($1, $2)",
       ["superadmin", hash],
     );
-    console.log("Superadmin seeded — username: superadmin / password: Admin@2025");
+    console.log("Superadmin seeded — username: superadmin | change password via admin panel in production");
   } else {
     console.log("Admin credentials already exist, skipping");
   }
