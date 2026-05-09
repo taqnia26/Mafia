@@ -15,6 +15,7 @@ import notificationsRouter from "./notifications";
 import ranksRouter from "./ranks";
 import propertiesRouter from "./properties";
 
+
 const router: IRouter = Router();
 
 router.use(healthRouter);

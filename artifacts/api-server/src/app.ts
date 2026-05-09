@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import session from "express-session";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
 import {
@@ -9,6 +10,7 @@ import {
   getClerkProxyHost,
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
+import superAdminRouter from "./routes/superAdmin";
 import { logger } from "./lib/logger";
 import { startWorker } from "./lib/worker";
 
@@ -41,6 +43,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(
+  session({
+    secret: process.env.SUPER_ADMIN_SESSION_SECRET ?? "super-admin-dev-secret-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 8 * 60 * 60 * 1000,
+    },
+  }),
+);
+
+app.use(
   clerkMiddleware((req) => ({
     publishableKey: publishableKeyFromHost(
       getClerkProxyHost(req) ?? "",
@@ -49,6 +65,7 @@ app.use(
   })),
 );
 
+app.use("/api", superAdminRouter);
 app.use("/api", router);
 
 startWorker();

@@ -9,6 +9,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/lib/i18n";
 import NotFound from "@/pages/not-found";
 
+import SuperAdminLogin from "@/pages/super-admin/login";
+import SuperAdminDashboard from "@/pages/super-admin/dashboard";
+import SuperAdminPlayers from "@/pages/super-admin/players";
+import SuperAdminGangs from "@/pages/super-admin/gangs";
+import SuperAdminAttacks from "@/pages/super-admin/attacks";
+import SuperAdminPrison from "@/pages/super-admin/prison";
+import SuperAdminCrimes from "@/pages/super-admin/crimes";
+import SuperAdminCities from "@/pages/super-admin/cities";
+import SuperAdminBlackMarket from "@/pages/super-admin/blackmarket";
+import SuperAdminActivityLog from "@/pages/super-admin/activity-log";
+import SuperAdminSettings from "@/pages/super-admin/settings";
+import SuperAdminDev from "@/pages/super-admin/dev";
+
 import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
@@ -155,6 +168,26 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   );
 }
 
+function SuperAdminRoutes() {
+  return (
+    <Switch>
+      <Route path="/super-admin/login" component={SuperAdminLogin} />
+      <Route path="/super-admin/dashboard" component={SuperAdminDashboard} />
+      <Route path="/super-admin/players" component={SuperAdminPlayers} />
+      <Route path="/super-admin/gangs" component={SuperAdminGangs} />
+      <Route path="/super-admin/attacks" component={SuperAdminAttacks} />
+      <Route path="/super-admin/prison" component={SuperAdminPrison} />
+      <Route path="/super-admin/crimes" component={SuperAdminCrimes} />
+      <Route path="/super-admin/cities" component={SuperAdminCities} />
+      <Route path="/super-admin/blackmarket" component={SuperAdminBlackMarket} />
+      <Route path="/super-admin/activity-log" component={SuperAdminActivityLog} />
+      <Route path="/super-admin/settings" component={SuperAdminSettings} />
+      <Route path="/super-admin/dev" component={SuperAdminDev} />
+      <Route><Redirect to="/super-admin/login" /></Route>
+    </Switch>
+  );
+}
+
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -207,10 +240,18 @@ function ClerkProviderWithRoutes() {
   );
 }
 
+function AppRouter() {
+  const [location] = useLocation();
+  if (location.startsWith("/super-admin")) {
+    return <SuperAdminRoutes />;
+  }
+  return <ClerkProviderWithRoutes />;
+}
+
 function App() {
   return (
     <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
+      <AppRouter />
     </WouterRouter>
   );
 }

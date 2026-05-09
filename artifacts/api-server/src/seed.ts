@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcrypt";
 import * as schema from "@workspace/db/schema";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -219,6 +220,18 @@ async function seed() {
     console.log("Player ranks seeded");
   } else {
     console.log("Player ranks already exist, skipping");
+  }
+
+  const existingAdmin = await pool.query("SELECT id FROM admin_credentials LIMIT 1");
+  if (existingAdmin.rows.length === 0) {
+    const hash = await bcrypt.hash("Admin@2025", 10);
+    await pool.query(
+      "INSERT INTO admin_credentials (username, password_hash) VALUES ($1, $2)",
+      ["superadmin", hash],
+    );
+    console.log("Superadmin seeded — username: superadmin / password: Admin@2025");
+  } else {
+    console.log("Admin credentials already exist, skipping");
   }
 
   console.log("Seeding complete!");
