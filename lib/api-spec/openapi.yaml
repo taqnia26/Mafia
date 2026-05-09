@@ -1660,6 +1660,9 @@ components:
           type: integer
         description:
           type: string
+        imageUrl:
+          type: string
+          nullable: true
       required:
         - id
         - name
@@ -1778,6 +1781,9 @@ components:
           type: integer
         description:
           type: string
+        imageUrl:
+          type: string
+          nullable: true
       required:
         - id
         - name
@@ -2221,6 +2227,9 @@ components:
           type: integer
         description:
           type: string
+        imageUrl:
+          type: string
+          nullable: true
       required:
         - id
         - name

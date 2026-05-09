@@ -14,6 +14,7 @@ import {
   Lock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageBanner } from "@/components/PageBanner";
 
 export default function Dashboard() {
   const { t } = useI18n();
@@ -23,11 +24,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.dashboard")}</h1>
-      </div>
+      <PageBanner image="/images/banners/dashboard.png" title={t("nav.dashboard")} />
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {isStatsLoading ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl bg-card" />)
@@ -105,7 +103,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity Feed */}
         <Card className="lg:col-span-2 bg-card border-border">
           <CardHeader className="border-b border-border/50 pb-4">
             <CardTitle className="font-heading uppercase tracking-wider flex items-center gap-2">
@@ -139,7 +136,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Leaderboard Preview */}
         <Card className="bg-card border-border">
           <CardHeader className="border-b border-border/50 pb-4">
             <CardTitle className="font-heading uppercase tracking-wider flex items-center gap-2">

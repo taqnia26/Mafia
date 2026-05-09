@@ -13,4 +13,5 @@ export interface Ammo {
   damageBonus: number;
   price: number;
   description: string;
+  imageUrl?: string | null;
 }

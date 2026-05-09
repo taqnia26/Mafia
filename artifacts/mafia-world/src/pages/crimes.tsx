@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
 
 export default function Crimes() {
   const { t } = useI18n();
@@ -57,9 +58,7 @@ export default function Crimes() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.crimes")}</h1>
-      </div>
+      <PageBanner image="/images/banners/crimes.png" title={t("nav.crimes")} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-4">

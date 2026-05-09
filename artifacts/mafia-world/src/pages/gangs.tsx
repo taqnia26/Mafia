@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useState } from "react";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
 
 export default function Gangs() {
   const { t } = useI18n();
@@ -61,8 +62,9 @@ export default function Gangs() {
 
   return (
     <div className="space-y-6">
+      <PageBanner image="/images/banners/gangs.png" title={t("nav.gangs")} />
+
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.gangs")}</h1>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="font-heading uppercase tracking-wider">

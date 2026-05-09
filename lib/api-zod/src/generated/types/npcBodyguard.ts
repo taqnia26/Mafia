@@ -15,4 +15,5 @@ export interface NpcBodyguard {
   hirePrice: number;
   dailyCost: number;
   description: string;
+  imageUrl?: string | null;
 }

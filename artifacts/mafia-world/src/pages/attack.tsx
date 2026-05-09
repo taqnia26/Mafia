@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useSearch } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
 
 type SpyData = {
   attackPower: number | null;
@@ -150,9 +151,7 @@ export default function Attack() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.attack")}</h1>
-      </div>
+      <PageBanner image="/images/banners/attack.png" title={t("nav.attack")} />
 
       <Card className="bg-card border-destructive/40 shadow-[0_0_20px_rgba(220,38,38,0.1)]">
         <CardHeader className="border-b border-border/50">

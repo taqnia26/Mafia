@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
 
 type ItemType = "weapon" | "ammo" | "armor";
 
@@ -87,8 +88,9 @@ export default function BlackMarket() {
 
   return (
     <div className="space-y-6">
+      <PageBanner image="/images/banners/blackmarket.png" title={t("nav.blackmarket")} />
+
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.blackmarket")}</h1>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button className="font-heading uppercase tracking-wider">

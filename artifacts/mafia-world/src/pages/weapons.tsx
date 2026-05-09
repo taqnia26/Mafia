@@ -9,6 +9,8 @@ import { Package, Swords, Battery } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
+import { getWeaponImage, getAmmoImage } from "@/lib/itemImages";
 
 export default function Weapons() {
   const { t } = useI18n();
@@ -45,9 +47,7 @@ export default function Weapons() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.weapons")}</h1>
-      </div>
+      <PageBanner image="/images/banners/weapons.png" title={t("nav.weapons")} />
 
       <Tabs defaultValue="shop" className="w-full">
         <TabsList className="w-full max-w-md grid grid-cols-2 bg-card border border-border">
@@ -60,14 +60,21 @@ export default function Weapons() {
             <h2 className="text-xl font-heading text-primary mb-4 flex items-center gap-2"><Swords className="w-5 h-5"/> {t("weapons.title")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isWeaponsLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full bg-card" />)
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full bg-card" />)
               ) : shopWeapons?.map((w) => (
-                <Card key={w.id} className="bg-card border-border flex flex-col hover:border-primary/50 transition-colors">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="font-heading uppercase tracking-wider text-base">{w.name}</CardTitle>
-                      <Badge variant="outline" className="font-mono text-destructive border-destructive/50">+{w.attackPower} ATK</Badge>
-                    </div>
+                <Card key={w.id} className="bg-card border-border flex flex-col hover:border-primary/50 transition-colors overflow-hidden">
+                  <div className="relative h-36 overflow-hidden">
+                    <img
+                      src={w.imageUrl ?? getWeaponImage(w.name)}
+                      alt={w.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = getWeaponImage(w.name); }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                    <Badge variant="outline" className="absolute top-2 right-2 font-mono text-destructive border-destructive/50 bg-card/80">+{w.attackPower} ATK</Badge>
+                  </div>
+                  <CardHeader className="pb-2 pt-3">
+                    <CardTitle className="font-heading uppercase tracking-wider text-base">{w.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 text-sm text-muted-foreground space-y-1">
                     <p>{t("weapons.ammoType")}: <span className="text-foreground font-medium">{w.ammoType}</span></p>
@@ -87,10 +94,19 @@ export default function Weapons() {
             <h2 className="text-xl font-heading text-primary mb-4 flex items-center gap-2"><Battery className="w-5 h-5"/> {t("weapons.buyAmmo")}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isAmmoLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-32 w-full bg-card" />)
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full bg-card" />)
               ) : shopAmmo?.map((a) => (
-                <Card key={a.id} className="bg-card border-border hover:border-primary/50 transition-colors flex flex-col">
-                  <CardHeader className="pb-2">
+                <Card key={a.id} className="bg-card border-border hover:border-primary/50 transition-colors flex flex-col overflow-hidden">
+                  <div className="relative h-28 overflow-hidden">
+                    <img
+                      src={a.imageUrl ?? getAmmoImage(a.name)}
+                      alt={a.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = getAmmoImage(a.name); }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                  </div>
+                  <CardHeader className="pb-2 pt-3">
                     <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="flex-1 text-sm text-muted-foreground">
@@ -120,8 +136,14 @@ export default function Weapons() {
                 ) : myWeapons && myWeapons.length > 0 ? (
                   <div className="divide-y divide-border/50">
                     {myWeapons.map((w) => (
-                      <div key={w.weaponId} className="p-4 flex justify-between items-center">
-                        <div>
+                      <div key={w.weaponId} className="p-4 flex items-center gap-3">
+                        <img
+                          src={getWeaponImage(w.weaponName ?? "")}
+                          alt={w.weaponName ?? ""}
+                          className="w-12 h-12 object-cover rounded border border-border/50"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <div className="flex-1">
                           <p className="font-bold font-heading uppercase">{w.weaponName}</p>
                           <p className="text-xs text-muted-foreground">{t("common.quantity")}: {w.quantity}</p>
                         </div>
@@ -145,8 +167,14 @@ export default function Weapons() {
                 ) : myAmmo && myAmmo.length > 0 ? (
                   <div className="divide-y divide-border/50">
                     {myAmmo.map((a) => (
-                      <div key={a.ammoId} className="p-4 flex justify-between items-center">
-                        <p className="font-bold font-heading uppercase">{a.ammoName}</p>
+                      <div key={a.ammoId} className="p-4 flex items-center gap-3">
+                        <img
+                          src={getAmmoImage(a.ammoName ?? "")}
+                          alt={a.ammoName ?? ""}
+                          className="w-12 h-12 object-cover rounded border border-border/50"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                        <p className="flex-1 font-bold font-heading uppercase">{a.ammoName}</p>
                         <Badge variant="secondary" className="font-mono">x{a.quantity}</Badge>
                       </div>
                     ))}

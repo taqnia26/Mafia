@@ -31,6 +31,7 @@ export const ammoTable = pgTable("ammo", {
   damageBonus: integer("damage_bonus").notNull().default(0),
   price: integer("price").notNull(),
   description: text("description").notNull().default(""),
+  imageUrl: text("image_url"),
 });
 
 export const playerAmmoTable = pgTable("player_ammo", {

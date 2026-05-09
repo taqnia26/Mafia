@@ -1,0 +1,248 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "7GPvITGZam1RODqwOdRT5"
+uri = "file://artifacts/mafia-world/public/images/banners/gangs.png"
+type = "image"
+title = "gangs banner"
+
+[[generated]]
+id = "SthGRYCMj-iOSujYMrhBb"
+uri = "file://artifacts/mafia-world/public/images/banners/crimes.png"
+type = "image"
+title = "crimes banner"
+
+[[generated]]
+id = "yxkzIuTqENvGLofaIdvMm"
+uri = "file://artifacts/mafia-world/public/images/banners/attack.png"
+type = "image"
+title = "attack banner"
+
+[[generated]]
+id = "iLl-L9kd5uG4eF6ic02gh"
+uri = "file://artifacts/mafia-world/public/images/banners/blackmarket.png"
+type = "image"
+title = "black market banner"
+
+[[generated]]
+id = "hXYBt6YVk6d5JpFE3off3"
+uri = "file://artifacts/mafia-world/public/images/banners/weapons.png"
+type = "image"
+title = "weapons arsenal banner"
+
+[[generated]]
+id = "BfADoICFq2ZUJPkd2fLaR"
+uri = "file://artifacts/mafia-world/public/images/banners/armor.png"
+type = "image"
+title = "armor vehicles banner"
+
+[[generated]]
+id = "HzkRPcXAJqTbUJPmBlfAz"
+uri = "file://artifacts/mafia-world/public/images/banners/bodyguards.png"
+type = "image"
+title = "bodyguards banner"
+
+[[generated]]
+id = "5S7EBDQGDPlfvt7UUC743"
+uri = "file://artifacts/mafia-world/public/images/banners/cities.png"
+type = "image"
+title = "cities map banner"
+
+[[generated]]
+id = "cE-kkaAlBLTFD5qtNJQn-"
+uri = "file://artifacts/mafia-world/public/images/banners/prison.png"
+type = "image"
+title = "prison bars banner"
+
+[[generated]]
+id = "8vHVOn3tR7AAPQJY_1X2e"
+uri = "file://artifacts/mafia-world/public/images/banners/dashboard.png"
+type = "image"
+title = "mafia boss office banner"
+
+[[generated]]
+id = "AlXXfWgE39Mr3nHFwoEBy"
+uri = "file://artifacts/mafia-world/public/images/weapons/beretta-m9.png"
+type = "image"
+title = "beretta m9 pistol"
+
+[[generated]]
+id = "iH2r-Or4f4e4pWsyLa5rJ"
+uri = "file://artifacts/mafia-world/public/images/weapons/desert-eagle.png"
+type = "image"
+title = "desert eagle pistol"
+
+[[generated]]
+id = "e2wd0F0dL6Dxhjs3zpeyH"
+uri = "file://artifacts/mafia-world/public/images/weapons/remington-870.png"
+type = "image"
+title = "remington 870 shotgun"
+
+[[generated]]
+id = "LgHu1OKAWgUzYEeW8jOeJ"
+uri = "file://artifacts/mafia-world/public/images/weapons/ak-47.png"
+type = "image"
+title = "ak47 rifle"
+
+[[generated]]
+id = "VWAD1b1UvKeKyT5Q0ZU9Z"
+uri = "file://artifacts/mafia-world/public/images/weapons/m16.png"
+type = "image"
+title = "m16 rifle"
+
+[[generated]]
+id = "ajNW5TzIfBxYTHd_mLqTu"
+uri = "file://artifacts/mafia-world/public/images/weapons/mp5.png"
+type = "image"
+title = "mp5 smg"
+
+[[generated]]
+id = "tWWFdVa7SGKPDYmTx8gKR"
+uri = "file://artifacts/mafia-world/public/images/weapons/dragunov-svd.png"
+type = "image"
+title = "dragunov sniper"
+
+[[generated]]
+id = "-2I838DG5oRAWulyRb0ia"
+uri = "file://artifacts/mafia-world/public/images/weapons/rpg-7.png"
+type = "image"
+title = "rpg7 launcher"
+
+[[generated]]
+id = "7r7xK3XaFvzfhpkiXXQnR"
+uri = "file://artifacts/mafia-world/public/images/cities/new-york.png"
+type = "image"
+title = "new york night"
+
+[[generated]]
+id = "4hEn36ltKOKoMozcEUHBg"
+uri = "file://artifacts/mafia-world/public/images/cities/chicago.png"
+type = "image"
+title = "chicago night"
+
+[[generated]]
+id = "zVj_WlZr1ObZMQRRS7pWZ"
+uri = "file://artifacts/mafia-world/public/images/cities/las-vegas.png"
+type = "image"
+title = "las vegas night"
+
+[[generated]]
+id = "d8vka46VbR6JGMF-Eg1za"
+uri = "file://artifacts/mafia-world/public/images/cities/miami.png"
+type = "image"
+title = "miami night"
+
+[[generated]]
+id = "TkJK5u84RfUrlVm5SHygB"
+uri = "file://artifacts/mafia-world/public/images/cities/los-angeles.png"
+type = "image"
+title = "los angeles night"
+
+[[generated]]
+id = "pwY8_yR4n7csWikAjQqUL"
+uri = "file://artifacts/mafia-world/public/images/cities/beirut.png"
+type = "image"
+title = "beirut night"
+
+[[generated]]
+id = "kzyGNP-E6oislwsxUI0Uy"
+uri = "file://artifacts/mafia-world/public/images/armor/bulletproof-vest.png"
+type = "image"
+title = "bulletproof vest"
+
+[[generated]]
+id = "WsPxrO8C_AvTZF6hbtwuv"
+uri = "file://artifacts/mafia-world/public/images/armor/armored-sedan.png"
+type = "image"
+title = "armored sedan car"
+
+[[generated]]
+id = "uoLoP4VtI97cEWyxIfmSg"
+uri = "file://artifacts/mafia-world/public/images/armor/armored-suv.png"
+type = "image"
+title = "armored suv"
+
+[[generated]]
+id = "CP1d1J40PvQLrAUymAf9j"
+uri = "file://artifacts/mafia-world/public/images/armor/combat-helicopter.png"
+type = "image"
+title = "combat helicopter"
+
+[[generated]]
+id = "sNbuLqoAWyRxVMWfal9_-"
+uri = "file://artifacts/mafia-world/public/images/armor/reinforced-bunker.png"
+type = "image"
+title = "reinforced bunker"
+
+[[generated]]
+id = "l09Ec8F7-nJFHcUcy4sPd"
+uri = "file://artifacts/mafia-world/public/images/ammo/9mm-standard.png"
+type = "image"
+title = "9mm ammo"
+
+[[generated]]
+id = "c2b7xjh9vj8atVHdyRi_D"
+uri = "file://artifacts/mafia-world/public/images/bodyguards/cartel-enforcer.png"
+type = "image"
+title = "cartel enforcer"
+
+[[generated]]
+id = "0oQEa0l5pDNra2uzfcWbW"
+uri = "file://artifacts/mafia-world/public/images/ammo/50-ae-hollow-point.png"
+type = "image"
+title = "50 ae ammo"
+
+[[generated]]
+id = "Lr4y_Eez3dfWzu4X-sL8h"
+uri = "file://artifacts/mafia-world/public/images/ammo/7-62mm-ap.png"
+type = "image"
+title = "762 ammo"
+
+[[generated]]
+id = "lUW2QW2xzGM8_-yq2INVf"
+uri = "file://artifacts/mafia-world/public/images/ammo/5-56mm-fmj.png"
+type = "image"
+title = "556 ammo"
+
+[[generated]]
+id = "R931jRRqTwg9wWtI5mMXd"
+uri = "file://artifacts/mafia-world/public/images/ammo/rpg-warhead.png"
+type = "image"
+title = "rpg warhead"
+
+[[generated]]
+id = "JrIBo_zEVyU6Jyl-qhgec"
+uri = "file://artifacts/mafia-world/public/images/bodyguards/street-tough.png"
+type = "image"
+title = "street tough guard"
+
+[[generated]]
+id = "K6UTUUpymaH0V740ztSTf"
+uri = "file://artifacts/mafia-world/public/images/bodyguards/ex-cop.png"
+type = "image"
+title = "ex cop guard"
+
+[[generated]]
+id = "rKck7DeujbOzRbqy6fT8t"
+uri = "file://artifacts/mafia-world/public/images/bodyguards/military-veteran.png"
+type = "image"
+title = "military veteran guard"
+
+[[generated]]
+id = "K_A3BSk7bFlnYAMoU_T3y"
+uri = "file://artifacts/mafia-world/public/images/bodyguards/special-forces.png"
+type = "image"
+title = "special forces guard"
+
+[[generated]]
+id = "qZV9CVVDGbpZu4Uqomowc"
+uri = "file://artifacts/mafia-world/public/images/bodyguards/ghost-operative.png"
+type = "image"
+title = "ghost operative"
+
+[[generated]]
+id = "IFFrnJrqBVQo5i_qKJmjw"
+uri = "file://artifacts/mafia-world/public/images/ammo/12-gauge-buckshot.png"
+type = "image"
+title = "Shotgun buckshot shells"

@@ -14,6 +14,7 @@ import { Lock, Clock, ShieldAlert, DollarSign, CheckCircle2 } from "lucide-react
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
 
 function PrisonTimer({ releaseAt, onExpired }: { releaseAt: string; onExpired: () => void }) {
   const [timeLeft, setTimeLeft] = useState("");
@@ -80,9 +81,7 @@ export default function Prison() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.prison")}</h1>
-      </div>
+      <PageBanner image="/images/banners/prison.png" title={t("nav.prison")} />
 
       {isLoading ? (
         <Skeleton className="h-64 w-full bg-card" />

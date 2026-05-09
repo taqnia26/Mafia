@@ -14,6 +14,7 @@ export const npcBodyguardsTable = pgTable("npc_bodyguards", {
   hirePrice: integer("hire_price").notNull(),
   dailyCost: integer("daily_cost").notNull(),
   description: text("description").notNull().default(""),
+  imageUrl: text("image_url"),
 });
 
 export const playerNpcGuardsTable = pgTable("player_npc_guards", {

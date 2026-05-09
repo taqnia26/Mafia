@@ -9,6 +9,7 @@ export const citiesTable = pgTable("cities", {
   country: text("country").notNull(),
   description: text("description").notNull().default(""),
   travelHoursBase: integer("travel_hours_base").notNull().default(4),
+  imageUrl: text("image_url"),
 });
 
 export const insertCitySchema = createInsertSchema(citiesTable).omit({ id: true });

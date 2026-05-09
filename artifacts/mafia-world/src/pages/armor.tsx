@@ -9,6 +9,8 @@ import { Shield, Package } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
+import { getArmorImage } from "@/lib/itemImages";
 
 export default function Armor() {
   const { t } = useI18n();
@@ -32,9 +34,7 @@ export default function Armor() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.armor")}</h1>
-      </div>
+      <PageBanner image="/images/banners/armor.png" title={t("nav.armor")} />
 
       <Tabs defaultValue="shop" className="w-full">
         <TabsList className="w-full max-w-md grid grid-cols-2 bg-card border border-border">
@@ -45,14 +45,21 @@ export default function Armor() {
         <TabsContent value="shop" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {isShopLoading ? (
-              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full bg-card" />)
+              Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full bg-card" />)
             ) : shopArmor?.map((a) => (
-              <Card key={a.id} className="bg-card border-border flex flex-col hover:border-blue-500/50 transition-colors">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
-                    <Badge variant="outline" className="font-mono text-blue-400 border-blue-400/50">+{a.defenseBonus} DEF</Badge>
-                  </div>
+              <Card key={a.id} className="bg-card border-border flex flex-col hover:border-blue-500/50 transition-colors overflow-hidden">
+                <div className="relative h-36 overflow-hidden">
+                  <img
+                    src={a.imageUrl ?? getArmorImage(a.name)}
+                    alt={a.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = getArmorImage(a.name); }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                  <Badge variant="outline" className="absolute top-2 right-2 font-mono text-blue-400 border-blue-400/50 bg-card/80">+{a.defenseBonus} DEF</Badge>
+                </div>
+                <CardHeader className="pb-2 pt-3">
+                  <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 text-sm text-muted-foreground">
                   <p>{t("armor.defenseBonus")}: <span className="text-blue-400 font-bold">+{a.defenseBonus}</span></p>
@@ -79,8 +86,14 @@ export default function Armor() {
               ) : myArmor && myArmor.length > 0 ? (
                 <div className="divide-y divide-border/50">
                   {myArmor.map((a) => (
-                    <div key={a.armorId} className="p-4 flex justify-between items-center">
-                      <div>
+                    <div key={a.armorId} className="p-4 flex items-center gap-3">
+                      <img
+                        src={getArmorImage(a.armorName ?? "")}
+                        alt={a.armorName ?? ""}
+                        className="w-12 h-12 object-cover rounded border border-border/50"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <div className="flex-1">
                         <p className="font-bold font-heading uppercase">{a.armorName}</p>
                         <div className="flex gap-2 mt-1">
                           <Badge variant="outline" className="text-[10px] h-4">{t("common.quantity")}: {a.quantity}</Badge>

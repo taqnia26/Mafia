@@ -219,6 +219,7 @@ export interface Ammo {
   damageBonus: number;
   price: number;
   description: string;
+  imageUrl?: string | null;
 }
 
 export interface PlayerAmmo {
@@ -286,6 +287,7 @@ export interface NpcBodyguard {
   hirePrice: number;
   dailyCost: number;
   description: string;
+  imageUrl?: string | null;
 }
 
 export interface BodyguardRequestInput {
@@ -519,6 +521,7 @@ export interface City {
   country: string;
   playerCount: number;
   description: string;
+  imageUrl?: string | null;
 }
 
 export interface TravelInput {

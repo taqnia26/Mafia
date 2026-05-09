@@ -23,6 +23,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { getApiError } from "@/lib/apiError";
+import { PageBanner } from "@/components/PageBanner";
+import { getBodyguardImage } from "@/lib/itemImages";
 
 export default function Bodyguards() {
   const { t } = useI18n();
@@ -82,9 +84,7 @@ export default function Bodyguards() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold uppercase tracking-wider">{t("nav.bodyguards")}</h1>
-      </div>
+      <PageBanner image="/images/banners/bodyguards.png" title={t("nav.bodyguards")} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-6">
@@ -96,8 +96,17 @@ export default function Bodyguards() {
               {isNpcsLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full bg-card" />)
               ) : npcs?.map((npc) => (
-                <Card key={npc.id} className="bg-card border-border hover:border-primary/50 transition-colors">
+                <Card key={npc.id} className="bg-card border-border hover:border-primary/50 transition-colors overflow-hidden">
                   <div className="flex flex-col sm:flex-row">
+                    <div className="relative sm:w-32 h-32 sm:h-auto flex-shrink-0 overflow-hidden">
+                      <img
+                        src={npc.imageUrl ?? getBodyguardImage(npc.name)}
+                        alt={npc.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).src = getBodyguardImage(npc.name); }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent to-card/60 hidden sm:block" />
+                    </div>
                     <div className="p-6 flex-1">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="text-lg font-bold font-heading uppercase">{npc.name}</h3>
@@ -244,8 +253,14 @@ export default function Bodyguards() {
               ) : (
                 <div className="divide-y divide-border/50">
                   {myGuards?.npcGuards.map((guard) => (
-                    <div key={guard.id} className="p-4 flex items-center justify-between">
-                      <div>
+                    <div key={guard.id} className="p-4 flex items-center gap-3">
+                      <img
+                        src={getBodyguardImage(guard.npcName ?? "")}
+                        alt={guard.npcName ?? ""}
+                        className="w-12 h-12 object-cover rounded-full border border-border/50"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <div className="flex-1">
                         <p className="font-bold font-heading uppercase">{guard.npcName}</p>
                         <div className="flex gap-2 mt-1">
                           <Badge variant="outline" className="text-[10px] h-4">{guard.tier}</Badge>

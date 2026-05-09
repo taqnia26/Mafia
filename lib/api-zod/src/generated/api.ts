@@ -429,6 +429,7 @@ export const ListAmmoResponseItem = zod.object({
   damageBonus: zod.number(),
   price: zod.number(),
   description: zod.string(),
+  imageUrl: zod.string().nullish(),
 });
 export const ListAmmoResponse = zod.array(ListAmmoResponseItem);
 
@@ -530,6 +531,7 @@ export const ListNpcBodyguardsResponseItem = zod.object({
   hirePrice: zod.number(),
   dailyCost: zod.number(),
   description: zod.string(),
+  imageUrl: zod.string().nullish(),
 });
 export const ListNpcBodyguardsResponse = zod.array(
   ListNpcBodyguardsResponseItem,
@@ -891,6 +893,7 @@ export const ListCitiesResponseItem = zod.object({
   country: zod.string(),
   playerCount: zod.number(),
   description: zod.string(),
+  imageUrl: zod.string().nullish(),
 });
 export const ListCitiesResponse = zod.array(ListCitiesResponseItem);
 
