@@ -895,3 +895,96 @@ export const TravelToCityResponse = zod.object({
   toCityName: zod.string(),
   message: zod.string(),
 });
+
+/**
+ * @summary Get server-wide stats (admin only)
+ */
+export const GetAdminStatsResponse = zod.object({
+  totalPlayers: zod.number(),
+  totalGangs: zod.number(),
+  totalAttacks: zod.number(),
+  totalPrisoners: zod.number(),
+  totalMoneyInCirculation: zod.number(),
+});
+
+/**
+ * @summary List all players (admin only)
+ */
+export const GetAdminPlayersQueryParams = zod.object({
+  page: zod.coerce.number().optional(),
+  limit: zod.coerce.number().optional(),
+});
+
+export const GetAdminPlayersResponse = zod.object({
+  players: zod.array(
+    zod.object({
+      id: zod.number(),
+      username: zod.string(),
+      level: zod.number(),
+      money: zod.number(),
+      killCount: zod.number(),
+      deathCount: zod.number(),
+      isInPrison: zod.boolean(),
+      isTraveling: zod.boolean(),
+      isAdmin: zod.boolean(),
+      gangId: zod.number().nullable(),
+      cityId: zod.number(),
+      cityName: zod.string(),
+      createdAt: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Update player (admin only)
+ */
+export const UpdateAdminPlayerParams = zod.object({
+  playerId: zod.coerce.number(),
+});
+
+export const UpdateAdminPlayerBody = zod.object({
+  isInPrison: zod.boolean().optional(),
+  money: zod.number().optional(),
+  isAdmin: zod.boolean().optional(),
+});
+
+export const UpdateAdminPlayerResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Reset player stats (admin only)
+ */
+export const ResetAdminPlayerParams = zod.object({
+  playerId: zod.coerce.number(),
+});
+
+export const ResetAdminPlayerResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary List all gangs (admin only)
+ */
+export const GetAdminGangsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  treasury: zod.number(),
+  memberCount: zod.number(),
+  createdAt: zod.string(),
+});
+export const GetAdminGangsResponse = zod.array(GetAdminGangsResponseItem);
+
+/**
+ * @summary Disband a gang (admin only)
+ */
+export const DeleteAdminGangParams = zod.object({
+  gangId: zod.coerce.number(),
+});
+
+export const DeleteAdminGangResponse = zod.object({
+  message: zod.string(),
+});

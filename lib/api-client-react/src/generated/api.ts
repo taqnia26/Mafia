@@ -18,6 +18,10 @@ import type {
 
 import type {
   ActivityItem,
+  AdminGang,
+  AdminPlayerListResponse,
+  AdminPlayerUpdate,
+  AdminStats,
   Ammo,
   AntiSpyToggle,
   ArmorItem,
@@ -40,6 +44,7 @@ import type {
   Gang,
   GangInput,
   GangMember,
+  GetAdminPlayersParams,
   HealthStatus,
   JailbreakInput,
   JailbreakResult,
@@ -4095,4 +4100,503 @@ export const useTravelToCity = <
   TContext
 > => {
   return useMutation(getTravelToCityMutationOptions(options));
+};
+
+/**
+ * @summary Get server-wide stats (admin only)
+ */
+export const getGetAdminStatsUrl = () => {
+  return `/api/admin/stats`;
+};
+
+export const getAdminStats = async (
+  options?: RequestInit,
+): Promise<AdminStats> => {
+  return customFetch<AdminStats>(getGetAdminStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminStatsQueryKey = () => {
+  return [`/api/admin/stats`] as const;
+};
+
+export const getGetAdminStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminStatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminStats>>> = ({
+    signal,
+  }) => getAdminStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminStats>>
+>;
+export type GetAdminStatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get server-wide stats (admin only)
+ */
+
+export function useGetAdminStats<
+  TData = Awaited<ReturnType<typeof getAdminStats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all players (admin only)
+ */
+export const getGetAdminPlayersUrl = (params?: GetAdminPlayersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/players?${stringifiedParams}`
+    : `/api/admin/players`;
+};
+
+export const getAdminPlayers = async (
+  params?: GetAdminPlayersParams,
+  options?: RequestInit,
+): Promise<AdminPlayerListResponse> => {
+  return customFetch<AdminPlayerListResponse>(getGetAdminPlayersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminPlayersQueryKey = (params?: GetAdminPlayersParams) => {
+  return [`/api/admin/players`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAdminPlayersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminPlayers>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminPlayersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminPlayers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminPlayersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPlayers>>> = ({
+    signal,
+  }) => getAdminPlayers(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPlayers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminPlayersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminPlayers>>
+>;
+export type GetAdminPlayersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all players (admin only)
+ */
+
+export function useGetAdminPlayers<
+  TData = Awaited<ReturnType<typeof getAdminPlayers>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminPlayersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminPlayers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminPlayersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update player (admin only)
+ */
+export const getUpdateAdminPlayerUrl = (playerId: number) => {
+  return `/api/admin/players/${playerId}`;
+};
+
+export const updateAdminPlayer = async (
+  playerId: number,
+  adminPlayerUpdate: AdminPlayerUpdate,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getUpdateAdminPlayerUrl(playerId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminPlayerUpdate),
+  });
+};
+
+export const getUpdateAdminPlayerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminPlayer>>,
+    TError,
+    { playerId: number; data: BodyType<AdminPlayerUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminPlayer>>,
+  TError,
+  { playerId: number; data: BodyType<AdminPlayerUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateAdminPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminPlayer>>,
+    { playerId: number; data: BodyType<AdminPlayerUpdate> }
+  > = (props) => {
+    const { playerId, data } = props ?? {};
+
+    return updateAdminPlayer(playerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAdminPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminPlayer>>
+>;
+export type UpdateAdminPlayerMutationBody = BodyType<AdminPlayerUpdate>;
+export type UpdateAdminPlayerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update player (admin only)
+ */
+export const useUpdateAdminPlayer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminPlayer>>,
+    TError,
+    { playerId: number; data: BodyType<AdminPlayerUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminPlayer>>,
+  TError,
+  { playerId: number; data: BodyType<AdminPlayerUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateAdminPlayerMutationOptions(options));
+};
+
+/**
+ * @summary Reset player stats (admin only)
+ */
+export const getResetAdminPlayerUrl = (playerId: number) => {
+  return `/api/admin/players/${playerId}/reset`;
+};
+
+export const resetAdminPlayer = async (
+  playerId: number,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getResetAdminPlayerUrl(playerId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getResetAdminPlayerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetAdminPlayer>>,
+    TError,
+    { playerId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetAdminPlayer>>,
+  TError,
+  { playerId: number },
+  TContext
+> => {
+  const mutationKey = ["resetAdminPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetAdminPlayer>>,
+    { playerId: number }
+  > = (props) => {
+    const { playerId } = props ?? {};
+
+    return resetAdminPlayer(playerId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetAdminPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetAdminPlayer>>
+>;
+
+export type ResetAdminPlayerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Reset player stats (admin only)
+ */
+export const useResetAdminPlayer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetAdminPlayer>>,
+    TError,
+    { playerId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetAdminPlayer>>,
+  TError,
+  { playerId: number },
+  TContext
+> => {
+  return useMutation(getResetAdminPlayerMutationOptions(options));
+};
+
+/**
+ * @summary List all gangs (admin only)
+ */
+export const getGetAdminGangsUrl = () => {
+  return `/api/admin/gangs`;
+};
+
+export const getAdminGangs = async (
+  options?: RequestInit,
+): Promise<AdminGang[]> => {
+  return customFetch<AdminGang[]>(getGetAdminGangsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminGangsQueryKey = () => {
+  return [`/api/admin/gangs`] as const;
+};
+
+export const getGetAdminGangsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminGangs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminGangs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminGangsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminGangs>>> = ({
+    signal,
+  }) => getAdminGangs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminGangs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminGangsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminGangs>>
+>;
+export type GetAdminGangsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all gangs (admin only)
+ */
+
+export function useGetAdminGangs<
+  TData = Awaited<ReturnType<typeof getAdminGangs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminGangs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminGangsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Disband a gang (admin only)
+ */
+export const getDeleteAdminGangUrl = (gangId: number) => {
+  return `/api/admin/gangs/${gangId}`;
+};
+
+export const deleteAdminGang = async (
+  gangId: number,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getDeleteAdminGangUrl(gangId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdminGangMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminGang>>,
+    TError,
+    { gangId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminGang>>,
+  TError,
+  { gangId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminGang"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminGang>>,
+    { gangId: number }
+  > = (props) => {
+    const { gangId } = props ?? {};
+
+    return deleteAdminGang(gangId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminGangMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminGang>>
+>;
+
+export type DeleteAdminGangMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Disband a gang (admin only)
+ */
+export const useDeleteAdminGang = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminGang>>,
+    TError,
+    { gangId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminGang>>,
+  TError,
+  { gangId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAdminGangMutationOptions(options));
 };

@@ -10,6 +10,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { startWorker } from "./lib/worker";
 
 const app: Express = express();
 
@@ -49,5 +50,7 @@ app.use(
 );
 
 app.use("/api", router);
+
+startWorker();
 
 export default app;

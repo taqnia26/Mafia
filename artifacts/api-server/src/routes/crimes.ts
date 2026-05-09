@@ -21,14 +21,14 @@ router.post("/crimes/attempt", requireAuth, async (req, res) => {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
 
-    if (player.isInPrison) return res.status(400).json({ error: "Cannot commit crimes while in prison" });
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot commit crimes while in prison" });
 
     const { crimeTypeId } = req.body;
     const crime = await db.select().from(crimeTypesTable).where(eq(crimeTypesTable.id, crimeTypeId)).limit(1);
-    if (!crime[0]) return res.status(404).json({ error: "Crime not found" });
+    if (!crime[0]) return void res.status(404).json({ error: "Crime not found" });
 
     if (player.level < crime[0].requiredLevel) {
-      return res.status(400).json({ error: `Requires level ${crime[0].requiredLevel}` });
+      return void res.status(400).json({ error: `Requires level ${crime[0].requiredLevel}` });
     }
 
     const cooldownStart = new Date(Date.now() - crime[0].cooldownMinutes * 60 * 1000);
@@ -43,7 +43,7 @@ router.post("/crimes/attempt", requireAuth, async (req, res) => {
     if (recentAttempt[0]) {
       const nextAvailable = new Date(recentAttempt[0].attemptedAt.getTime() + crime[0].cooldownMinutes * 60 * 1000);
       const minutesLeft = Math.ceil((nextAvailable.getTime() - Date.now()) / 60000);
-      return res.status(400).json({ error: `On cooldown. Try again in ${minutesLeft} minutes.` });
+      return void res.status(400).json({ error: `On cooldown. Try again in ${minutesLeft} minutes.` });
     }
 
     const roll = Math.random();
@@ -137,7 +137,7 @@ router.get("/prison/status", requireAuth, async (req, res) => {
 
       await logActivity(player.id, "released", "Released from prison");
 
-      return res.json({ isInPrison: false, releaseAt: null, crimeCommitted: null, hoursRemaining: null });
+      return void res.json({ isInPrison: false, releaseAt: null, crimeCommitted: null, hoursRemaining: null });
     }
 
     const hoursRemaining = player.isInPrison && player.prisonReleaseAt
@@ -159,14 +159,14 @@ router.post("/prison/jailbreak/:targetPlayerId", requireAuth, async (req, res) =
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const targetId = parseInt(req.params.targetPlayerId);
+    const targetId = parseInt(String(req.params.targetPlayerId));
     const { method } = req.body;
 
-    if (player.isInPrison) return res.status(400).json({ error: "Cannot jailbreak while in prison" });
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot jailbreak while in prison" });
 
     const target = await db.select().from(playersTable).where(eq(playersTable.id, targetId)).limit(1);
-    if (!target[0]) return res.status(404).json({ error: "Target not found" });
-    if (!target[0].isInPrison) return res.status(400).json({ error: "Target is not in prison" });
+    if (!target[0]) return void res.status(404).json({ error: "Target not found" });
+    if (!target[0].isInPrison) return void res.status(400).json({ error: "Target is not in prison" });
 
     const bribeCost = 5000;
     const raidSuccessRate = 0.4;
@@ -176,7 +176,7 @@ router.post("/prison/jailbreak/:targetPlayerId", requireAuth, async (req, res) =
     let message = "";
 
     if (method === "bribe") {
-      if (player.money < bribeCost) return res.status(400).json({ error: `Bribe costs $${bribeCost}` });
+      if (player.money < bribeCost) return void res.status(400).json({ error: `Bribe costs $${bribeCost}` });
       success = true;
       moneyCost = bribeCost;
       message = "Bribe successful. Your ally is free.";

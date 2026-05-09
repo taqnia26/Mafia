@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { db } from "../lib/db";
 import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
-import { gangsTable, playersTable } from "@workspace/db/schema";
-import { eq, count, desc } from "drizzle-orm";
+import { gangsTable, playersTable, gangRankEnum } from "@workspace/db/schema";
+import { eq, count, desc, sql } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
+
+type GangRank = typeof gangRankEnum[number];
 
 const router = Router();
 
@@ -30,10 +32,10 @@ router.post("/gangs", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    if (player.gangId) return res.status(400).json({ error: "Already in a gang" });
+    if (player.gangId) return void res.status(400).json({ error: "Already in a gang" });
 
-    const { name, description } = req.body;
-    if (!name) return res.status(400).json({ error: "Name required" });
+    const { name, description } = req.body as { name: string; description?: string };
+    if (!name) return void res.status(400).json({ error: "Name required" });
 
     const [gang] = await db.insert(gangsTable).values({
       name,
@@ -55,17 +57,19 @@ router.post("/gangs", requireAuth, async (req, res) => {
       bossName: boss[0]?.username ?? player.username,
       createdAt: gang.createdAt.toISOString(),
     });
-  } catch (e: any) {
-    if (e?.code === "23505") return res.status(400).json({ error: "Gang name already taken" });
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === "23505") {
+      return void res.status(400).json({ error: "Gang name already taken" });
+    }
     res.status(500).json({ error: String(e) });
   }
 });
 
 router.get("/gangs/:gangId", requireAuth, async (req, res) => {
   try {
-    const gangId = parseInt(req.params.gangId);
+    const gangId = parseInt(String(req.params.gangId));
     const gangs = await db.select().from(gangsTable).where(eq(gangsTable.id, gangId)).limit(1);
-    if (!gangs[0]) return res.status(404).json({ error: "Gang not found" });
+    if (!gangs[0]) return void res.status(404).json({ error: "Gang not found" });
     const gang = gangs[0];
     const [members, boss] = await Promise.all([
       db.select({ count: count() }).from(playersTable).where(eq(playersTable.gangId, gangId)),
@@ -86,11 +90,11 @@ router.post("/gangs/:gangId/join", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    if (player.gangId) return res.status(400).json({ error: "Already in a gang" });
+    if (player.gangId) return void res.status(400).json({ error: "Already in a gang" });
 
-    const gangId = parseInt(req.params.gangId);
+    const gangId = parseInt(String(req.params.gangId));
     const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, gangId)).limit(1);
-    if (!gang[0]) return res.status(404).json({ error: "Gang not found" });
+    if (!gang[0]) return void res.status(404).json({ error: "Gang not found" });
 
     await db.update(playersTable).set({ gangId, gangRank: "Soldier", updatedAt: new Date() }).where(eq(playersTable.id, player.id));
     await logActivity(player.id, "joined_gang", `Joined gang "${gang[0].name}"`);
@@ -105,8 +109,8 @@ router.post("/gangs/me/leave", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    if (!player.gangId) return res.status(400).json({ error: "Not in a gang" });
-    if (player.gangRank === "Boss") return res.status(400).json({ error: "Boss cannot leave. Promote someone first." });
+    if (!player.gangId) return void res.status(400).json({ error: "Not in a gang" });
+    if (player.gangRank === "Boss") return void res.status(400).json({ error: "Boss cannot leave. Promote someone first." });
 
     const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, player.gangId)).limit(1);
     await db.update(playersTable).set({ gangId: null, gangRank: null, updatedAt: new Date() }).where(eq(playersTable.id, player.id));
@@ -120,7 +124,7 @@ router.post("/gangs/me/leave", requireAuth, async (req, res) => {
 
 router.get("/gangs/:gangId/members", requireAuth, async (req, res) => {
   try {
-    const gangId = parseInt(req.params.gangId);
+    const gangId = parseInt(String(req.params.gangId));
     const members = await db.select({
       id: playersTable.id,
       playerId: playersTable.id,
@@ -146,24 +150,24 @@ router.post("/gangs/:gangId/members/:memberId/promote", requireAuth, async (req,
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const gangId = parseInt(req.params.gangId);
-    const memberId = parseInt(req.params.memberId);
+    const gangId = parseInt(String(req.params.gangId));
+    const memberId = parseInt(String(req.params.memberId));
 
-    if (player.gangId !== gangId) return res.status(403).json({ error: "Not in this gang" });
+    if (player.gangId !== gangId) return void res.status(403).json({ error: "Not in this gang" });
     if (!["Boss", "Consigliere", "Underboss"].includes(player.gangRank ?? "")) {
-      return res.status(403).json({ error: "Insufficient rank to promote" });
+      return void res.status(403).json({ error: "Insufficient rank to promote" });
     }
 
-    const { rank } = req.body;
-    const validRanks = ["Soldier", "Capo", "Underboss", "Consigliere", "Boss"];
-    if (!validRanks.includes(rank)) return res.status(400).json({ error: "Invalid rank" });
+    const { rank } = req.body as { rank: string };
+    const validRanks: ReadonlyArray<GangRank> = [...gangRankEnum];
+    if (!validRanks.includes(rank as GangRank)) return void res.status(400).json({ error: "Invalid rank" });
 
     const [member] = await db.update(playersTable)
-      .set({ gangRank: rank as any, updatedAt: new Date() })
+      .set({ gangRank: rank as GangRank, updatedAt: new Date() })
       .where(eq(playersTable.id, memberId))
       .returning();
 
-    if (!member) return res.status(404).json({ error: "Member not found" });
+    if (!member) return void res.status(404).json({ error: "Member not found" });
 
     res.json({
       id: member.id,
@@ -182,18 +186,24 @@ router.post("/gangs/:gangId/deposit", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const gangId = parseInt(req.params.gangId);
-    const { amount } = req.body;
+    const gangId = parseInt(String(req.params.gangId));
+    const { amount } = req.body as { amount: number };
+    const amountInt = parseInt(String(amount));
 
-    if (player.gangId !== gangId) return res.status(403).json({ error: "Not in this gang" });
-    if (!amount || amount <= 0) return res.status(400).json({ error: "Invalid amount" });
-    if (player.money < amount) return res.status(400).json({ error: "Insufficient funds" });
+    if (player.gangId !== gangId) return void res.status(403).json({ error: "Not in this gang" });
+    if (!Number.isInteger(amountInt) || amountInt < 1) return void res.status(400).json({ error: "Amount must be a positive integer" });
+    if (player.money < amountInt) return void res.status(400).json({ error: "Insufficient funds" });
 
-    await db.update(playersTable).set({ money: player.money - amount, updatedAt: new Date() }).where(eq(playersTable.id, player.id));
-    const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, gangId)).limit(1);
-    await db.update(gangsTable).set({ treasury: (gang[0]?.treasury ?? 0) + amount }).where(eq(gangsTable.id, gangId));
+    await db.transaction(async (tx) => {
+      await tx.update(playersTable)
+        .set({ money: sql`${playersTable.money} - ${amountInt}`, updatedAt: new Date() })
+        .where(eq(playersTable.id, player.id));
+      await tx.update(gangsTable)
+        .set({ treasury: sql`${gangsTable.treasury} + ${amountInt}` })
+        .where(eq(gangsTable.id, gangId));
+    });
 
-    res.json({ message: `Deposited $${amount} to treasury` });
+    res.json({ message: `Deposited $${amountInt} to treasury` });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

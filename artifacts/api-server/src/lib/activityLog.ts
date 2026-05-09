@@ -11,9 +11,15 @@ export type ActivityType =
   | "joined_gang"
   | "left_gang"
   | "bodyguard_hired"
+  | "black_market_listed"
   | "black_market_sale"
   | "black_market_purchase"
-  | "traveled";
+  | "traveled"
+  | "arrived"
+  | "attack_won"
+  | "attack_lost"
+  | "attack_repelled"
+  | "attack_defended";
 
 export async function logActivity(playerId: number, type: ActivityType, description: string) {
   await db.insert(activityLogTable).values({ playerId, type, description });

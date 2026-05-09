@@ -14,15 +14,15 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const targetId = parseInt(req.params.targetPlayerId);
+    const targetId = parseInt(String(req.params.targetPlayerId));
 
     const target = await db.select().from(playersTable).where(eq(playersTable.id, targetId)).limit(1);
-    if (!target[0]) return res.status(404).json({ error: "Target not found" });
+    if (!target[0]) return void res.status(404).json({ error: "Target not found" });
 
     const t = target[0];
 
     if (t.antiSpyEnabled) {
-      return res.json({
+      return void res.json({
         success: false,
         blocked: true,
         targetPlayerId: targetId,
@@ -68,8 +68,8 @@ router.post("/attacks", requireAuth, async (req, res) => {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
 
-    if (player.isInPrison) return res.status(400).json({ error: "Cannot attack while in prison" });
-    if (player.isTraveling) return res.status(400).json({ error: "Cannot attack while traveling" });
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot attack while in prison" });
+    if (player.isTraveling) return void res.status(400).json({ error: "Cannot attack while traveling" });
 
     const { targetPlayerId, weaponId, ammoQuantity } = req.body;
 
@@ -78,13 +78,13 @@ router.post("/attacks", requireAuth, async (req, res) => {
       db.select().from(weaponsTable).where(eq(weaponsTable.id, weaponId)).limit(1),
     ]);
 
-    if (!target[0]) return res.status(404).json({ error: "Target not found" });
-    if (!weapon[0]) return res.status(404).json({ error: "Weapon not found" });
-    if (target[0].id === player.id) return res.status(400).json({ error: "Cannot attack yourself" });
+    if (!target[0]) return void res.status(404).json({ error: "Target not found" });
+    if (!weapon[0]) return void res.status(404).json({ error: "Weapon not found" });
+    if (target[0].id === player.id) return void res.status(400).json({ error: "Cannot attack yourself" });
 
     const playerAmmo = await db.select().from(playerAmmoTable).where(eq(playerAmmoTable.playerId, player.id)).limit(1);
     const totalAmmo = playerAmmo.reduce((sum, a) => sum + a.quantity, 0);
-    if (totalAmmo < ammoQuantity) return res.status(400).json({ error: "Insufficient ammo" });
+    if (totalAmmo < ammoQuantity) return void res.status(400).json({ error: "Insufficient ammo" });
 
     const travelHours = 4 + Math.random() * 2;
     const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
@@ -198,12 +198,12 @@ router.post("/attacks/:attackId/cancel", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const attackId = parseInt(req.params.attackId);
+    const attackId = parseInt(String(req.params.attackId));
 
     const attack = await db.select().from(attacksTable).where(eq(attacksTable.id, attackId)).limit(1);
-    if (!attack[0]) return res.status(404).json({ error: "Attack not found" });
-    if (attack[0].attackerId !== player.id) return res.status(403).json({ error: "Not your attack" });
-    if (attack[0].status !== "traveling") return res.status(400).json({ error: "Cannot cancel completed attack" });
+    if (!attack[0]) return void res.status(404).json({ error: "Attack not found" });
+    if (attack[0].attackerId !== player.id) return void res.status(403).json({ error: "Not your attack" });
+    if (attack[0].status !== "traveling") return void res.status(400).json({ error: "Cannot cancel completed attack" });
 
     await db.update(attacksTable).set({ status: "cancelled" }).where(eq(attacksTable.id, attackId));
 

@@ -533,6 +533,57 @@ export interface TravelResult {
   message: string;
 }
 
+export interface AdminStats {
+  totalPlayers: number;
+  totalGangs: number;
+  totalAttacks: number;
+  totalPrisoners: number;
+  totalMoneyInCirculation: number;
+}
+
+export interface AdminPlayer {
+  id: number;
+  username: string;
+  level: number;
+  money: number;
+  killCount: number;
+  deathCount: number;
+  isInPrison: boolean;
+  isTraveling: boolean;
+  isAdmin: boolean;
+  /** @nullable */
+  gangId: number | null;
+  cityId: number;
+  cityName: string;
+  createdAt: string;
+}
+
+export interface AdminPlayerListResponse {
+  players: AdminPlayer[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminPlayerUpdate {
+  isInPrison?: boolean;
+  money?: number;
+  isAdmin?: boolean;
+}
+
+export interface AdminGang {
+  id: number;
+  name: string;
+  treasury: number;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface AdminPlayersParams {
+  page?: number;
+  limit?: number;
+}
+
 export type ListPlayersParams = {
   cityId?: number;
   search?: string;
@@ -552,3 +603,8 @@ export const ListBlackMarketType = {
   ammo: "ammo",
   armor: "armor",
 } as const;
+
+export type GetAdminPlayersParams = {
+  page?: number;
+  limit?: number;
+};

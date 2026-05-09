@@ -10,6 +10,7 @@ import attacksRouter from "./attacks";
 import blackmarketRouter from "./blackmarket";
 import crimesRouter from "./crimes";
 import citiesRouter from "./cities";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(attacksRouter);
 router.use(blackmarketRouter);
 router.use(crimesRouter);
 router.use(citiesRouter);
+router.use(adminRouter);
 
 export default router;

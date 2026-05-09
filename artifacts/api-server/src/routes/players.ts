@@ -4,14 +4,14 @@ import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   playersTable, gangsTable, citiesTable,
 } from "@workspace/db/schema";
-import { eq, ilike, and, ne, count } from "drizzle-orm";
+import { eq, ilike, and, count, SQL } from "drizzle-orm";
 
 const router = Router();
 
 router.get("/players/me", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
-    const player = await getOrCreatePlayer(clerkId, (req as any).auth?.sessionClaims?.username);
+    const player = await getOrCreatePlayer(clerkId);
     const city = await db.select().from(citiesTable).where(eq(citiesTable.id, player.cityId)).limit(1);
     let gangName: string | null = null;
     if (player.gangId) {
@@ -36,7 +36,7 @@ router.patch("/players/me", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const { username } = req.body;
+    const { username } = req.body as { username: string };
     const [updated] = await db.update(playersTable)
       .set({ username, updatedAt: new Date() })
       .where(eq(playersTable.id, player.id))
@@ -65,7 +65,7 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const { enabled } = req.body;
+    const { enabled } = req.body as { enabled: boolean };
     const [updated] = await db.update(playersTable)
       .set({ antiSpyEnabled: enabled, updatedAt: new Date() })
       .where(eq(playersTable.id, player.id))
@@ -97,9 +97,11 @@ router.get("/players", requireAuth, async (req, res) => {
     const limitNum = Math.min(100, parseInt(limit));
     const offset = (pageNum - 1) * limitNum;
 
-    let conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (cityId) conditions.push(eq(playersTable.cityId, parseInt(cityId)));
     if (search) conditions.push(ilike(playersTable.username, `%${search}%`));
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const [players, totalResult] = await Promise.all([
       db.select({
@@ -126,21 +128,16 @@ router.get("/players", requireAuth, async (req, res) => {
       })
         .from(playersTable)
         .leftJoin(citiesTable, eq(playersTable.cityId, citiesTable.id))
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .where(whereClause)
         .limit(limitNum)
         .offset(offset),
-      db.select({ count: count() }).from(playersTable).where(conditions.length > 0 ? and(...conditions) : undefined),
+      db.select({ count: count() }).from(playersTable).where(whereClause),
     ]);
 
-    const playerIds = players.filter(p => p.gangId).map(p => p.gangId!);
-    let gangMap: Record<number, string> = {};
-    if (playerIds.length > 0) {
-      const uniqueGangIds = [...new Set(playerIds)];
-      const gangs = await db.select().from(gangsTable).where(
-        uniqueGangIds.length === 1
-          ? eq(gangsTable.id, uniqueGangIds[0])
-          : eq(gangsTable.id, uniqueGangIds[0])
-      );
+    const uniqueGangIds = [...new Set(players.filter(p => p.gangId).map(p => p.gangId!))];
+    const gangMap: Record<number, string> = {};
+    if (uniqueGangIds.length > 0) {
+      const gangs = await db.select().from(gangsTable);
       gangs.forEach(g => { gangMap[g.id] = g.name; });
     }
 
@@ -165,7 +162,7 @@ router.get("/players", requireAuth, async (req, res) => {
 
 router.get("/players/:playerId", requireAuth, async (req, res) => {
   try {
-    const playerId = parseInt(req.params.playerId);
+    const playerId = parseInt(String(req.params.playerId));
     const rows = await db.select({
       id: playersTable.id,
       clerkId: playersTable.clerkId,
@@ -193,7 +190,7 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       .where(eq(playersTable.id, playerId))
       .limit(1);
 
-    if (!rows[0]) return res.status(404).json({ error: "Player not found" });
+    if (!rows[0]) return void res.status(404).json({ error: "Player not found" });
 
     const p = rows[0];
     let gangName: string | null = null;

@@ -24,6 +24,7 @@ import Armor from "@/pages/armor";
 import Bodyguards from "@/pages/bodyguards";
 import Attack from "@/pages/attack";
 import Prison from "@/pages/prison";
+import Admin from "@/pages/admin";
 import { Layout } from "@/components/layout";
 
 const queryClient = new QueryClient();
@@ -152,16 +153,6 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   );
 }
 
-function PlaceHolder({ name }: { name: string }) {
-  return (
-    <div className="flex items-center justify-center h-[50vh]">
-      <div className="text-center">
-        <h2 className="text-2xl font-heading uppercase text-muted-foreground">{name} (Under Construction)</h2>
-      </div>
-    </div>
-  );
-}
-
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
@@ -183,13 +174,13 @@ function ClerkProviderWithRoutes() {
               <Route path="/" component={HomeRedirect} />
               <Route path="/sign-in/*?" component={SignInPage} />
               <Route path="/sign-up/*?" component={SignUpPage} />
-              
+
               <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
               <Route path="/profile"><ProtectedRoute component={Profile} /></Route>
               <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
               <Route path="/crimes"><ProtectedRoute component={Crimes} /></Route>
               <Route path="/cities"><ProtectedRoute component={Cities} /></Route>
-              
+
               <Route path="/players"><ProtectedRoute component={Players} /></Route>
               <Route path="/gangs"><ProtectedRoute component={Gangs} /></Route>
               <Route path="/gang/:id"><ProtectedRoute component={GangDetail} /></Route>
@@ -200,6 +191,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/attacks"><ProtectedRoute component={Attack} /></Route>
               <Route path="/blackmarket"><ProtectedRoute component={BlackMarket} /></Route>
               <Route path="/prison"><ProtectedRoute component={Prison} /></Route>
+              <Route path="/admin"><ProtectedRoute component={Admin} /></Route>
 
               <Route component={NotFound} />
             </Switch>

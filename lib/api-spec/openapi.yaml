@@ -30,6 +30,8 @@ tags:
     description: Armor protection operations
   - name: dashboard
     description: Dashboard and stats
+  - name: admin
+    description: Admin operations
 
 paths:
   /healthz:
@@ -944,6 +946,120 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TravelResult"
+
+  # --- ADMIN ---
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get server-wide stats (admin only)
+      responses:
+        "200":
+          description: Server stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/players:
+    get:
+      operationId: getAdminPlayers
+      tags: [admin]
+      summary: List all players (admin only)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Player list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminPlayerListResponse"
+
+  /admin/players/{playerId}:
+    patch:
+      operationId: updateAdminPlayer
+      tags: [admin]
+      summary: Update player (admin only)
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminPlayerUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/players/{playerId}/reset:
+    delete:
+      operationId: resetAdminPlayer
+      tags: [admin]
+      summary: Reset player stats (admin only)
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /admin/gangs:
+    get:
+      operationId: getAdminGangs
+      tags: [admin]
+      summary: List all gangs (admin only)
+      responses:
+        "200":
+          description: Gang list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminGang"
+
+  /admin/gangs/{gangId}:
+    delete:
+      operationId: deleteAdminGang
+      tags: [admin]
+      summary: Disband a gang (admin only)
+      parameters:
+        - name: gangId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Disbanded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
 
 components:
   schemas:
@@ -1927,3 +2043,124 @@ components:
         - fromCityName
         - toCityName
         - message
+
+    AdminStats:
+      type: object
+      properties:
+        totalPlayers:
+          type: integer
+        totalGangs:
+          type: integer
+        totalAttacks:
+          type: integer
+        totalPrisoners:
+          type: integer
+        totalMoneyInCirculation:
+          type: integer
+      required:
+        - totalPlayers
+        - totalGangs
+        - totalAttacks
+        - totalPrisoners
+        - totalMoneyInCirculation
+
+    AdminPlayer:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        level:
+          type: integer
+        money:
+          type: integer
+        killCount:
+          type: integer
+        deathCount:
+          type: integer
+        isInPrison:
+          type: boolean
+        isTraveling:
+          type: boolean
+        isAdmin:
+          type: boolean
+        gangId:
+          type: ["integer", "null"]
+        cityId:
+          type: integer
+        cityName:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - username
+        - level
+        - money
+        - killCount
+        - deathCount
+        - isInPrison
+        - isTraveling
+        - isAdmin
+        - gangId
+        - cityId
+        - cityName
+        - createdAt
+
+    AdminPlayerListResponse:
+      type: object
+      properties:
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminPlayer"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - players
+        - total
+        - page
+        - limit
+
+    AdminPlayerUpdate:
+      type: object
+      properties:
+        isInPrison:
+          type: boolean
+        money:
+          type: number
+        isAdmin:
+          type: boolean
+
+    AdminGang:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        treasury:
+          type: integer
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - treasury
+        - memberCount
+        - createdAt
+
+    AdminPlayersParams:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer

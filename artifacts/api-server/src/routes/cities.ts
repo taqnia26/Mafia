@@ -27,15 +27,15 @@ router.post("/cities/travel", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const { targetCityId } = req.body;
+    const { targetCityId } = req.body as { targetCityId: number };
 
-    if (player.isInPrison) return res.status(400).json({ error: "Cannot travel while in prison" });
-    if (player.isTraveling) return res.status(400).json({ error: "Already traveling" });
-    if (player.cityId === targetCityId) return res.status(400).json({ error: "Already in that city" });
+    if (player.isInPrison) return void res.status(400).json({ error: "Cannot travel while in prison" });
+    if (player.isTraveling) return void res.status(400).json({ error: "Already traveling" });
+    if (player.cityId === targetCityId) return void res.status(400).json({ error: "Already in that city" });
 
     const fromCity = await db.select().from(citiesTable).where(eq(citiesTable.id, player.cityId)).limit(1);
     const toCity = await db.select().from(citiesTable).where(eq(citiesTable.id, targetCityId)).limit(1);
-    if (!toCity[0]) return res.status(404).json({ error: "City not found" });
+    if (!toCity[0]) return void res.status(404).json({ error: "City not found" });
 
     const travelHours = (fromCity[0]?.travelHoursBase ?? 4) + Math.random() * 2;
     const arrivalAt = new Date(Date.now() + travelHours * 3600 * 1000);
@@ -48,19 +48,6 @@ router.post("/cities/travel", requireAuth, async (req, res) => {
     }).where(eq(playersTable.id, player.id));
 
     await logActivity(player.id, "traveled", `Traveling to ${toCity[0].name} — arriving in ${travelHours.toFixed(1)}h`);
-
-    setTimeout(async () => {
-      const current = await db.select().from(playersTable).where(eq(playersTable.id, player.id)).limit(1);
-      if (current[0]?.isTraveling && current[0]?.travelToCityId === targetCityId) {
-        await db.update(playersTable).set({
-          cityId: targetCityId,
-          isTraveling: false,
-          travelToCityId: null,
-          travelArrivalAt: null,
-          updatedAt: new Date(),
-        }).where(eq(playersTable.id, player.id));
-      }
-    }, travelHours * 3600 * 1000);
 
     res.json({
       travelTimeHours: travelHours,
