@@ -197,23 +197,48 @@ router.post("/properties/buy", requireAuth, async (req, res) => {
       });
     }
 
+    const now = new Date();
     const [newProp] = await db.transaction(async (tx) => {
       await tx.update(playersTable)
-        .set({ money: sql`${playersTable.money} - ${propType.price}`, updatedAt: new Date() })
+        .set({ money: sql`${playersTable.money} - ${propType.price}`, updatedAt: now })
         .where(eq(playersTable.id, player.id));
 
       return tx.insert(playerPropertiesTable).values({
         playerId: player.id,
         propertyTypeId: propType.id,
         level: 1,
-        purchasedAt: new Date(),
-        lastIncomeCollectedAt: new Date(),
+        purchasedAt: now,
+        lastIncomeCollectedAt: now,
       }).returning();
     });
 
     await logActivity(player.id, "property_purchased", `Purchased ${propType.nameEn} for $${propType.price.toLocaleString()}`);
 
-    return void res.status(201).json({ ...newProp, nameEn: propType.nameEn, nameAr: propType.nameAr });
+    const baseIncome = incomePerHour(propType.baseIncomePerHour, 1);
+    const nextIncome = propType.maxLevel > 1 ? incomePerHour(propType.baseIncomePerHour, 2) : null;
+    const upCost = propType.maxLevel > 1 ? upgradeCost(propType.price, 2) : null;
+
+    return void res.status(201).json({
+      id: newProp.id,
+      level: newProp.level,
+      purchasedAt: newProp.purchasedAt.toISOString(),
+      lastIncomeCollectedAt: newProp.lastIncomeCollectedAt.toISOString(),
+      typeId: propType.id,
+      nameEn: propType.nameEn,
+      nameAr: propType.nameAr,
+      descriptionEn: propType.descriptionEn,
+      descriptionAr: propType.descriptionAr,
+      icon: propType.icon,
+      imageUrl: propType.imageUrl,
+      perksEn: propType.perksEn,
+      perksAr: propType.perksAr,
+      incomePerHour: baseIncome,
+      nextLevelIncome: nextIncome,
+      upgradePrice: upCost,
+      maxLevel: propType.maxLevel,
+      pendingIncome: 0,
+      canCollect: false,
+    });
   } catch (err) {
     return void res.status(500).json({ error: "Failed to purchase property" });
   }

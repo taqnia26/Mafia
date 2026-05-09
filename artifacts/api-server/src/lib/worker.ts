@@ -291,9 +291,16 @@ async function processAttackArrivals(): Promise<void> {
   }
 }
 
+const PROPERTY_INCOME_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+let lastPropertyIncomeAt = 0;
+
 async function collectPropertyIncome(): Promise<void> {
+  const now = Date.now();
+  if (now - lastPropertyIncomeAt < PROPERTY_INCOME_INTERVAL_MS) return;
+  lastPropertyIncomeAt = now;
+
   const MAX_HOURS = 24;
-  const now = new Date();
+  const nowDate = new Date(now);
 
   try {
     const rows = await db
@@ -312,14 +319,14 @@ async function collectPropertyIncome(): Promise<void> {
     for (const r of rows) {
       const base = r.baseIncomePerHour ?? 0;
       const hoursElapsed = Math.min(
-        (now.getTime() - r.lastIncomeCollectedAt.getTime()) / 3600000,
+        (now - r.lastIncomeCollectedAt.getTime()) / 3600000,
         MAX_HOURS,
       );
       const income = Math.floor(hoursElapsed * base * r.level);
       if (income > 0) {
         incomeByPlayer[r.playerId] = (incomeByPlayer[r.playerId] ?? 0) + income;
         await db.update(playerPropertiesTable)
-          .set({ lastIncomeCollectedAt: now })
+          .set({ lastIncomeCollectedAt: nowDate })
           .where(eq(playerPropertiesTable.id, r.id));
       }
     }
@@ -327,7 +334,7 @@ async function collectPropertyIncome(): Promise<void> {
     for (const [playerIdStr, totalIncome] of Object.entries(incomeByPlayer)) {
       const playerId = parseInt(playerIdStr);
       await db.update(playersTable)
-        .set({ money: sql`${playersTable.money} + ${totalIncome}`, updatedAt: now })
+        .set({ money: sql`${playersTable.money} + ${totalIncome}`, updatedAt: nowDate })
         .where(eq(playersTable.id, playerId));
     }
 
