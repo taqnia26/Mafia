@@ -98,7 +98,11 @@ async function processAttackArrivals(): Promise<void> {
         continue;
       }
 
-      // target.defensePower already includes NPC guard bonuses (added on hire, removed on dismiss).
+      // Combat stat model:
+      //   - player.attackPower / player.defensePower are the source of truth for all combat.
+      //   - Rank ATK/DEF bonuses are baked directly into these columns at rank-upgrade time
+      //     (see routes/ranks.ts POST /ranks/upgrade). No separate lookup is needed here.
+      //   - NPC guard defense is also baked in (added on hire, removed on dismiss).
       // Fetch active player guards and add their defensePower on top.
       const activePlayerGuards = await db
         .select({

@@ -32,6 +32,8 @@ tags:
     description: Dashboard and stats
   - name: admin
     description: Admin operations
+  - name: ranks
+    description: Player rank progression
 
 paths:
   /healthz:
@@ -147,6 +149,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Player"
+
+  # --- RANKS ---
+  /ranks:
+    get:
+      operationId: listRanks
+      tags: [ranks]
+      summary: Get all 12 ranks with current player eligibility
+      responses:
+        "200":
+          description: Ranks response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RanksResponse"
+
+  /ranks/upgrade:
+    post:
+      operationId: upgradeRank
+      tags: [ranks]
+      summary: Manually upgrade to the next rank (deducts money, adds ATK/DEF bonuses)
+      responses:
+        "200":
+          description: Rank upgrade result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankUpgradeResponse"
+        "400":
+          description: Requirements not met
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   # --- DASHBOARD ---
   /dashboard/stats:
@@ -1291,6 +1326,14 @@ components:
           type: string
       required:
         - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
 
     Player:
       type: object

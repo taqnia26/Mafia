@@ -2,11 +2,29 @@ import { Router } from "express";
 import { db } from "../lib/db";
 import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
-  playersTable, gangsTable, citiesTable,
+  playersTable, gangsTable, citiesTable, playerRanksTable, playerRankProgressTable,
 } from "@workspace/db/schema";
 import { eq, ilike, and, count, SQL } from "drizzle-orm";
 
 const router = Router();
+
+async function resolveRankForPlayer(playerId: number): Promise<{ currentRank: number; rankNameEn: string; rankNameAr: string; rankColor: string } | null> {
+  const progress = await db
+    .select({ currentRank: playerRankProgressTable.currentRank })
+    .from(playerRankProgressTable)
+    .where(eq(playerRankProgressTable.playerId, playerId))
+    .limit(1);
+
+  const rankNum = progress[0]?.currentRank ?? 1;
+  const rankData = await db
+    .select({ nameEn: playerRanksTable.nameEn, nameAr: playerRanksTable.nameAr, color: playerRanksTable.color })
+    .from(playerRanksTable)
+    .where(eq(playerRanksTable.rankNumber, rankNum))
+    .limit(1);
+
+  if (!rankData[0]) return null;
+  return { currentRank: rankNum, rankNameEn: rankData[0].nameEn, rankNameAr: rankData[0].nameAr, rankColor: rankData[0].color };
+}
 
 router.get("/players/me", requireAuth, async (req, res) => {
   try {
@@ -18,7 +36,8 @@ router.get("/players/me", requireAuth, async (req, res) => {
       const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, player.gangId)).limit(1);
       gangName = gang[0]?.name ?? null;
     }
-    res.json({
+    const rankInfo = await resolveRankForPlayer(player.id);
+    return void res.json({
       ...player,
       cityName: city[0]?.name ?? "",
       gangName,
@@ -26,9 +45,13 @@ router.get("/players/me", requireAuth, async (req, res) => {
       prisonReleaseAt: player.prisonReleaseAt?.toISOString() ?? null,
       travelArrivalAt: player.travelArrivalAt?.toISOString() ?? null,
       createdAt: player.createdAt.toISOString(),
+      currentRank: rankInfo?.currentRank ?? 1,
+      rankNameEn: rankInfo?.rankNameEn ?? "Street Rat",
+      rankNameAr: rankInfo?.rankNameAr ?? "فأر الشوارع",
+      rankColor: rankInfo?.rankColor ?? "#6b7280",
     });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    return void res.status(500).json({ error: String(e) });
   }
 });
 
@@ -47,7 +70,8 @@ router.patch("/players/me", requireAuth, async (req, res) => {
       const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, updated.gangId)).limit(1);
       gangName = gang[0]?.name ?? null;
     }
-    res.json({
+    const rankInfo = await resolveRankForPlayer(updated.id);
+    return void res.json({
       ...updated,
       cityName: city[0]?.name ?? "",
       gangName,
@@ -55,9 +79,13 @@ router.patch("/players/me", requireAuth, async (req, res) => {
       prisonReleaseAt: updated.prisonReleaseAt?.toISOString() ?? null,
       travelArrivalAt: updated.travelArrivalAt?.toISOString() ?? null,
       createdAt: updated.createdAt.toISOString(),
+      currentRank: rankInfo?.currentRank ?? 1,
+      rankNameEn: rankInfo?.rankNameEn ?? "Street Rat",
+      rankNameAr: rankInfo?.rankNameAr ?? "فأر الشوارع",
+      rankColor: rankInfo?.rankColor ?? "#6b7280",
     });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    return void res.status(500).json({ error: String(e) });
   }
 });
 
@@ -76,7 +104,8 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
       const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, updated.gangId)).limit(1);
       gangName = gang[0]?.name ?? null;
     }
-    res.json({
+    const rankInfo = await resolveRankForPlayer(updated.id);
+    return void res.json({
       ...updated,
       cityName: city[0]?.name ?? "",
       gangName,
@@ -84,9 +113,13 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
       prisonReleaseAt: updated.prisonReleaseAt?.toISOString() ?? null,
       travelArrivalAt: updated.travelArrivalAt?.toISOString() ?? null,
       createdAt: updated.createdAt.toISOString(),
+      currentRank: rankInfo?.currentRank ?? 1,
+      rankNameEn: rankInfo?.rankNameEn ?? "Street Rat",
+      rankNameAr: rankInfo?.rankNameAr ?? "فأر الشوارع",
+      rankColor: rankInfo?.rankColor ?? "#6b7280",
     });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    return void res.status(500).json({ error: String(e) });
   }
 });
 
@@ -127,9 +160,15 @@ router.get("/players", requireAuth, async (req, res) => {
         travelArrivalAt: playersTable.travelArrivalAt,
         createdAt: playersTable.createdAt,
         cityName: citiesTable.name,
+        currentRank: playerRankProgressTable.currentRank,
+        rankNameEn: playerRanksTable.nameEn,
+        rankNameAr: playerRanksTable.nameAr,
+        rankColor: playerRanksTable.color,
       })
         .from(playersTable)
         .leftJoin(citiesTable, eq(playersTable.cityId, citiesTable.id))
+        .leftJoin(playerRankProgressTable, eq(playerRankProgressTable.playerId, playersTable.id))
+        .leftJoin(playerRanksTable, eq(playerRanksTable.rankNumber, playerRankProgressTable.currentRank))
         .where(whereClause)
         .limit(limitNum)
         .offset(offset),
@@ -143,7 +182,7 @@ router.get("/players", requireAuth, async (req, res) => {
       gangs.forEach(g => { gangMap[g.id] = g.name; });
     }
 
-    res.json({
+    return void res.json({
       players: players.map(p => {
         const isSelf = p.id === viewer.id;
         const redact = !isSelf && p.antiSpyEnabled;
@@ -157,6 +196,10 @@ router.get("/players", requireAuth, async (req, res) => {
           prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null,
           travelArrivalAt: p.travelArrivalAt?.toISOString() ?? null,
           createdAt: p.createdAt.toISOString(),
+          currentRank: p.currentRank ?? 1,
+          rankNameEn: p.rankNameEn ?? "Street Rat",
+          rankNameAr: p.rankNameAr ?? "فأر الشوارع",
+          rankColor: p.rankColor ?? "#6b7280",
         };
       }),
       total: totalResult[0]?.count ?? 0,
@@ -164,7 +207,7 @@ router.get("/players", requireAuth, async (req, res) => {
       limit: limitNum,
     });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    return void res.status(500).json({ error: String(e) });
   }
 });
 
@@ -194,9 +237,15 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       travelArrivalAt: playersTable.travelArrivalAt,
       createdAt: playersTable.createdAt,
       cityName: citiesTable.name,
+      currentRank: playerRankProgressTable.currentRank,
+      rankNameEn: playerRanksTable.nameEn,
+      rankNameAr: playerRanksTable.nameAr,
+      rankColor: playerRanksTable.color,
     })
       .from(playersTable)
       .leftJoin(citiesTable, eq(playersTable.cityId, citiesTable.id))
+      .leftJoin(playerRankProgressTable, eq(playerRankProgressTable.playerId, playersTable.id))
+      .leftJoin(playerRanksTable, eq(playerRanksTable.rankNumber, playerRankProgressTable.currentRank))
       .where(eq(playersTable.id, playerId))
       .limit(1);
 
@@ -212,7 +261,7 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       gangName = gang[0]?.name ?? null;
     }
 
-    res.json({
+    return void res.json({
       ...p,
       attackPower: redact ? null : p.attackPower,
       defensePower: redact ? null : p.defensePower,
@@ -222,9 +271,13 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       prisonReleaseAt: p.prisonReleaseAt?.toISOString() ?? null,
       travelArrivalAt: p.travelArrivalAt?.toISOString() ?? null,
       createdAt: p.createdAt.toISOString(),
+      currentRank: p.currentRank ?? 1,
+      rankNameEn: p.rankNameEn ?? "Street Rat",
+      rankNameAr: p.rankNameAr ?? "فأر الشوارع",
+      rankColor: p.rankColor ?? "#6b7280",
     });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    return void res.status(500).json({ error: String(e) });
   }
 });
 
