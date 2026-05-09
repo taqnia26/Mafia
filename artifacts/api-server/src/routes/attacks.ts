@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   attacksTable, playersTable, weaponsTable, citiesTable,
   playerWeaponsTable, playerAmmoTable, playerNpcGuardsTable, playerArmorTable, armorItemsTable,
@@ -11,7 +11,7 @@ import { recordSpy, hasRecentSpy } from "../lib/spyCache";
 
 const router = Router();
 
-router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
+router.post("/attacks/spy/:targetPlayerId", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -75,7 +75,7 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/attacks", requireAuth, async (req, res) => {
+router.post("/attacks", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -250,7 +250,7 @@ router.get("/attacks/incoming", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/attacks/:attackId/cancel", requireAuth, async (req, res) => {
+router.post("/attacks/:attackId/cancel", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

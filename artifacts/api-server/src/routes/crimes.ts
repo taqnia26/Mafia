@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import { crimeTypesTable, crimeRecordsTable, playersTable } from "@workspace/db/schema";
 import { eq, and, desc, gte } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
@@ -16,7 +16,7 @@ router.get("/crimes", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/crimes/attempt", requireAuth, async (req, res) => {
+router.post("/crimes/attempt", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

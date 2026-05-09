@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   blackMarketListingsTable, playersTable, weaponsTable, ammoTable, armorItemsTable,
   playerWeaponsTable, playerAmmoTable, playerArmorTable,
@@ -46,7 +46,7 @@ router.get("/blackmarket", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/blackmarket", requireAuth, async (req, res) => {
+router.post("/blackmarket", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -167,7 +167,7 @@ router.get("/blackmarket/my", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/blackmarket/:listingId/buy", requireAuth, async (req, res) => {
+router.post("/blackmarket/:listingId/buy", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -261,7 +261,7 @@ router.post("/blackmarket/:listingId/buy", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/blackmarket/:listingId", requireAuth, async (req, res) => {
+router.delete("/blackmarket/:listingId", requireAuth, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

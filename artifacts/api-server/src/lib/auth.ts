@@ -13,6 +13,21 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   next();
 }
 
+export async function requireNotInPrison(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const player = await getOrCreatePlayer(userId);
+    if (player.isInPrison) {
+      res.status(400).json({ error: "You cannot perform this action while in prison" });
+      return;
+    }
+    next();
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+}
+
 export async function getOrCreatePlayer(clerkId: string, username?: string) {
   const existing = await db.select().from(playersTable).where(eq(playersTable.clerkId, clerkId)).limit(1);
   if (existing.length > 0) return existing[0];
