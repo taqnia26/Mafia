@@ -198,19 +198,49 @@ router.post("/properties/buy", requireAuth, async (req, res) => {
     }
 
     const now = new Date();
-    const [newProp] = await db.transaction(async (tx) => {
-      await tx.update(playersTable)
-        .set({ money: sql`${playersTable.money} - ${propType.price}`, updatedAt: now })
-        .where(eq(playersTable.id, player.id));
+    let newProp: typeof playerPropertiesTable.$inferSelect | undefined;
+    try {
+      newProp = await db.transaction(async (tx) => {
+        const deducted = await tx.update(playersTable)
+          .set({ money: sql`${playersTable.money} - ${propType.price}`, updatedAt: now })
+          .where(and(eq(playersTable.id, player.id), sql`${playersTable.money} >= ${propType.price}`))
+          .returning({ id: playersTable.id });
+        if (deducted.length === 0) {
+          throw new Error("INSUFFICIENT_FUNDS");
+        }
 
-      return tx.insert(playerPropertiesTable).values({
-        playerId: player.id,
-        propertyTypeId: propType.id,
-        level: 1,
-        purchasedAt: now,
-        lastIncomeCollectedAt: now,
-      }).returning();
-    });
+        const [ownedNow] = await tx.select({ cnt: count() })
+          .from(playerPropertiesTable)
+          .where(eq(playerPropertiesTable.playerId, player.id));
+        if (Number(ownedNow?.cnt ?? 0) >= maxProperties) {
+          throw new Error("SLOT_FULL");
+        }
+
+        const [inserted] = await tx.insert(playerPropertiesTable).values({
+          playerId: player.id,
+          propertyTypeId: propType.id,
+          level: 1,
+          purchasedAt: now,
+          lastIncomeCollectedAt: now,
+        }).returning();
+        return inserted;
+      });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg === "INSUFFICIENT_FUNDS") {
+        return void res.status(400).json({ error: "Insufficient funds" });
+      }
+      if (msg === "SLOT_FULL") {
+        return void res.status(400).json({
+          error: `Your rank allows a maximum of ${maxProperties} properties. Upgrade your rank to own more.`,
+        });
+      }
+      throw e;
+    }
+
+    if (!newProp) {
+      return void res.status(500).json({ error: "Failed to purchase property" });
+    }
 
     await logActivity(player.id, "property_purchased", `Purchased ${propType.nameEn} for $${propType.price.toLocaleString()}`);
 
@@ -282,14 +312,21 @@ router.post("/properties/:id/upgrade", requireAuth, async (req, res) => {
       return void res.status(400).json({ error: `Insufficient funds. Upgrade costs $${cost.toLocaleString()}` });
     }
 
-    await db.transaction(async (tx) => {
-      await tx.update(playersTable)
+    const upgraded = await db.transaction(async (tx) => {
+      const deducted = await tx.update(playersTable)
         .set({ money: sql`${playersTable.money} - ${cost}`, updatedAt: new Date() })
-        .where(eq(playersTable.id, player.id));
+        .where(and(eq(playersTable.id, player.id), sql`${playersTable.money} >= ${cost}`))
+        .returning({ id: playersTable.id });
+      if (deducted.length === 0) return false;
       await tx.update(playerPropertiesTable)
         .set({ level: prop.level + 1 })
-        .where(eq(playerPropertiesTable.id, propId));
+        .where(and(eq(playerPropertiesTable.id, propId), eq(playerPropertiesTable.level, prop.level)));
+      return true;
     });
+
+    if (!upgraded) {
+      return void res.status(400).json({ error: "Insufficient funds. Upgrade costs $" + cost.toLocaleString() });
+    }
 
     await logActivity(
       player.id,
@@ -327,24 +364,35 @@ router.post("/properties/collect", requireAuth, async (req, res) => {
     let totalIncome = 0;
     const now = new Date();
 
-    for (const r of rows) {
-      const income = calcPendingIncome({
-        baseIncomePerHour: r.baseIncomePerHour ?? 0,
-        level: r.level,
-        lastIncomeCollectedAt: r.lastIncomeCollectedAt,
-      });
-      if (income > 0) {
-        totalIncome += income;
-        await db.update(playerPropertiesTable)
-          .set({ lastIncomeCollectedAt: now })
-          .where(eq(playerPropertiesTable.id, r.id));
+    await db.transaction(async (tx) => {
+      for (const r of rows) {
+        const income = calcPendingIncome({
+          baseIncomePerHour: r.baseIncomePerHour ?? 0,
+          level: r.level,
+          lastIncomeCollectedAt: r.lastIncomeCollectedAt,
+        });
+        if (income > 0) {
+          const claimed = await tx.update(playerPropertiesTable)
+            .set({ lastIncomeCollectedAt: now })
+            .where(and(
+              eq(playerPropertiesTable.id, r.id),
+              eq(playerPropertiesTable.lastIncomeCollectedAt, r.lastIncomeCollectedAt),
+            ))
+            .returning({ id: playerPropertiesTable.id });
+          if (claimed.length > 0) {
+            totalIncome += income;
+          }
+        }
       }
-    }
+
+      if (totalIncome > 0) {
+        await tx.update(playersTable)
+          .set({ money: sql`${playersTable.money} + ${totalIncome}`, updatedAt: now })
+          .where(eq(playersTable.id, player.id));
+      }
+    });
 
     if (totalIncome > 0) {
-      await db.update(playersTable)
-        .set({ money: sql`${playersTable.money} + ${totalIncome}`, updatedAt: now })
-        .where(eq(playersTable.id, player.id));
       await logActivity(player.id, "income_collected", `Collected $${totalIncome.toLocaleString()} from ${rows.length} properties`);
     }
 
