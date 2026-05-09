@@ -344,6 +344,21 @@ const translations: Translations = {
   "admin.updateItem": { en: "Update Item", ar: "تحديث العنصر" },
   "admin.deleteItem": { en: "Delete Item", ar: "حذف العنصر" },
   "admin.travelHours": { en: "Travel Hours (Base)", ar: "ساعات السفر (الأساسية)" },
+  "admin.overview": { en: "Overview", ar: "نظرة عامة" },
+  "admin.attacksToday": { en: "Attacks Today", ar: "الهجمات اليوم" },
+  "admin.topPlayers": { en: "Top Players", ar: "أفضل اللاعبين" },
+  "admin.recentEvents": { en: "Recent Events", ar: "الأحداث الأخيرة" },
+  "admin.blackmarket": { en: "Black Market", ar: "السوق السوداء" },
+  "admin.eventLog": { en: "Event Log", ar: "سجل الأحداث" },
+  "admin.roles": { en: "Roles", ar: "الأدوار" },
+  "admin.editPlayer": { en: "Edit Player", ar: "تعديل اللاعب" },
+  "admin.editGang": { en: "Edit Gang", ar: "تعديل العصابة" },
+  "admin.jail": { en: "Jail", ar: "سجن" },
+  "admin.assignRole": { en: "Assign Role", ar: "تعيين دور" },
+  "admin.currentAdmins": { en: "Current Admins", ar: "المشرفون الحاليون" },
+  "admin.addListing": { en: "Add Listing as Admin", ar: "إضافة عرض كمشرف" },
+  "admin.auditLog": { en: "Admin Audit Log", ar: "سجل إجراءات الإدارة" },
+  "common.edit": { en: "Edit", ar: "تعديل" },
 };
 
 interface I18nContextType {

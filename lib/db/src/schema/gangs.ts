@@ -8,6 +8,7 @@ export const gangsTable = pgTable("gangs", {
   description: text("description").notNull().default(""),
   treasury: integer("treasury").notNull().default(0),
   bossId: integer("boss_id").notNull(),
+  color: text("color").default("#8B0000"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

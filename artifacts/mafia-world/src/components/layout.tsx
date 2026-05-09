@@ -15,17 +15,34 @@ import {
   ShoppingBag,
   Briefcase,
   Lock,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+
 
 interface LayoutProps {
   children: ReactNode;
+}
+
+function useIsAdmin() {
+  return useQuery({
+    queryKey: ["layout-admin-check"],
+    queryFn: async () => {
+      const res = await fetch(`/api/players/me`, { credentials: "include" });
+      if (!res.ok) return false;
+      const data = await res.json() as { isAdmin?: boolean; adminRole?: string };
+      return !!(data.isAdmin || data.adminRole);
+    },
+    staleTime: 60000,
+  });
 }
 
 export function Layout({ children }: LayoutProps) {
   const { t, dir } = useI18n();
   const { signOut } = useClerk();
   const [location] = useLocation();
+  const { data: isAdmin } = useIsAdmin();
 
   const navItems = [
     { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
@@ -74,6 +91,20 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors border border-primary/20 mt-2 ${
+                location === "/admin"
+                  ? "bg-primary/20 text-primary font-medium"
+                  : "text-primary/70 hover:bg-primary/10 hover:text-primary"
+              }`}
+            >
+              <ShieldAlert className="w-5 h-5" />
+              <span>{t("nav.admin")}</span>
+            </Link>
+          )}
         </nav>
 
         <div className="p-4 border-t border-border">

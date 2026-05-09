@@ -2,8 +2,9 @@ import { db } from "./db";
 import {
   playersTable, attacksTable, weaponsTable,
   playerNpcGuardsTable, npcBodyguardsTable, playerGuardsTable,
+  activityLogTable,
 } from "@workspace/db/schema";
-import { eq, and, lte, sql, sum } from "drizzle-orm";
+import { eq, and, lte, lt, sql, sum } from "drizzle-orm";
 import { logActivity } from "./activityLog";
 import { logger } from "./logger";
 
@@ -255,12 +256,33 @@ async function processAttackArrivals(): Promise<void> {
   }
 }
 
+const EVENT_RETENTION_DAYS = 60;
+const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // run every 6 hours
+let lastCleanupAt = 0;
+
+async function cleanupOldEvents(): Promise<void> {
+  const now = Date.now();
+  if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+  lastCleanupAt = now;
+
+  const cutoff = new Date(now - EVENT_RETENTION_DAYS * 86400000);
+  try {
+    const result = await db.delete(activityLogTable).where(lt(activityLogTable.createdAt, cutoff));
+    if ((result.rowCount ?? 0) > 0) {
+      logger.info({ count: result.rowCount, cutoff }, "worker: pruned old activity log events");
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: event cleanup error");
+  }
+}
+
 async function tick(): Promise<void> {
   try {
     await Promise.all([
       processTravelArrivals(),
       processPrisonReleases(),
       processAttackArrivals(),
+      cleanupOldEvents(),
     ]);
   } catch (err) {
     logger.error({ err }, "worker: tick error");
