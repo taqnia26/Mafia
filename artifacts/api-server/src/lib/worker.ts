@@ -4,12 +4,14 @@ import {
   playerNpcGuardsTable, npcBodyguardsTable, playerGuardsTable,
   activityLogTable, playerPropertiesTable, propertyTypesTable,
   nuclearReactorStateTable, notificationsTable,
+  bankLoansTable, bankTransactionsTable,
 } from "@workspace/db/schema";
-import { eq, and, lte, lt, ne, sql } from "drizzle-orm";
+import { eq, and, lte, lt, ne, gt, sql } from "drizzle-orm";
 import { logActivity } from "./activityLog";
 import { createNotification } from "./notifications";
 import { logger } from "./logger";
 import { REACTOR } from "./reactor";
+import { BANK_CONFIG, applyHourlyInterest } from "./bank";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -572,6 +574,229 @@ async function processReactors(): Promise<void> {
   }
 }
 
+async function processBankInterest(): Promise<void> {
+  try {
+    const now = new Date();
+    const players = await db
+      .select({
+        id: playersTable.id,
+        bankBalance: playersTable.bankBalance,
+        lastBankInterestAt: playersTable.lastBankInterestAt,
+      })
+      .from(playersTable)
+      .where(and(
+        eq(playersTable.isPermanentlyDead, false),
+        gt(playersTable.bankBalance, 0),
+      ));
+
+    for (const p of players) {
+      const last = p.lastBankInterestAt ?? now;
+      const elapsedMs = now.getTime() - last.getTime();
+      const fullHours = Math.min(BANK_CONFIG.MAX_INTEREST_CATCHUP_HOURS, Math.floor(elapsedMs / 3600000));
+      if (fullHours <= 0) {
+        if (!p.lastBankInterestAt) {
+          await db.update(playersTable)
+            .set({ lastBankInterestAt: now })
+            .where(and(eq(playersTable.id, p.id), sql`${playersTable.lastBankInterestAt} IS NULL`));
+        }
+        continue;
+      }
+      const { interest } = applyHourlyInterest(p.bankBalance, fullHours);
+      const newAnchor = new Date(last.getTime() + fullHours * 3600000);
+
+      await db.transaction(async (tx) => {
+        // CAS guard on lastBankInterestAt prevents double-credit if worker overlaps.
+        const [updated] = await tx.update(playersTable)
+          .set({
+            bankBalance: sql`${playersTable.bankBalance} + ${interest}`,
+            lastBankInterestAt: newAnchor,
+            updatedAt: now,
+          })
+          .where(and(
+            eq(playersTable.id, p.id),
+            p.lastBankInterestAt
+              ? eq(playersTable.lastBankInterestAt, p.lastBankInterestAt)
+              : sql`${playersTable.lastBankInterestAt} IS NULL`,
+          ))
+          .returning({ bankBalance: playersTable.bankBalance });
+        if (!updated || interest <= 0) return;
+        await tx.insert(bankTransactionsTable).values({
+          playerId: p.id, type: "interest", amount: interest, balanceAfter: updated.bankBalance,
+        });
+      });
+
+      if (interest > 0) {
+        await logActivity(p.id, "bank_interest",
+          `Earned $${interest.toLocaleString()} interest on bank deposit (${fullHours}h)`);
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: bank interest error");
+  }
+}
+
+async function processOverdueLoans(): Promise<void> {
+  try {
+    const now = new Date();
+    // Just identify candidates — actual ownership is taken via per-row lock below.
+    const candidates = await db
+      .select({ id: bankLoansTable.id })
+      .from(bankLoansTable)
+      .where(and(eq(bankLoansTable.status, "active"), lte(bankLoansTable.dueAt, now)));
+
+    let processedCount = 0;
+    type SideEffect =
+      | { kind: "activity"; playerId: number; type: "bank_loan_garnished" | "bank_loan_seized"; msg: string }
+      | { kind: "notify"; playerId: number; msg: string };
+
+    for (const candidate of candidates) {
+      // Single transaction per loan: claim with FOR UPDATE SKIP LOCKED, then
+      // do all collection work atomically. Crash → rollback → loan stays
+      // active for next tick (idempotent). Concurrent worker → skips this row.
+      const sideEffects: SideEffect[] = [];
+      const result = await db.transaction(async (tx) => {
+        const [loan] = await tx
+          .select({
+            id: bankLoansTable.id,
+            playerId: bankLoansTable.playerId,
+            remaining: bankLoansTable.remaining,
+          })
+          .from(bankLoansTable)
+          .where(and(
+            eq(bankLoansTable.id, candidate.id),
+            eq(bankLoansTable.status, "active"),
+            lte(bankLoansTable.dueAt, now),
+          ))
+          .for("update", { skipLocked: true });
+        if (!loan || !loan.playerId) return null;
+
+        const playerId = loan.playerId;
+        const owed = loan.remaining;
+        let recovered = 0;
+
+        // Lock the player row for the rest of the collection.
+        const [p] = await tx
+          .select({ money: playersTable.money, bankBalance: playersTable.bankBalance })
+          .from(playersTable)
+          .where(eq(playersTable.id, playerId))
+          .for("update");
+        if (!p) return null;
+
+        // 1) Cash
+        let stillOwed = owed - recovered;
+        if (stillOwed > 0 && p.money > 0) {
+          const t = Math.min(stillOwed, p.money);
+          await tx.update(playersTable)
+            .set({ money: sql`${playersTable.money} - ${t}`, updatedAt: now })
+            .where(eq(playersTable.id, playerId));
+          recovered += t;
+          sideEffects.push({
+            kind: "activity", playerId, type: "bank_loan_garnished",
+            msg: `Bank deducted $${t.toLocaleString()} from your cash for overdue loan #${loan.id}`,
+          });
+        }
+
+        // 2) Property seizure (smallest-first, non-reactor)
+        stillOwed = owed - recovered;
+        if (stillOwed > 0) {
+          const properties = await tx
+            .select({
+              id: playerPropertiesTable.id,
+              level: playerPropertiesTable.level,
+              price: propertyTypesTable.price,
+              nameEn: propertyTypesTable.nameEn,
+              isReactor: propertyTypesTable.isReactor,
+            })
+            .from(playerPropertiesTable)
+            .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
+            .where(eq(playerPropertiesTable.playerId, playerId));
+
+          const ranked = properties
+            .filter(prop => !prop.isReactor)
+            .map(prop => ({ ...prop, value: (prop.price ?? 0) * prop.level }))
+            .sort((a, b) => a.value - b.value);
+
+          for (const prop of ranked) {
+            if (stillOwed <= 0) break;
+            const deleted = await tx.delete(playerPropertiesTable)
+              .where(eq(playerPropertiesTable.id, prop.id))
+              .returning({ id: playerPropertiesTable.id });
+            if (deleted.length === 0) continue;
+            const credit = Math.min(stillOwed, prop.value);
+            recovered += credit;
+            stillOwed -= credit;
+            sideEffects.push({
+              kind: "activity", playerId, type: "bank_loan_seized",
+              msg: `Bank seized your property "${prop.nameEn ?? "?"}" (worth $${prop.value.toLocaleString()}) for overdue loan #${loan.id}`,
+            });
+            sideEffects.push({
+              kind: "notify", playerId,
+              msg: `🏦 The bank seized your "${prop.nameEn ?? "property"}" for an unpaid loan.`,
+            });
+          }
+        }
+
+        // 3) Bank deposit garnish
+        stillOwed = owed - recovered;
+        if (stillOwed > 0 && p.bankBalance > 0) {
+          const t = Math.min(stillOwed, p.bankBalance);
+          const [updated] = await tx.update(playersTable)
+            .set({ bankBalance: sql`${playersTable.bankBalance} - ${t}`, updatedAt: now })
+            .where(eq(playersTable.id, playerId))
+            .returning({ bankBalance: playersTable.bankBalance });
+          if (updated) {
+            await tx.insert(bankTransactionsTable).values({
+              playerId, type: "loan_garnished", amount: t, balanceAfter: updated.bankBalance,
+            });
+            recovered += t;
+            sideEffects.push({
+              kind: "activity", playerId, type: "bank_loan_garnished",
+              msg: `Bank garnished $${t.toLocaleString()} from your deposit account for overdue loan #${loan.id}`,
+            });
+          }
+        }
+
+        const finalRemaining = Math.max(0, owed - recovered);
+        const finalStatus: "repaid" | "defaulted" = finalRemaining === 0 ? "repaid" : "defaulted";
+        await tx.update(bankLoansTable).set({
+          remaining: finalRemaining,
+          status: finalStatus,
+        }).where(eq(bankLoansTable.id, loan.id));
+
+        sideEffects.push({
+          kind: "notify", playerId,
+          msg: finalStatus === "repaid"
+            ? `🏦 The bank force-collected your overdue loan #${loan.id} in full.`
+            : `🏦 Your overdue loan #${loan.id} defaulted with $${finalRemaining.toLocaleString()} unrecovered.`,
+        });
+
+        return { processed: true };
+      }).catch((err) => {
+        logger.error({ err, loanId: candidate.id }, "worker: overdue loan tx failed (will retry next tick)");
+        return null;
+      });
+
+      if (result?.processed) {
+        processedCount++;
+        // Side-effects only after tx commits — safe to skip on rollback.
+        for (const fx of sideEffects) {
+          if (fx.kind === "activity") {
+            await logActivity(fx.playerId, fx.type, fx.msg);
+          } else {
+            await createNotification(fx.playerId, "attack_resolved", fx.msg, "/bank");
+          }
+        }
+      }
+    }
+
+    if (processedCount > 0) {
+      logger.info({ count: processedCount }, "worker: overdue loans processed");
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: overdue loan processing error");
+  }
+}
+
 async function tick(): Promise<void> {
   try {
     await Promise.all([
@@ -580,6 +805,8 @@ async function tick(): Promise<void> {
       processAttackArrivals(),
       collectPropertyIncome(),
       processReactors(),
+      processBankInterest(),
+      processOverdueLoans(),
       clearExpiredAntiSpy(),
       cleanupOldEvents(),
     ]);

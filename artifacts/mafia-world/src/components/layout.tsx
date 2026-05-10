@@ -18,6 +18,7 @@ import {
   ShieldAlert,
   Award,
   Building2,
+  Landmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/prison", label: "nav.prison", icon: Lock },
     { href: "/cities", label: "nav.cities", icon: Map },
     { href: "/properties", label: "nav.properties", icon: Building2 },
+    { href: "/bank", label: "nav.bank", icon: Landmark },
     { href: "/ranks", label: "nav.ranks", icon: Award },
     { href: "/settings", label: "nav.settings", icon: Settings },
   ];

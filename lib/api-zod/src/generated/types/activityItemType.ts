@@ -22,4 +22,11 @@ export const ActivityItemType = {
   black_market_sale: "black_market_sale",
   black_market_purchase: "black_market_purchase",
   traveled: "traveled",
+  bank_deposit: "bank_deposit",
+  bank_withdraw: "bank_withdraw",
+  bank_interest: "bank_interest",
+  bank_loan_taken: "bank_loan_taken",
+  bank_loan_repaid: "bank_loan_repaid",
+  bank_loan_garnished: "bank_loan_garnished",
+  bank_loan_seized: "bank_loan_seized",
 } as const;

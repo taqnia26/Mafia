@@ -33,7 +33,14 @@ export type ActivityType =
   | "reactor_constructed"
   | "reactor_collected"
   | "reactor_damaged"
-  | "reactor_meltdown";
+  | "reactor_meltdown"
+  | "bank_deposit"
+  | "bank_withdraw"
+  | "bank_interest"
+  | "bank_loan_taken"
+  | "bank_loan_repaid"
+  | "bank_loan_garnished"
+  | "bank_loan_seized";
 
 export async function logActivity(playerId: number, type: ActivityType, description: string) {
   await db.insert(activityLogTable).values({ playerId, type, description });

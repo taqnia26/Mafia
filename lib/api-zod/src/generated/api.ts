@@ -388,6 +388,128 @@ export const CollectReactorIncomeResponse = zod.object({
 });
 
 /**
+ * @summary Get current player's bank balance, loans and credit info
+ */
+export const GetBankAccountResponse = zod.object({
+  bankBalance: zod.number(),
+  cash: zod.number(),
+  interestRatePerHour: zod.number(),
+  accruedInterest: zod.number(),
+  nextInterestAt: zod.string().nullable(),
+  loans: zod.array(
+    zod.object({
+      id: zod.number(),
+      principal: zod.number(),
+      remaining: zod.number(),
+      interestRate: zod.number(),
+      takenAt: zod.string(),
+      dueAt: zod.string(),
+      status: zod.enum(["active", "repaid", "defaulted"]),
+      isOverdue: zod.boolean(),
+    }),
+  ),
+  creditLimit: zod.number(),
+  outstandingLoanTotal: zod.number(),
+  availableCredit: zod.number(),
+  loanTermDays: zod.number(),
+  loanInterestPercent: zod.number(),
+});
+
+/**
+ * @summary Move cash from wallet into bank deposit
+ */
+
+export const DepositToBankBody = zod.object({
+  amount: zod.number().min(1),
+});
+
+export const DepositToBankResponse = zod.object({
+  success: zod.boolean(),
+  cash: zod.number(),
+  bankBalance: zod.number(),
+});
+
+/**
+ * @summary Move money out of bank deposit into wallet
+ */
+
+export const WithdrawFromBankBody = zod.object({
+  amount: zod.number().min(1),
+});
+
+export const WithdrawFromBankResponse = zod.object({
+  success: zod.boolean(),
+  cash: zod.number(),
+  bankBalance: zod.number(),
+});
+
+/**
+ * @summary Take out a new loan against your credit limit
+ */
+
+export const RequestBankLoanBody = zod.object({
+  amount: zod.number().min(1),
+});
+
+export const RequestBankLoanResponse = zod.object({
+  success: zod.boolean(),
+  loan: zod.object({
+    id: zod.number(),
+    principal: zod.number(),
+    remaining: zod.number(),
+    interestRate: zod.number(),
+    takenAt: zod.string(),
+    dueAt: zod.string(),
+    status: zod.enum(["active", "repaid", "defaulted"]),
+    isOverdue: zod.boolean(),
+  }),
+});
+
+/**
+ * @summary Repay an active loan in full from cash
+ */
+export const RepayBankLoanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RepayBankLoanResponse = zod.object({
+  success: zod.boolean(),
+  amountPaid: zod.number(),
+});
+
+/**
+ * @summary List recent bank transactions for the current player
+ */
+export const getBankTransactionsQueryLimitMax = 100;
+
+export const GetBankTransactionsQueryParams = zod.object({
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(getBankTransactionsQueryLimitMax)
+    .optional(),
+});
+
+export const GetBankTransactionsResponseItem = zod.object({
+  id: zod.number(),
+  type: zod.enum([
+    "deposit",
+    "withdraw",
+    "interest",
+    "loan_taken",
+    "loan_repaid",
+    "loan_garnished",
+    "loan_default_seize",
+  ]),
+  amount: zod.number(),
+  balanceAfter: zod.number(),
+  createdAt: zod.string(),
+});
+export const GetBankTransactionsResponse = zod.array(
+  GetBankTransactionsResponseItem,
+);
+
+/**
  * @summary Get all 12 ranks with current player eligibility
  */
 export const ListRanksResponse = zod.object({
@@ -531,6 +653,13 @@ export const GetRecentActivityResponseItem = zod.object({
     "black_market_sale",
     "black_market_purchase",
     "traveled",
+    "bank_deposit",
+    "bank_withdraw",
+    "bank_interest",
+    "bank_loan_taken",
+    "bank_loan_repaid",
+    "bank_loan_garnished",
+    "bank_loan_seized",
   ]),
   description: zod.string(),
   createdAt: zod.string(),

@@ -9,3 +9,4 @@ export * from "./blackmarket";
 export * from "./crimes";
 export * from "./ranks";
 export * from "./properties";
+export * from "./bank";

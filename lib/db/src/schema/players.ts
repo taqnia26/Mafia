@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, bigint } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { citiesTable } from "./cities";
@@ -34,6 +34,8 @@ export const playersTable = pgTable("players", {
   diedAt: timestamp("died_at"),
   killedByPlayerId: integer("killed_by_player_id"),
   deathCause: text("death_cause"),
+  bankBalance: bigint("bank_balance", { mode: "number" }).notNull().default(0),
+  lastBankInterestAt: timestamp("last_bank_interest_at"),
   isAdmin: boolean("is_admin").notNull().default(false),
   adminRole: text("admin_role").$type<typeof adminRoleEnum[number]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

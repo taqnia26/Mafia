@@ -36,6 +36,8 @@ tags:
     description: Player rank progression
   - name: properties
     description: Real estate properties with passive income
+  - name: bank
+    description: Bank deposits, loans and transactions
 
 paths:
   /healthz:
@@ -332,6 +334,149 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  # --- BANK ---
+  /bank/me:
+    get:
+      operationId: getBankAccount
+      tags: [bank]
+      summary: Get current player's bank balance, loans and credit info
+      responses:
+        "200":
+          description: Bank account state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankAccount"
+
+  /bank/deposit:
+    post:
+      operationId: depositToBank
+      tags: [bank]
+      summary: Move cash from wallet into bank deposit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAmountInput"
+      responses:
+        "200":
+          description: Deposit completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankBalanceResult"
+        "400":
+          description: Invalid amount or insufficient funds
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bank/withdraw:
+    post:
+      operationId: withdrawFromBank
+      tags: [bank]
+      summary: Move money out of bank deposit into wallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAmountInput"
+      responses:
+        "200":
+          description: Withdrawal completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankBalanceResult"
+        "400":
+          description: Invalid amount or insufficient bank balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bank/loan/request:
+    post:
+      operationId: requestBankLoan
+      tags: [bank]
+      summary: Take out a new loan against your credit limit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAmountInput"
+      responses:
+        "200":
+          description: Loan issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankLoanResult"
+        "400":
+          description: Invalid amount or exceeds credit limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bank/loan/{id}/repay:
+    post:
+      operationId: repayBankLoan
+      tags: [bank]
+      summary: Repay an active loan in full from cash
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Loan repaid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankRepayResult"
+        "400":
+          description: Loan not active or insufficient cash
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Loan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /bank/transactions:
+    get:
+      operationId: getBankTransactions
+      tags: [bank]
+      summary: List recent bank transactions for the current player
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Bank transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BankTransaction"
 
   # --- RANKS ---
   /ranks:
@@ -1741,7 +1886,7 @@ components:
           type: integer
         type:
           type: string
-          enum: [attack_sent, attack_received, crime_success, crime_failed, jailed, released, joined_gang, left_gang, bodyguard_hired, black_market_sale, black_market_purchase, traveled]
+          enum: [attack_sent, attack_received, crime_success, crime_failed, jailed, released, joined_gang, left_gang, bodyguard_hired, black_market_sale, black_market_purchase, traveled, bank_deposit, bank_withdraw, bank_interest, bank_loan_taken, bank_loan_repaid, bank_loan_garnished, bank_loan_seized]
         description:
           type: string
         createdAt:
@@ -3246,6 +3391,121 @@ components:
         - success
         - totalIncome
         - propertiesCount
+
+    BankAmountInput:
+      type: object
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+      required: [amount]
+
+    BankLoan:
+      type: object
+      properties:
+        id:
+          type: integer
+        principal:
+          type: integer
+        remaining:
+          type: integer
+        interestRate:
+          type: integer
+        takenAt:
+          type: string
+        dueAt:
+          type: string
+        status:
+          type: string
+          enum: [active, repaid, defaulted]
+        isOverdue:
+          type: boolean
+      required: [id, principal, remaining, interestRate, takenAt, dueAt, status, isOverdue]
+
+    BankAccount:
+      type: object
+      properties:
+        bankBalance:
+          type: integer
+        cash:
+          type: integer
+        interestRatePerHour:
+          type: number
+        accruedInterest:
+          type: integer
+        nextInterestAt:
+          type: ["string", "null"]
+        loans:
+          type: array
+          items:
+            $ref: "#/components/schemas/BankLoan"
+        creditLimit:
+          type: integer
+        outstandingLoanTotal:
+          type: integer
+        availableCredit:
+          type: integer
+        loanTermDays:
+          type: integer
+        loanInterestPercent:
+          type: integer
+      required:
+        - bankBalance
+        - cash
+        - interestRatePerHour
+        - accruedInterest
+        - nextInterestAt
+        - loans
+        - creditLimit
+        - outstandingLoanTotal
+        - availableCredit
+        - loanTermDays
+        - loanInterestPercent
+
+    BankBalanceResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        cash:
+          type: integer
+        bankBalance:
+          type: integer
+      required: [success, cash, bankBalance]
+
+    BankLoanResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        loan:
+          $ref: "#/components/schemas/BankLoan"
+      required: [success, loan]
+
+    BankRepayResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        amountPaid:
+          type: integer
+      required: [success, amountPaid]
+
+    BankTransaction:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [deposit, withdraw, interest, loan_taken, loan_repaid, loan_garnished, loan_default_seize]
+        amount:
+          type: integer
+        balanceAfter:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, type, amount, balanceAfter, createdAt]
 
     RankUpgradeResponse:
       type: object

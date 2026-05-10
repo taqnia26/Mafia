@@ -6,7 +6,7 @@ import {
   playerWeaponsTable, playerAmmoTable, playerArmorTable, playerNpcGuardsTable,
   playerGuardsTable, bodyguardRequestsTable, playerPropertiesTable,
   attacksTable, blackMarketListingsTable, crimeRecordsTable, activityLogTable,
-  notificationsTable,
+  notificationsTable, bankLoansTable, bankTransactionsTable,
 } from "@workspace/db/schema";
 import { eq, ilike, and, count, or, gte, sql, SQL } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
@@ -98,6 +98,8 @@ router.post("/players/me/restart", requireAuth, async (req, res) => {
         eq(bodyguardRequestsTable.toPlayerId, player.id),
       ));
       await tx.delete(playerPropertiesTable).where(eq(playerPropertiesTable.playerId, player.id));
+      await tx.delete(bankLoansTable).where(eq(bankLoansTable.playerId, player.id));
+      await tx.delete(bankTransactionsTable).where(eq(bankTransactionsTable.playerId, player.id));
       await tx.delete(playerRankProgressTable).where(eq(playerRankProgressTable.playerId, player.id));
       await tx.delete(blackMarketListingsTable).where(eq(blackMarketListingsTable.sellerId, player.id));
       await tx.delete(attacksTable).where(or(
@@ -110,6 +112,8 @@ router.post("/players/me/restart", requireAuth, async (req, res) => {
 
       await tx.update(playersTable).set({
         money: 5000,
+        bankBalance: 0,
+        lastBankInterestAt: null,
         health: 100,
         maxHealth: 100,
         level: 1,

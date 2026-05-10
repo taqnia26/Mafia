@@ -14,6 +14,7 @@ import adminRouter from "./admin";
 import notificationsRouter from "./notifications";
 import ranksRouter from "./ranks";
 import propertiesRouter from "./properties";
+import bankRouter from "./bank";
 
 
 const router: IRouter = Router();
@@ -33,5 +34,6 @@ router.use(adminRouter);
 router.use(notificationsRouter);
 router.use(ranksRouter);
 router.use(propertiesRouter);
+router.use(bankRouter);
 
 export default router;

@@ -135,6 +135,13 @@ export const ActivityItemType = {
   black_market_sale: "black_market_sale",
   black_market_purchase: "black_market_purchase",
   traveled: "traveled",
+  bank_deposit: "bank_deposit",
+  bank_withdraw: "bank_withdraw",
+  bank_interest: "bank_interest",
+  bank_loan_taken: "bank_loan_taken",
+  bank_loan_repaid: "bank_loan_repaid",
+  bank_loan_garnished: "bank_loan_garnished",
+  bank_loan_seized: "bank_loan_seized",
 } as const;
 
 export interface ActivityItem {
@@ -864,6 +871,83 @@ export interface CollectIncomeResult {
   propertiesCount: number;
 }
 
+export interface BankAmountInput {
+  /** @minimum 1 */
+  amount: number;
+}
+
+export type BankLoanStatus =
+  (typeof BankLoanStatus)[keyof typeof BankLoanStatus];
+
+export const BankLoanStatus = {
+  active: "active",
+  repaid: "repaid",
+  defaulted: "defaulted",
+} as const;
+
+export interface BankLoan {
+  id: number;
+  principal: number;
+  remaining: number;
+  interestRate: number;
+  takenAt: string;
+  dueAt: string;
+  status: BankLoanStatus;
+  isOverdue: boolean;
+}
+
+export interface BankAccount {
+  bankBalance: number;
+  cash: number;
+  interestRatePerHour: number;
+  accruedInterest: number;
+  /** @nullable */
+  nextInterestAt: string | null;
+  loans: BankLoan[];
+  creditLimit: number;
+  outstandingLoanTotal: number;
+  availableCredit: number;
+  loanTermDays: number;
+  loanInterestPercent: number;
+}
+
+export interface BankBalanceResult {
+  success: boolean;
+  cash: number;
+  bankBalance: number;
+}
+
+export interface BankLoanResult {
+  success: boolean;
+  loan: BankLoan;
+}
+
+export interface BankRepayResult {
+  success: boolean;
+  amountPaid: number;
+}
+
+export type BankTransactionType =
+  (typeof BankTransactionType)[keyof typeof BankTransactionType];
+
+export const BankTransactionType = {
+  deposit: "deposit",
+  withdraw: "withdraw",
+  interest: "interest",
+  loan_taken: "loan_taken",
+  loan_repaid: "loan_repaid",
+  loan_garnished: "loan_garnished",
+  loan_default_seize: "loan_default_seize",
+} as const;
+
+export interface BankTransaction {
+  id: number;
+  type: BankTransactionType;
+  amount: number;
+  balanceAfter: number;
+  createdAt: string;
+}
+
 export interface RankUpgradeResponse {
   success: boolean;
   newRank: number;
@@ -877,6 +961,14 @@ export type ListPlayersParams = {
   cityId?: number;
   search?: string;
   page?: number;
+  limit?: number;
+};
+
+export type GetBankTransactionsParams = {
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
   limit?: number;
 };
 

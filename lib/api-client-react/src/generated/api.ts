@@ -36,6 +36,12 @@ import type {
   ArmorItem,
   Attack,
   AttackInput,
+  BankAccount,
+  BankAmountInput,
+  BankBalanceResult,
+  BankLoanResult,
+  BankRepayResult,
+  BankTransaction,
   BlackMarketListing,
   BodyguardRequest,
   BodyguardRequestInput,
@@ -58,6 +64,7 @@ import type {
   GangInput,
   GangMember,
   GetAdminPlayersParams,
+  GetBankTransactionsParams,
   HealthStatus,
   JailbreakInput,
   JailbreakResult,
@@ -1250,6 +1257,523 @@ export const useCollectReactorIncome = <
 > => {
   return useMutation(getCollectReactorIncomeMutationOptions(options));
 };
+
+/**
+ * @summary Get current player's bank balance, loans and credit info
+ */
+export const getGetBankAccountUrl = () => {
+  return `/api/bank/me`;
+};
+
+export const getBankAccount = async (
+  options?: RequestInit,
+): Promise<BankAccount> => {
+  return customFetch<BankAccount>(getGetBankAccountUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBankAccountQueryKey = () => {
+  return [`/api/bank/me`] as const;
+};
+
+export const getGetBankAccountQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBankAccount>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBankAccount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBankAccountQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBankAccount>>> = ({
+    signal,
+  }) => getBankAccount({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBankAccount>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBankAccountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBankAccount>>
+>;
+export type GetBankAccountQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current player's bank balance, loans and credit info
+ */
+
+export function useGetBankAccount<
+  TData = Awaited<ReturnType<typeof getBankAccount>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBankAccount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBankAccountQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Move cash from wallet into bank deposit
+ */
+export const getDepositToBankUrl = () => {
+  return `/api/bank/deposit`;
+};
+
+export const depositToBank = async (
+  bankAmountInput: BankAmountInput,
+  options?: RequestInit,
+): Promise<BankBalanceResult> => {
+  return customFetch<BankBalanceResult>(getDepositToBankUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bankAmountInput),
+  });
+};
+
+export const getDepositToBankMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof depositToBank>>,
+    TError,
+    { data: BodyType<BankAmountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof depositToBank>>,
+  TError,
+  { data: BodyType<BankAmountInput> },
+  TContext
+> => {
+  const mutationKey = ["depositToBank"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof depositToBank>>,
+    { data: BodyType<BankAmountInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return depositToBank(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DepositToBankMutationResult = NonNullable<
+  Awaited<ReturnType<typeof depositToBank>>
+>;
+export type DepositToBankMutationBody = BodyType<BankAmountInput>;
+export type DepositToBankMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Move cash from wallet into bank deposit
+ */
+export const useDepositToBank = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof depositToBank>>,
+    TError,
+    { data: BodyType<BankAmountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof depositToBank>>,
+  TError,
+  { data: BodyType<BankAmountInput> },
+  TContext
+> => {
+  return useMutation(getDepositToBankMutationOptions(options));
+};
+
+/**
+ * @summary Move money out of bank deposit into wallet
+ */
+export const getWithdrawFromBankUrl = () => {
+  return `/api/bank/withdraw`;
+};
+
+export const withdrawFromBank = async (
+  bankAmountInput: BankAmountInput,
+  options?: RequestInit,
+): Promise<BankBalanceResult> => {
+  return customFetch<BankBalanceResult>(getWithdrawFromBankUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bankAmountInput),
+  });
+};
+
+export const getWithdrawFromBankMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof withdrawFromBank>>,
+    TError,
+    { data: BodyType<BankAmountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof withdrawFromBank>>,
+  TError,
+  { data: BodyType<BankAmountInput> },
+  TContext
+> => {
+  const mutationKey = ["withdrawFromBank"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof withdrawFromBank>>,
+    { data: BodyType<BankAmountInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return withdrawFromBank(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type WithdrawFromBankMutationResult = NonNullable<
+  Awaited<ReturnType<typeof withdrawFromBank>>
+>;
+export type WithdrawFromBankMutationBody = BodyType<BankAmountInput>;
+export type WithdrawFromBankMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Move money out of bank deposit into wallet
+ */
+export const useWithdrawFromBank = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof withdrawFromBank>>,
+    TError,
+    { data: BodyType<BankAmountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof withdrawFromBank>>,
+  TError,
+  { data: BodyType<BankAmountInput> },
+  TContext
+> => {
+  return useMutation(getWithdrawFromBankMutationOptions(options));
+};
+
+/**
+ * @summary Take out a new loan against your credit limit
+ */
+export const getRequestBankLoanUrl = () => {
+  return `/api/bank/loan/request`;
+};
+
+export const requestBankLoan = async (
+  bankAmountInput: BankAmountInput,
+  options?: RequestInit,
+): Promise<BankLoanResult> => {
+  return customFetch<BankLoanResult>(getRequestBankLoanUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bankAmountInput),
+  });
+};
+
+export const getRequestBankLoanMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestBankLoan>>,
+    TError,
+    { data: BodyType<BankAmountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestBankLoan>>,
+  TError,
+  { data: BodyType<BankAmountInput> },
+  TContext
+> => {
+  const mutationKey = ["requestBankLoan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestBankLoan>>,
+    { data: BodyType<BankAmountInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestBankLoan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestBankLoanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestBankLoan>>
+>;
+export type RequestBankLoanMutationBody = BodyType<BankAmountInput>;
+export type RequestBankLoanMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Take out a new loan against your credit limit
+ */
+export const useRequestBankLoan = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestBankLoan>>,
+    TError,
+    { data: BodyType<BankAmountInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestBankLoan>>,
+  TError,
+  { data: BodyType<BankAmountInput> },
+  TContext
+> => {
+  return useMutation(getRequestBankLoanMutationOptions(options));
+};
+
+/**
+ * @summary Repay an active loan in full from cash
+ */
+export const getRepayBankLoanUrl = (id: number) => {
+  return `/api/bank/loan/${id}/repay`;
+};
+
+export const repayBankLoan = async (
+  id: number,
+  options?: RequestInit,
+): Promise<BankRepayResult> => {
+  return customFetch<BankRepayResult>(getRepayBankLoanUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRepayBankLoanMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof repayBankLoan>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof repayBankLoan>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["repayBankLoan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof repayBankLoan>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return repayBankLoan(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RepayBankLoanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof repayBankLoan>>
+>;
+
+export type RepayBankLoanMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Repay an active loan in full from cash
+ */
+export const useRepayBankLoan = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof repayBankLoan>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof repayBankLoan>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRepayBankLoanMutationOptions(options));
+};
+
+/**
+ * @summary List recent bank transactions for the current player
+ */
+export const getGetBankTransactionsUrl = (
+  params?: GetBankTransactionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/bank/transactions?${stringifiedParams}`
+    : `/api/bank/transactions`;
+};
+
+export const getBankTransactions = async (
+  params?: GetBankTransactionsParams,
+  options?: RequestInit,
+): Promise<BankTransaction[]> => {
+  return customFetch<BankTransaction[]>(getGetBankTransactionsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBankTransactionsQueryKey = (
+  params?: GetBankTransactionsParams,
+) => {
+  return [`/api/bank/transactions`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetBankTransactionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBankTransactions>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetBankTransactionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBankTransactions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetBankTransactionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBankTransactions>>
+  > = ({ signal }) =>
+    getBankTransactions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBankTransactions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBankTransactionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBankTransactions>>
+>;
+export type GetBankTransactionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List recent bank transactions for the current player
+ */
+
+export function useGetBankTransactions<
+  TData = Awaited<ReturnType<typeof getBankTransactions>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetBankTransactionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBankTransactions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBankTransactionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get all 12 ranks with current player eligibility
