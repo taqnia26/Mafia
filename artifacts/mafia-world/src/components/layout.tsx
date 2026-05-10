@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useI18n } from "@/lib/i18n";
@@ -24,9 +24,17 @@ import {
   Crosshair as CrosshairCalc,
   MessageCircle,
   Mail,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { useQuery } from "@tanstack/react-query";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -61,8 +69,12 @@ function usePlayerRank() {
   });
 }
 
-export function Layout({ children }: LayoutProps) {
-  const { t, dir, language } = useI18n();
+interface SidebarBodyProps {
+  onNavigate?: () => void;
+}
+
+function SidebarBody({ onNavigate }: SidebarBodyProps) {
+  const { t, language } = useI18n();
   const { signOut } = useClerk();
   const [location] = useLocation();
   const { data: isAdmin } = useIsAdmin();
@@ -93,88 +105,138 @@ export function Layout({ children }: LayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
-      <aside className="w-full md:w-64 bg-card border-b md:border-b-0 md:border-r border-border shrink-0 flex flex-col">
-        <div className="p-6">
-          <div className="flex items-center justify-between gap-2">
-            <Link href="/" className="flex items-center gap-3">
-              <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
-              <span className="font-heading font-bold text-xl text-primary tracking-widest uppercase">
-                {t("app.title")}
-              </span>
-            </Link>
-            <NotificationBell />
-          </div>
+    <div className="flex flex-col h-full">
+      <div className="hidden md:block p-6">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-3">
+            <img src="/logo.svg" alt="Logo" className="w-8 h-8" />
+            <span className="font-heading font-bold text-xl text-primary tracking-widest uppercase">
+              {t("app.title")}
+            </span>
+          </Link>
+          <NotificationBell />
         </div>
+      </div>
 
-        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location === item.href || location.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span>{t(item.label)}</span>
-              </Link>
-            );
-          })}
-
-          {isAdmin && (
+      <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = location === item.href || location.startsWith(item.href + "/");
+          return (
             <Link
-              href="/admin"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors border border-primary/20 mt-2 ${
-                location === "/admin"
-                  ? "bg-primary/20 text-primary font-medium"
-                  : "text-primary/70 hover:bg-primary/10 hover:text-primary"
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors ${
+                isActive
+                  ? "bg-primary/10 text-primary font-medium"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
             >
-              <ShieldAlert className="w-5 h-5" />
-              <span>{t("nav.admin")}</span>
+              <Icon className="w-5 h-5" />
+              <span>{t(item.label)}</span>
             </Link>
-          )}
-        </nav>
+          );
+        })}
 
-        {rankInfo?.rankNameEn && (
-          <Link href="/ranks">
-            <div className="mx-4 mb-2 px-3 py-2 rounded-md bg-secondary/40 border border-border/50 hover:bg-secondary/70 transition-colors cursor-pointer">
-              <div className="flex items-center gap-2">
-                <Award className="w-4 h-4 shrink-0" style={{ color: rankInfo.rankColor ?? "#6b7280" }} />
-                <span
-                  className="text-xs font-heading font-bold uppercase tracking-wide truncate"
-                  style={{ color: rankInfo.rankColor ?? "#6b7280" }}
-                >
-                  {language === "ar" ? (rankInfo.rankNameAr ?? rankInfo.rankNameEn) : rankInfo.rankNameEn}
-                </span>
-                <Badge
-                  variant="outline"
-                  className="text-xs shrink-0 ml-auto"
-                  style={{ borderColor: rankInfo.rankColor ?? "#6b7280", color: rankInfo.rankColor ?? "#6b7280" }}
-                >
-                  #{rankInfo.currentRank}
-                </Badge>
-              </div>
-            </div>
+        {isAdmin && (
+          <Link
+            href="/admin"
+            onClick={onNavigate}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors border border-primary/20 mt-2 ${
+              location === "/admin"
+                ? "bg-primary/20 text-primary font-medium"
+                : "text-primary/70 hover:bg-primary/10 hover:text-primary"
+            }`}
+          >
+            <ShieldAlert className="w-5 h-5" />
+            <span>{t("nav.admin")}</span>
           </Link>
         )}
+      </nav>
 
-        <div className="p-4 border-t border-border">
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-destructive"
-            onClick={() => signOut()}
+      {rankInfo?.rankNameEn && (
+        <Link href="/ranks" onClick={onNavigate}>
+          <div className="mx-4 mb-2 px-3 py-2 rounded-md bg-secondary/40 border border-border/50 hover:bg-secondary/70 transition-colors cursor-pointer">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 shrink-0" style={{ color: rankInfo.rankColor ?? "#6b7280" }} />
+              <span
+                className="text-xs font-heading font-bold uppercase tracking-wide truncate"
+                style={{ color: rankInfo.rankColor ?? "#6b7280" }}
+              >
+                {language === "ar" ? (rankInfo.rankNameAr ?? rankInfo.rankNameEn) : rankInfo.rankNameEn}
+              </span>
+              <Badge
+                variant="outline"
+                className="text-xs shrink-0 ml-auto"
+                style={{ borderColor: rankInfo.rankColor ?? "#6b7280", color: rankInfo.rankColor ?? "#6b7280" }}
+              >
+                #{rankInfo.currentRank}
+              </Badge>
+            </div>
+          </div>
+        </Link>
+      )}
+
+      <div className="p-4 border-t border-border">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-muted-foreground hover:text-destructive"
+          onClick={() => signOut()}
+        >
+          <LogOut className="w-5 h-5 mr-2" />
+          {t("nav.logout")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function Layout({ children }: LayoutProps) {
+  const { t, dir } = useI18n();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
+      {/* Mobile top bar */}
+      <header className="md:hidden sticky top-0 z-30 flex items-center justify-between gap-2 px-3 py-2 bg-card border-b border-border">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Open menu">
+              <Menu className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent
+            side={dir === "rtl" ? "right" : "left"}
+            className="p-0 w-[85vw] max-w-[20rem] flex flex-col bg-card"
           >
-            <LogOut className="w-5 h-5 mr-2" />
-            {t("nav.logout")}
-          </Button>
-        </div>
+            <SheetHeader className="p-4 border-b border-border text-start">
+              <SheetTitle className="flex items-center gap-3">
+                <img src="/logo.svg" alt="Logo" className="w-7 h-7" />
+                <span className="font-heading font-bold text-base text-primary tracking-widest uppercase">
+                  {t("app.title")}
+                </span>
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-hidden">
+              <SidebarBody onNavigate={() => setOpen(false)} />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <Link href="/" className="flex items-center gap-2 min-w-0">
+          <img src="/logo.svg" alt="Logo" className="w-6 h-6 shrink-0" />
+          <span className="font-heading font-bold text-sm text-primary tracking-widest uppercase truncate">
+            {t("app.title")}
+          </span>
+        </Link>
+
+        <NotificationBell />
+      </header>
+
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex md:w-64 bg-card md:border-r border-border shrink-0 flex-col">
+        <SidebarBody />
       </aside>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8">

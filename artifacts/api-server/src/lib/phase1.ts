@@ -61,6 +61,72 @@ export async function recordAdminRevenue(source: string, amount: number, descrip
   await db.insert(adminWalletTable).values({ source, amount, description });
 }
 
+/**
+ * Phase 1 spec: killing a Capo (rank 12) auto-promotes the killer to rank 12.
+ * Returns { promoted, fromRank, atkBonus, defBonus, capoUsername } when promotion happened.
+ * Idempotent: no-op when killer is already rank 12 or victim was not rank 12.
+ */
+export async function checkCapoKillPromotion(
+  tx: typeof db,
+  killerId: number,
+  victimId: number,
+  victimUsername: string,
+): Promise<{
+  promoted: boolean;
+  fromRank?: number;
+  atkBonus?: number;
+  defBonus?: number;
+  capoUsername?: string;
+}> {
+  if (killerId === victimId) return { promoted: false };
+
+  const [victimProgress] = await tx.select()
+    .from(playerRankProgressTable)
+    .where(eq(playerRankProgressTable.playerId, victimId)).limit(1);
+  if (!victimProgress || victimProgress.currentRank !== 12) {
+    return { promoted: false };
+  }
+
+  const [killerProgress] = await tx.select()
+    .from(playerRankProgressTable)
+    .where(eq(playerRankProgressTable.playerId, killerId))
+    .for("update").limit(1);
+  const killerRank = killerProgress?.currentRank ?? 1;
+  if (killerRank >= 12) return { promoted: false };
+
+  const allRanks = await tx.select().from(playerRanksTable)
+    .orderBy(playerRanksTable.rankNumber);
+  const rank12 = allRanks.find(r => r.rankNumber === 12);
+  const fromRow = allRanks.find(r => r.rankNumber === killerRank);
+  if (!rank12) return { promoted: false };
+
+  const atkBonus = rank12.atkBonus - (fromRow?.atkBonus ?? 0);
+  const defBonus = rank12.defBonus - (fromRow?.defBonus ?? 0);
+
+  // Concurrency-safe upsert: works whether or not the killer already had a row.
+  // The unique index on player_id ensures ON CONFLICT serializes concurrent writers.
+  await tx.insert(playerRankProgressTable)
+    .values({ playerId: killerId, currentRank: 12 })
+    .onConflictDoUpdate({
+      target: playerRankProgressTable.playerId,
+      set: { currentRank: 12, upgradedAt: new Date() },
+    });
+
+  await tx.update(playersTable).set({
+    attackPower: sql`${playersTable.attackPower} + ${atkBonus}`,
+    defensePower: sql`${playersTable.defensePower} + ${defBonus}`,
+    updatedAt: new Date(),
+  }).where(eq(playersTable.id, killerId));
+
+  return {
+    promoted: true,
+    fromRank: killerRank,
+    atkBonus,
+    defBonus,
+    capoUsername: victimUsername,
+  };
+}
+
 export type CanBuildResult =
   | { canBuild: true }
   | { canBuild: false; reason: string; reasonAr: string; currentOwners?: { id: number; username: string }[] };

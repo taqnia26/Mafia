@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ErrorResponse {
-  error: string;
-  errorAr?: string | null;
+export interface CombatGuardDetail {
+  type: string;
+  count: number;
+  bulletsPerGuard: number;
+  totalBullets: number;
 }

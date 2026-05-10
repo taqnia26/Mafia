@@ -15,6 +15,185 @@ export interface MessageResponse {
 
 export interface ErrorResponse {
   error: string;
+  errorAr?: string | null;
+}
+
+export interface SafeHouseListing {
+  playerPropertyId: number;
+  ownerId: number;
+  ownerName: string;
+  level: number;
+  nameEn: string;
+  nameAr: string;
+  suggestedRent: number;
+}
+
+export interface SafeHouseStatus {
+  inSafeHouse: boolean;
+  expiresAt: string | null;
+}
+
+export interface SafeHouseRentInput {
+  playerPropertyId: number;
+  /** Total rent paid (>=10000) */
+  rentAmount: number;
+  /**
+   * @minimum 1
+   * @maximum 7
+   */
+  durationDays?: number;
+}
+
+export interface SafeHouseRentResult {
+  success: boolean;
+  rentPaid: number;
+  /** 35% of rent */
+  ownerReceived: number;
+  /** 65% of rent */
+  adminReceived: number;
+  protectedUntil: string;
+}
+
+export type BlackjackHand = number[];
+
+export interface BlackjackLimits {
+  dailyLimit: number;
+  playedToday: number;
+  remaining: number;
+  minBet: number;
+  maxBet: number;
+  commissionPct: number;
+  payoutMultiplier: number;
+}
+
+export interface BlackjackActiveSession {
+  id: number;
+  betAmount: number;
+  commission: number;
+  effectiveBet: number;
+  playerHand: BlackjackHand;
+  playerTotal: number;
+  dealerVisible: BlackjackHand;
+  status: string;
+}
+
+export interface BlackjackState {
+  session: BlackjackActiveSession | null;
+  limits: BlackjackLimits;
+  cash: number;
+}
+
+export interface BlackjackStartInput {
+  /**
+   * @minimum 5000
+   * @maximum 50000
+   */
+  betAmount: number;
+}
+
+export type BlackjackTurnResultOutcome =
+  | (typeof BlackjackTurnResultOutcome)[keyof typeof BlackjackTurnResultOutcome]
+  | null;
+
+export const BlackjackTurnResultOutcome = {
+  win: "win",
+  lose: "lose",
+  blackjack: "blackjack",
+  bust: "bust",
+} as const;
+
+/**
+ * Unified shape for start/hit/stand. When the hand is still in progress
+only `dealerVisible` is returned; once resolved (`outcome` set), the
+full `dealerHand`, `dealerTotal`, `payout`, and `netProfit` are returned.
+
+ */
+export interface BlackjackTurnResult {
+  sessionId?: number | null;
+  betAmount?: number;
+  commission?: number;
+  effectiveBet?: number;
+  playerHand: BlackjackHand;
+  playerTotal: number;
+  dealerVisible?: BlackjackHand | null;
+  dealerHand?: BlackjackHand | null;
+  dealerTotal?: number | null;
+  outcome?: BlackjackTurnResultOutcome;
+  payout?: number | null;
+  netProfit?: number | null;
+  status?: string | null;
+}
+
+export interface CombatGuardSpec {
+  typeId: number;
+  count: number;
+}
+
+export interface CombatCalculateInput {
+  targetRank?: number | null;
+  targetPlayerId?: number | null;
+  targetArmorId?: number | null;
+  guards?: CombatGuardSpec[];
+}
+
+export interface CombatGuardDetail {
+  type: string;
+  count: number;
+  bulletsPerGuard: number;
+  totalBullets: number;
+}
+
+export type CombatCalculateResultAttacker = {
+  username: string;
+  rank: number;
+  weaponName: string;
+  weaponAtk: number;
+  totalAtk: number;
+  ammoType: string;
+};
+
+export type CombatCalculateResultTarget = {
+  username?: string | null;
+  rank: number;
+  armorName?: string | null;
+  armorDef: number;
+  totalDef: number;
+  hp: number;
+};
+
+export type CombatCalculateResultCalculation = {
+  damagePerBullet: number;
+  bulletsForGuards: number;
+  bulletsForTarget: number;
+  totalBullets: number;
+  bulletType: string;
+  bulletPrice: number;
+  totalCost: number;
+  guards: CombatGuardDetail[];
+};
+
+export type CombatCalculateResultAvailability = {
+  hasEnoughAmmo: boolean;
+  hasEnoughMoney: boolean;
+  availableAmmo: number;
+  neededAmmo: number;
+  neededMoney: number;
+};
+
+export type CombatCalculateResultSuggestionsItem = {
+  type: string;
+  message: string;
+  messageAr: string;
+  cost?: number | null;
+};
+
+export interface CombatCalculateResult {
+  attacker: CombatCalculateResultAttacker;
+  target: CombatCalculateResultTarget;
+  calculation: CombatCalculateResultCalculation;
+  availability: CombatCalculateResultAvailability;
+  canAttack: boolean;
+  suggestions: CombatCalculateResultSuggestionsItem[];
 }
 
 export interface Player {

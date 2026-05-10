@@ -6,7 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ErrorResponse {
-  error: string;
-  errorAr?: string | null;
+export interface BlackjackStartInput {
+  /**
+   * @minimum 5000
+   * @maximum 50000
+   */
+  betAmount: number;
 }

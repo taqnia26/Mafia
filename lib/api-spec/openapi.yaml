@@ -40,6 +40,12 @@ tags:
     description: Bank deposits, loans and transactions
   - name: chat
     description: In-game chat (global, gang, city, private)
+  - name: safe-house
+    description: Phase 1 — rentable Safe House protection (35/65 owner/admin split)
+  - name: casino
+    description: Phase 1 — Blackjack only (15% commission, 1.8x payout, daily cap)
+  - name: combat
+    description: Phase 1 — Kill Calculator (bullets/cost/availability for an attack plan)
 
 paths:
   /healthz:
@@ -2013,6 +2019,209 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminCity"
 
+  /safe-house/listings:
+    get:
+      operationId: listSafeHouseListings
+      tags: [safe-house]
+      summary: Rentable Safe Houses in the player's current city
+      responses:
+        "200":
+          description: List of rentable Safe Houses
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SafeHouseListing" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /safe-house/me:
+    get:
+      operationId: getMySafeHouseStatus
+      tags: [safe-house]
+      summary: Current Safe House protection status for the caller
+      responses:
+        "200":
+          description: Current protection state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SafeHouseStatus" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /safe-house/rent:
+    post:
+      operationId: rentSafeHouse
+      tags: [safe-house]
+      summary: Rent a Safe House for a number of days (24h cooldown)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SafeHouseRentInput" }
+      responses:
+        "200":
+          description: Rental successful
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SafeHouseRentResult" }
+        "400":
+          description: Invalid request or insufficient funds
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Safe House not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429":
+          description: 24-hour cooldown active
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /casino/blackjack/state:
+    get:
+      operationId: getBlackjackState
+      tags: [casino]
+      summary: Current Blackjack session, daily limits, and config
+      responses:
+        "200":
+          description: Blackjack state for the caller
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlackjackState" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /casino/blackjack/start:
+    post:
+      operationId: startBlackjackHand
+      tags: [casino]
+      summary: Start a new Blackjack hand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BlackjackStartInput" }
+      responses:
+        "200":
+          description: Hand dealt (or auto-resolved on natural blackjack)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlackjackTurnResult" }
+        "400":
+          description: Invalid bet or insufficient funds
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: An active hand already exists
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "429":
+          description: Daily play limit reached
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /casino/blackjack/hit:
+    post:
+      operationId: hitBlackjackHand
+      tags: [casino]
+      summary: Draw an additional card on the active Blackjack hand
+      responses:
+        "200":
+          description: New hand state (continues or auto-resolves on bust)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlackjackTurnResult" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: No active session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /casino/blackjack/stand:
+    post:
+      operationId: standBlackjackHand
+      tags: [casino]
+      summary: Stand on the current Blackjack hand and resolve the dealer
+      responses:
+        "200":
+          description: Final hand resolution with dealer hand
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BlackjackTurnResult" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: No active session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  /combat/calculate:
+    post:
+      operationId: calculateCombat
+      tags: [combat]
+      summary: Bullets / cost / ammo availability needed to defeat a target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CombatCalculateInput" }
+      responses:
+        "200":
+          description: Combat calculation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CombatCalculateResult" }
+        "400":
+          description: Bad input (no weapon equipped, invalid target rank, etc.)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Target not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
 components:
   schemas:
     HealthStatus:
@@ -2036,8 +2245,303 @@ components:
       properties:
         error:
           type: string
+        errorAr:
+          type: string
+          nullable: true
       required:
         - error
+
+    SafeHouseListing:
+      type: object
+      properties:
+        playerPropertyId: { type: integer }
+        ownerId: { type: integer }
+        ownerName: { type: string }
+        level: { type: integer }
+        nameEn: { type: string }
+        nameAr: { type: string }
+        suggestedRent: { type: integer }
+      required:
+        - playerPropertyId
+        - ownerId
+        - ownerName
+        - level
+        - nameEn
+        - nameAr
+        - suggestedRent
+
+    SafeHouseStatus:
+      type: object
+      properties:
+        inSafeHouse: { type: boolean }
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - inSafeHouse
+        - expiresAt
+
+    SafeHouseRentInput:
+      type: object
+      properties:
+        playerPropertyId: { type: integer }
+        rentAmount: { type: integer, description: "Total rent paid (>=10000)" }
+        durationDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          default: 7
+      required:
+        - playerPropertyId
+        - rentAmount
+
+    SafeHouseRentResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        rentPaid: { type: integer }
+        ownerReceived: { type: integer, description: "35% of rent" }
+        adminReceived: { type: integer, description: "65% of rent" }
+        protectedUntil: { type: string, format: date-time }
+      required:
+        - success
+        - rentPaid
+        - ownerReceived
+        - adminReceived
+        - protectedUntil
+
+    BlackjackHand:
+      type: array
+      items:
+        type: integer
+        description: Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)
+
+    BlackjackLimits:
+      type: object
+      properties:
+        dailyLimit: { type: integer }
+        playedToday: { type: integer }
+        remaining: { type: integer }
+        minBet: { type: integer }
+        maxBet: { type: integer }
+        commissionPct: { type: number }
+        payoutMultiplier: { type: number }
+      required:
+        - dailyLimit
+        - playedToday
+        - remaining
+        - minBet
+        - maxBet
+        - commissionPct
+        - payoutMultiplier
+
+    BlackjackActiveSession:
+      type: object
+      properties:
+        id: { type: integer }
+        betAmount: { type: integer }
+        commission: { type: integer }
+        effectiveBet: { type: integer }
+        playerHand: { $ref: "#/components/schemas/BlackjackHand" }
+        playerTotal: { type: integer }
+        dealerVisible: { $ref: "#/components/schemas/BlackjackHand" }
+        status: { type: string }
+      required:
+        - id
+        - betAmount
+        - commission
+        - effectiveBet
+        - playerHand
+        - playerTotal
+        - dealerVisible
+        - status
+
+    BlackjackState:
+      type: object
+      properties:
+        session:
+          allOf:
+            - $ref: "#/components/schemas/BlackjackActiveSession"
+          nullable: true
+        limits: { $ref: "#/components/schemas/BlackjackLimits" }
+        cash: { type: integer }
+      required:
+        - session
+        - limits
+        - cash
+
+    BlackjackStartInput:
+      type: object
+      properties:
+        betAmount: { type: integer, minimum: 5000, maximum: 50000 }
+      required:
+        - betAmount
+
+    BlackjackTurnResult:
+      type: object
+      description: |
+        Unified shape for start/hit/stand. When the hand is still in progress
+        only `dealerVisible` is returned; once resolved (`outcome` set), the
+        full `dealerHand`, `dealerTotal`, `payout`, and `netProfit` are returned.
+      properties:
+        sessionId:
+          type: integer
+          nullable: true
+        betAmount: { type: integer }
+        commission: { type: integer }
+        effectiveBet: { type: integer }
+        playerHand: { $ref: "#/components/schemas/BlackjackHand" }
+        playerTotal: { type: integer }
+        dealerVisible:
+          allOf:
+            - $ref: "#/components/schemas/BlackjackHand"
+          nullable: true
+        dealerHand:
+          allOf:
+            - $ref: "#/components/schemas/BlackjackHand"
+          nullable: true
+        dealerTotal:
+          type: integer
+          nullable: true
+        outcome:
+          type: string
+          enum: [win, lose, blackjack, bust]
+          nullable: true
+        payout:
+          type: integer
+          nullable: true
+        netProfit:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          nullable: true
+      required:
+        - playerHand
+        - playerTotal
+
+    CombatGuardSpec:
+      type: object
+      properties:
+        typeId: { type: integer }
+        count: { type: integer }
+      required:
+        - typeId
+        - count
+
+    CombatCalculateInput:
+      type: object
+      properties:
+        targetRank:
+          type: integer
+          nullable: true
+        targetPlayerId:
+          type: integer
+          nullable: true
+        targetArmorId:
+          type: integer
+          nullable: true
+        guards:
+          type: array
+          items: { $ref: "#/components/schemas/CombatGuardSpec" }
+
+    CombatGuardDetail:
+      type: object
+      properties:
+        type: { type: string }
+        count: { type: integer }
+        bulletsPerGuard: { type: integer }
+        totalBullets: { type: integer }
+      required:
+        - type
+        - count
+        - bulletsPerGuard
+        - totalBullets
+
+    CombatCalculateResult:
+      type: object
+      properties:
+        attacker:
+          type: object
+          properties:
+            username: { type: string }
+            rank: { type: integer }
+            weaponName: { type: string }
+            weaponAtk: { type: integer }
+            totalAtk: { type: integer }
+            ammoType: { type: string }
+          required: [username, rank, weaponName, weaponAtk, totalAtk, ammoType]
+        target:
+          type: object
+          properties:
+            username:
+              type: string
+              nullable: true
+            rank: { type: integer }
+            armorName:
+              type: string
+              nullable: true
+            armorDef: { type: integer }
+            totalDef: { type: integer }
+            hp: { type: integer }
+          required: [rank, armorDef, totalDef, hp]
+        calculation:
+          type: object
+          properties:
+            damagePerBullet: { type: integer }
+            bulletsForGuards: { type: integer }
+            bulletsForTarget: { type: integer }
+            totalBullets: { type: integer }
+            bulletType: { type: string }
+            bulletPrice: { type: integer }
+            totalCost: { type: integer }
+            guards:
+              type: array
+              items: { $ref: "#/components/schemas/CombatGuardDetail" }
+          required:
+            - damagePerBullet
+            - bulletsForGuards
+            - bulletsForTarget
+            - totalBullets
+            - bulletType
+            - bulletPrice
+            - totalCost
+            - guards
+        availability:
+          type: object
+          properties:
+            hasEnoughAmmo: { type: boolean }
+            hasEnoughMoney: { type: boolean }
+            availableAmmo: { type: integer }
+            neededAmmo: { type: integer }
+            neededMoney: { type: integer }
+          required:
+            - hasEnoughAmmo
+            - hasEnoughMoney
+            - availableAmmo
+            - neededAmmo
+            - neededMoney
+        canAttack: { type: boolean }
+        suggestions:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              message: { type: string }
+              messageAr: { type: string }
+              cost:
+                type: integer
+                nullable: true
+            required: [type, message, messageAr]
+      required:
+        - attacker
+        - target
+        - calculation
+        - availability
+        - canAttack
+        - suggestions
 
     Player:
       type: object

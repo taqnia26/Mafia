@@ -15,6 +15,7 @@ import { inboxMessagesTable } from "@workspace/db/schema";
 import { logger } from "./logger";
 import { REACTOR } from "./reactor";
 import { BANK_CONFIG, applyHourlyInterest } from "./bank";
+import { checkCapoKillPromotion } from "./phase1";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -281,6 +282,7 @@ async function processAttackArrivals(): Promise<void> {
           const targetDied = newHealth <= 0;
           const moneyStolen = Math.min(target[0].money, Math.floor(damage * 10));
           const xpGain = 50 + Math.floor(damage / 2);
+          let capoPromotion: Awaited<ReturnType<typeof checkCapoKillPromotion>> = { promoted: false };
 
           await db.transaction(async (tx) => {
             await tx.update(attacksTable)
@@ -306,6 +308,14 @@ async function processAttackArrivals(): Promise<void> {
                 deathCause: `Killed by ${attacker[0].username}`,
                 updatedAt: new Date(),
               }).where(eq(playersTable.id, target[0].id));
+
+              // Phase 1: killing a Capo (rank 12) instantly promotes the attacker to rank 12.
+              capoPromotion = await checkCapoKillPromotion(
+                tx as unknown as typeof db,
+                attacker[0].id,
+                target[0].id,
+                target[0].username,
+              );
             } else {
               await tx.update(playersTable).set({
                 health: Math.max(1, newHealth),
@@ -379,6 +389,37 @@ async function processAttackArrivals(): Promise<void> {
               actionLink: targetDied ? "/dashboard" : "/attack",
             }),
           ]);
+
+          // Phase 1: announce auto-promotion when a Capo (rank 12) was killed.
+          if (capoPromotion.promoted) {
+            await logActivity(
+              attacker[0].id,
+              "rank_promoted",
+              `🌟 Promoted to Capo (rank 12) for killing ${capoPromotion.capoUsername} — +${capoPromotion.atkBonus} ATK, +${capoPromotion.defBonus} DEF`,
+            );
+            await Promise.all([
+              createNotification(
+                attacker[0].id,
+                "attack_resolved",
+                `🌟 You are now a Capo! Killing ${capoPromotion.capoUsername} promoted you to rank 12.`,
+                "/ranks",
+              ),
+              sendInboxMessage({
+                playerId: attacker[0].id, category: "system", priority: "urgent",
+                subjectEn: `Promoted to Capo (rank 12)`,
+                subjectAr: `ترقية إلى كابو (الرتبة 12)`,
+                bodyEn: `By eliminating ${capoPromotion.capoUsername}, you have seized their throne. You are now a Capo (rank 12) — +${capoPromotion.atkBonus} ATK, +${capoPromotion.defBonus} DEF.`,
+                bodyAr: `بقتلك ${capoPromotion.capoUsername}، استوليت على عرشهم. أنت الآن كابو (الرتبة 12) — +${capoPromotion.atkBonus} هجوم، +${capoPromotion.defBonus} دفاع.`,
+                metadata: {
+                  attackId: attack.id,
+                  capoVictimId: target[0].id,
+                  fromRank: capoPromotion.fromRank,
+                  toRank: 12,
+                },
+                actionLink: "/ranks",
+              }),
+            ]);
+          }
         }
       } else {
         // Attack failed — target's defense held

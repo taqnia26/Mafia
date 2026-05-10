@@ -1926,3 +1926,249 @@ export const UpdateAdminCityResponse = zod.object({
   description: zod.string(),
   travelHoursBase: zod.number(),
 });
+
+/**
+ * @summary Rentable Safe Houses in the player's current city
+ */
+export const ListSafeHouseListingsResponseItem = zod.object({
+  playerPropertyId: zod.number(),
+  ownerId: zod.number(),
+  ownerName: zod.string(),
+  level: zod.number(),
+  nameEn: zod.string(),
+  nameAr: zod.string(),
+  suggestedRent: zod.number(),
+});
+export const ListSafeHouseListingsResponse = zod.array(
+  ListSafeHouseListingsResponseItem,
+);
+
+/**
+ * @summary Current Safe House protection status for the caller
+ */
+export const GetMySafeHouseStatusResponse = zod.object({
+  inSafeHouse: zod.boolean(),
+  expiresAt: zod.coerce.date().nullable(),
+});
+
+/**
+ * @summary Rent a Safe House for a number of days (24h cooldown)
+ */
+export const rentSafeHouseBodyDurationDaysDefault = 7;
+export const rentSafeHouseBodyDurationDaysMax = 7;
+
+export const RentSafeHouseBody = zod.object({
+  playerPropertyId: zod.number(),
+  rentAmount: zod.number().describe("Total rent paid (>=10000)"),
+  durationDays: zod
+    .number()
+    .min(1)
+    .max(rentSafeHouseBodyDurationDaysMax)
+    .default(rentSafeHouseBodyDurationDaysDefault),
+});
+
+export const RentSafeHouseResponse = zod.object({
+  success: zod.boolean(),
+  rentPaid: zod.number(),
+  ownerReceived: zod.number().describe("35% of rent"),
+  adminReceived: zod.number().describe("65% of rent"),
+  protectedUntil: zod.coerce.date(),
+});
+
+/**
+ * @summary Current Blackjack session, daily limits, and config
+ */
+export const GetBlackjackStateResponse = zod.object({
+  session: zod
+    .object({
+      id: zod.number(),
+      betAmount: zod.number(),
+      commission: zod.number(),
+      effectiveBet: zod.number(),
+      playerHand: zod.array(
+        zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"),
+      ),
+      playerTotal: zod.number(),
+      dealerVisible: zod.array(
+        zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"),
+      ),
+      status: zod.string(),
+    })
+    .nullable(),
+  limits: zod.object({
+    dailyLimit: zod.number(),
+    playedToday: zod.number(),
+    remaining: zod.number(),
+    minBet: zod.number(),
+    maxBet: zod.number(),
+    commissionPct: zod.number(),
+    payoutMultiplier: zod.number(),
+  }),
+  cash: zod.number(),
+});
+
+/**
+ * @summary Start a new Blackjack hand
+ */
+export const startBlackjackHandBodyBetAmountMin = 5000;
+export const startBlackjackHandBodyBetAmountMax = 50000;
+
+export const StartBlackjackHandBody = zod.object({
+  betAmount: zod
+    .number()
+    .min(startBlackjackHandBodyBetAmountMin)
+    .max(startBlackjackHandBodyBetAmountMax),
+});
+
+export const StartBlackjackHandResponse = zod
+  .object({
+    sessionId: zod.number().nullish(),
+    betAmount: zod.number().optional(),
+    commission: zod.number().optional(),
+    effectiveBet: zod.number().optional(),
+    playerHand: zod.array(
+      zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"),
+    ),
+    playerTotal: zod.number(),
+    dealerVisible: zod
+      .array(zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"))
+      .nullish(),
+    dealerHand: zod
+      .array(zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"))
+      .nullish(),
+    dealerTotal: zod.number().nullish(),
+    outcome: zod.enum(["win", "lose", "blackjack", "bust"]).nullish(),
+    payout: zod.number().nullish(),
+    netProfit: zod.number().nullish(),
+    status: zod.string().nullish(),
+  })
+  .describe(
+    "Unified shape for start\/hit\/stand. When the hand is still in progress\nonly `dealerVisible` is returned; once resolved (`outcome` set), the\nfull `dealerHand`, `dealerTotal`, `payout`, and `netProfit` are returned.\n",
+  );
+
+/**
+ * @summary Draw an additional card on the active Blackjack hand
+ */
+export const HitBlackjackHandResponse = zod
+  .object({
+    sessionId: zod.number().nullish(),
+    betAmount: zod.number().optional(),
+    commission: zod.number().optional(),
+    effectiveBet: zod.number().optional(),
+    playerHand: zod.array(
+      zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"),
+    ),
+    playerTotal: zod.number(),
+    dealerVisible: zod
+      .array(zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"))
+      .nullish(),
+    dealerHand: zod
+      .array(zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"))
+      .nullish(),
+    dealerTotal: zod.number().nullish(),
+    outcome: zod.enum(["win", "lose", "blackjack", "bust"]).nullish(),
+    payout: zod.number().nullish(),
+    netProfit: zod.number().nullish(),
+    status: zod.string().nullish(),
+  })
+  .describe(
+    "Unified shape for start\/hit\/stand. When the hand is still in progress\nonly `dealerVisible` is returned; once resolved (`outcome` set), the\nfull `dealerHand`, `dealerTotal`, `payout`, and `netProfit` are returned.\n",
+  );
+
+/**
+ * @summary Stand on the current Blackjack hand and resolve the dealer
+ */
+export const StandBlackjackHandResponse = zod
+  .object({
+    sessionId: zod.number().nullish(),
+    betAmount: zod.number().optional(),
+    commission: zod.number().optional(),
+    effectiveBet: zod.number().optional(),
+    playerHand: zod.array(
+      zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"),
+    ),
+    playerTotal: zod.number(),
+    dealerVisible: zod
+      .array(zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"))
+      .nullish(),
+    dealerHand: zod
+      .array(zod.number().describe("Card rank 1-13 (1=Ace, 11=J, 12=Q, 13=K)"))
+      .nullish(),
+    dealerTotal: zod.number().nullish(),
+    outcome: zod.enum(["win", "lose", "blackjack", "bust"]).nullish(),
+    payout: zod.number().nullish(),
+    netProfit: zod.number().nullish(),
+    status: zod.string().nullish(),
+  })
+  .describe(
+    "Unified shape for start\/hit\/stand. When the hand is still in progress\nonly `dealerVisible` is returned; once resolved (`outcome` set), the\nfull `dealerHand`, `dealerTotal`, `payout`, and `netProfit` are returned.\n",
+  );
+
+/**
+ * @summary Bullets / cost / ammo availability needed to defeat a target
+ */
+export const CalculateCombatBody = zod.object({
+  targetRank: zod.number().nullish(),
+  targetPlayerId: zod.number().nullish(),
+  targetArmorId: zod.number().nullish(),
+  guards: zod
+    .array(
+      zod.object({
+        typeId: zod.number(),
+        count: zod.number(),
+      }),
+    )
+    .optional(),
+});
+
+export const CalculateCombatResponse = zod.object({
+  attacker: zod.object({
+    username: zod.string(),
+    rank: zod.number(),
+    weaponName: zod.string(),
+    weaponAtk: zod.number(),
+    totalAtk: zod.number(),
+    ammoType: zod.string(),
+  }),
+  target: zod.object({
+    username: zod.string().nullish(),
+    rank: zod.number(),
+    armorName: zod.string().nullish(),
+    armorDef: zod.number(),
+    totalDef: zod.number(),
+    hp: zod.number(),
+  }),
+  calculation: zod.object({
+    damagePerBullet: zod.number(),
+    bulletsForGuards: zod.number(),
+    bulletsForTarget: zod.number(),
+    totalBullets: zod.number(),
+    bulletType: zod.string(),
+    bulletPrice: zod.number(),
+    totalCost: zod.number(),
+    guards: zod.array(
+      zod.object({
+        type: zod.string(),
+        count: zod.number(),
+        bulletsPerGuard: zod.number(),
+        totalBullets: zod.number(),
+      }),
+    ),
+  }),
+  availability: zod.object({
+    hasEnoughAmmo: zod.boolean(),
+    hasEnoughMoney: zod.boolean(),
+    availableAmmo: zod.number(),
+    neededAmmo: zod.number(),
+    neededMoney: zod.number(),
+  }),
+  canAttack: zod.boolean(),
+  suggestions: zod.array(
+    zod.object({
+      type: zod.string(),
+      message: zod.string(),
+      messageAr: zod.string(),
+      cost: zod.number().nullish(),
+    }),
+  ),
+});

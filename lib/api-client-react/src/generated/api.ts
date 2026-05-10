@@ -43,6 +43,9 @@ import type {
   BankRepayResult,
   BankTransaction,
   BlackMarketListing,
+  BlackjackStartInput,
+  BlackjackState,
+  BlackjackTurnResult,
   BodyguardRequest,
   BodyguardRequestInput,
   BodyguardRequestList,
@@ -58,6 +61,8 @@ import type {
   City,
   CollectIncomeResult,
   CollectReactorResult,
+  CombatCalculateInput,
+  CombatCalculateResult,
   CrimeAttemptInput,
   CrimeRecord,
   CrimeResult,
@@ -97,6 +102,10 @@ import type {
   RanksResponse,
   ReactorDetails,
   RestartResponse,
+  SafeHouseListing,
+  SafeHouseRentInput,
+  SafeHouseRentResult,
+  SafeHouseStatus,
   SpyResult,
   TravelInput,
   TravelResult,
@@ -8115,4 +8124,649 @@ export const useUpdateAdminCity = <
   TContext
 > => {
   return useMutation(getUpdateAdminCityMutationOptions(options));
+};
+
+/**
+ * @summary Rentable Safe Houses in the player's current city
+ */
+export const getListSafeHouseListingsUrl = () => {
+  return `/api/safe-house/listings`;
+};
+
+export const listSafeHouseListings = async (
+  options?: RequestInit,
+): Promise<SafeHouseListing[]> => {
+  return customFetch<SafeHouseListing[]>(getListSafeHouseListingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSafeHouseListingsQueryKey = () => {
+  return [`/api/safe-house/listings`] as const;
+};
+
+export const getListSafeHouseListingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSafeHouseListings>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSafeHouseListings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSafeHouseListingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSafeHouseListings>>
+  > = ({ signal }) => listSafeHouseListings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSafeHouseListings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSafeHouseListingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSafeHouseListings>>
+>;
+export type ListSafeHouseListingsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Rentable Safe Houses in the player's current city
+ */
+
+export function useListSafeHouseListings<
+  TData = Awaited<ReturnType<typeof listSafeHouseListings>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSafeHouseListings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSafeHouseListingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Current Safe House protection status for the caller
+ */
+export const getGetMySafeHouseStatusUrl = () => {
+  return `/api/safe-house/me`;
+};
+
+export const getMySafeHouseStatus = async (
+  options?: RequestInit,
+): Promise<SafeHouseStatus> => {
+  return customFetch<SafeHouseStatus>(getGetMySafeHouseStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMySafeHouseStatusQueryKey = () => {
+  return [`/api/safe-house/me`] as const;
+};
+
+export const getGetMySafeHouseStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMySafeHouseStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMySafeHouseStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMySafeHouseStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMySafeHouseStatus>>
+  > = ({ signal }) => getMySafeHouseStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMySafeHouseStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMySafeHouseStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMySafeHouseStatus>>
+>;
+export type GetMySafeHouseStatusQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Current Safe House protection status for the caller
+ */
+
+export function useGetMySafeHouseStatus<
+  TData = Awaited<ReturnType<typeof getMySafeHouseStatus>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMySafeHouseStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMySafeHouseStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Rent a Safe House for a number of days (24h cooldown)
+ */
+export const getRentSafeHouseUrl = () => {
+  return `/api/safe-house/rent`;
+};
+
+export const rentSafeHouse = async (
+  safeHouseRentInput: SafeHouseRentInput,
+  options?: RequestInit,
+): Promise<SafeHouseRentResult> => {
+  return customFetch<SafeHouseRentResult>(getRentSafeHouseUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(safeHouseRentInput),
+  });
+};
+
+export const getRentSafeHouseMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rentSafeHouse>>,
+    TError,
+    { data: BodyType<SafeHouseRentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rentSafeHouse>>,
+  TError,
+  { data: BodyType<SafeHouseRentInput> },
+  TContext
+> => {
+  const mutationKey = ["rentSafeHouse"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rentSafeHouse>>,
+    { data: BodyType<SafeHouseRentInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return rentSafeHouse(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RentSafeHouseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rentSafeHouse>>
+>;
+export type RentSafeHouseMutationBody = BodyType<SafeHouseRentInput>;
+export type RentSafeHouseMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Rent a Safe House for a number of days (24h cooldown)
+ */
+export const useRentSafeHouse = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rentSafeHouse>>,
+    TError,
+    { data: BodyType<SafeHouseRentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rentSafeHouse>>,
+  TError,
+  { data: BodyType<SafeHouseRentInput> },
+  TContext
+> => {
+  return useMutation(getRentSafeHouseMutationOptions(options));
+};
+
+/**
+ * @summary Current Blackjack session, daily limits, and config
+ */
+export const getGetBlackjackStateUrl = () => {
+  return `/api/casino/blackjack/state`;
+};
+
+export const getBlackjackState = async (
+  options?: RequestInit,
+): Promise<BlackjackState> => {
+  return customFetch<BlackjackState>(getGetBlackjackStateUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBlackjackStateQueryKey = () => {
+  return [`/api/casino/blackjack/state`] as const;
+};
+
+export const getGetBlackjackStateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBlackjackState>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBlackjackState>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBlackjackStateQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBlackjackState>>
+  > = ({ signal }) => getBlackjackState({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBlackjackState>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBlackjackStateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBlackjackState>>
+>;
+export type GetBlackjackStateQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Current Blackjack session, daily limits, and config
+ */
+
+export function useGetBlackjackState<
+  TData = Awaited<ReturnType<typeof getBlackjackState>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBlackjackState>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBlackjackStateQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Start a new Blackjack hand
+ */
+export const getStartBlackjackHandUrl = () => {
+  return `/api/casino/blackjack/start`;
+};
+
+export const startBlackjackHand = async (
+  blackjackStartInput: BlackjackStartInput,
+  options?: RequestInit,
+): Promise<BlackjackTurnResult> => {
+  return customFetch<BlackjackTurnResult>(getStartBlackjackHandUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(blackjackStartInput),
+  });
+};
+
+export const getStartBlackjackHandMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startBlackjackHand>>,
+    TError,
+    { data: BodyType<BlackjackStartInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startBlackjackHand>>,
+  TError,
+  { data: BodyType<BlackjackStartInput> },
+  TContext
+> => {
+  const mutationKey = ["startBlackjackHand"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startBlackjackHand>>,
+    { data: BodyType<BlackjackStartInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return startBlackjackHand(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StartBlackjackHandMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startBlackjackHand>>
+>;
+export type StartBlackjackHandMutationBody = BodyType<BlackjackStartInput>;
+export type StartBlackjackHandMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Start a new Blackjack hand
+ */
+export const useStartBlackjackHand = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startBlackjackHand>>,
+    TError,
+    { data: BodyType<BlackjackStartInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof startBlackjackHand>>,
+  TError,
+  { data: BodyType<BlackjackStartInput> },
+  TContext
+> => {
+  return useMutation(getStartBlackjackHandMutationOptions(options));
+};
+
+/**
+ * @summary Draw an additional card on the active Blackjack hand
+ */
+export const getHitBlackjackHandUrl = () => {
+  return `/api/casino/blackjack/hit`;
+};
+
+export const hitBlackjackHand = async (
+  options?: RequestInit,
+): Promise<BlackjackTurnResult> => {
+  return customFetch<BlackjackTurnResult>(getHitBlackjackHandUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getHitBlackjackHandMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hitBlackjackHand>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof hitBlackjackHand>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["hitBlackjackHand"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof hitBlackjackHand>>,
+    void
+  > = () => {
+    return hitBlackjackHand(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HitBlackjackHandMutationResult = NonNullable<
+  Awaited<ReturnType<typeof hitBlackjackHand>>
+>;
+
+export type HitBlackjackHandMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Draw an additional card on the active Blackjack hand
+ */
+export const useHitBlackjackHand = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof hitBlackjackHand>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof hitBlackjackHand>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getHitBlackjackHandMutationOptions(options));
+};
+
+/**
+ * @summary Stand on the current Blackjack hand and resolve the dealer
+ */
+export const getStandBlackjackHandUrl = () => {
+  return `/api/casino/blackjack/stand`;
+};
+
+export const standBlackjackHand = async (
+  options?: RequestInit,
+): Promise<BlackjackTurnResult> => {
+  return customFetch<BlackjackTurnResult>(getStandBlackjackHandUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getStandBlackjackHandMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof standBlackjackHand>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof standBlackjackHand>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["standBlackjackHand"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof standBlackjackHand>>,
+    void
+  > = () => {
+    return standBlackjackHand(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type StandBlackjackHandMutationResult = NonNullable<
+  Awaited<ReturnType<typeof standBlackjackHand>>
+>;
+
+export type StandBlackjackHandMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Stand on the current Blackjack hand and resolve the dealer
+ */
+export const useStandBlackjackHand = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof standBlackjackHand>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof standBlackjackHand>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getStandBlackjackHandMutationOptions(options));
+};
+
+/**
+ * @summary Bullets / cost / ammo availability needed to defeat a target
+ */
+export const getCalculateCombatUrl = () => {
+  return `/api/combat/calculate`;
+};
+
+export const calculateCombat = async (
+  combatCalculateInput: CombatCalculateInput,
+  options?: RequestInit,
+): Promise<CombatCalculateResult> => {
+  return customFetch<CombatCalculateResult>(getCalculateCombatUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(combatCalculateInput),
+  });
+};
+
+export const getCalculateCombatMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof calculateCombat>>,
+    TError,
+    { data: BodyType<CombatCalculateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof calculateCombat>>,
+  TError,
+  { data: BodyType<CombatCalculateInput> },
+  TContext
+> => {
+  const mutationKey = ["calculateCombat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof calculateCombat>>,
+    { data: BodyType<CombatCalculateInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return calculateCombat(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CalculateCombatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof calculateCombat>>
+>;
+export type CalculateCombatMutationBody = BodyType<CombatCalculateInput>;
+export type CalculateCombatMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Bullets / cost / ammo availability needed to defeat a target
+ */
+export const useCalculateCombat = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof calculateCombat>>,
+    TError,
+    { data: BodyType<CombatCalculateInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof calculateCombat>>,
+  TError,
+  { data: BodyType<CombatCalculateInput> },
+  TContext
+> => {
+  return useMutation(getCalculateCombatMutationOptions(options));
 };
