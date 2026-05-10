@@ -26,7 +26,7 @@ router.post("/combat/calculate", requireAuth, async (req, res) => {
       guards?: { typeId: number; count: number }[];
     };
     const GUARD_HP = 60;
-    const guardCount = Math.max(0, Math.min(10, Math.floor(body.targetGuards ?? 0)));
+    const guardCount = Math.max(0, Math.min(20, Math.floor(body.targetGuards ?? 0)));
 
     // Resolve target rank
     let targetRankNum = body.targetRank ?? 1;

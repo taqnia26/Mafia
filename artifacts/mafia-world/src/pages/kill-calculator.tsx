@@ -35,6 +35,27 @@ interface ArmorItem {
   type: string;
 }
 
+interface RankInfo {
+  rankNumber: number;
+  nameEn: string;
+  nameAr: string;
+}
+
+interface RanksResponse {
+  ranks: RankInfo[];
+}
+
+// Armor English → Arabic translation map (DB stores English only)
+const ARMOR_NAME_AR: Record<string, string> = {
+  "Bulletproof Vest": "سترة واقية من الرصاص",
+  "Armored Sedan": "سيارة سيدان مصفحة",
+  "Armored SUV": "سيارة دفع رباعي مصفحة",
+  "Combat Helicopter": "هليكوبتر قتالية",
+  "Reinforced Bunker": "مخبأ محصن",
+};
+
+const MAX_BODYGUARDS = 20;
+
 export default function KillCalculatorPage() {
   const { t, language } = useI18n();
   const { toast } = useToast();
@@ -42,12 +63,22 @@ export default function KillCalculatorPage() {
   const [armorId, setArmorId] = useState("0");
   const [guards, setGuards] = useState("0");
   const [result, setResult] = useState<Calc | null>(null);
+  const isAr = language === "ar";
 
   const armorQuery = useQuery<ArmorItem[]>({
     queryKey: ["/api/armor"],
     queryFn: async () => {
       const r = await fetch("/api/armor", { credentials: "include" });
       if (!r.ok) throw new Error("Failed to load armor");
+      return r.json();
+    },
+  });
+
+  const ranksQuery = useQuery<RanksResponse>({
+    queryKey: ["/api/ranks"],
+    queryFn: async () => {
+      const r = await fetch("/api/ranks", { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load ranks");
       return r.json();
     },
   });
@@ -75,9 +106,22 @@ export default function KillCalculatorPage() {
   const selectClass =
     "w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary";
 
+  const armorLabel = (a: ArmorItem) => {
+    const name = isAr ? (ARMOR_NAME_AR[a.name] ?? a.name) : a.name;
+    return `${name} (${isAr ? "دفاع" : "DEF"} +${a.defenseBonus})`;
+  };
+
+  const rankLabel = (r: RankInfo) =>
+    `${r.rankNumber}. ${isAr ? r.nameAr : r.nameEn}`;
+
+  const dirStyle: React.CSSProperties = { direction: isAr ? "rtl" : "ltr" };
+  // Force LTR layout for select option lists so dropdown numerals stay Western,
+  // but keep text-align matching the page direction so labels read naturally.
+  const selectStyle: React.CSSProperties = { direction: "ltr", textAlign: isAr ? "right" : "left" };
+
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6" data-testid="kill-calculator-page" style={{ direction: "ltr" }}>
-      <div className="flex items-center gap-3" style={{ direction: language === "ar" ? "rtl" : "ltr" }}>
+    <div className="container mx-auto p-4 md:p-6 space-y-6" data-testid="kill-calculator-page">
+      <div className="flex items-center gap-3" style={dirStyle}>
         <Crosshair className="w-8 h-8 text-primary" />
         <div>
           <h1 className="text-3xl font-heading font-bold">{t("killCalc.title")}</h1>
@@ -86,9 +130,9 @@ export default function KillCalculatorPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle style={{ direction: language === "ar" ? "rtl" : "ltr" }}>{t("killCalc.target")}</CardTitle></CardHeader>
+        <CardHeader><CardTitle style={dirStyle}>{t("killCalc.target")}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-3" style={{ direction: language === "ar" ? "rtl" : "ltr" }}>
+          <div className="grid gap-3 md:grid-cols-3" style={dirStyle}>
             <div>
               <label className="text-xs text-muted-foreground block mb-1">{t("killCalc.targetRank")}</label>
               <select
@@ -96,10 +140,15 @@ export default function KillCalculatorPage() {
                 onChange={(e) => setTargetRank(e.target.value)}
                 className={selectClass}
                 data-testid="select-target-rank"
-                style={{ direction: "ltr", textAlign: language === "ar" ? "right" : "left" }}
+                disabled={ranksQuery.isLoading}
+                style={selectStyle}
               >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((r) => (
-                  <option key={r} value={String(r)}>{`${t("killCalc.rank")} ${r}`}</option>
+                {(ranksQuery.data?.ranks ?? Array.from({ length: 12 }, (_, i) => ({
+                  rankNumber: i + 1,
+                  nameEn: `Rank ${i + 1}`,
+                  nameAr: `رتبة ${i + 1}`,
+                }))).map((r) => (
+                  <option key={r.rankNumber} value={String(r.rankNumber)}>{rankLabel(r)}</option>
                 ))}
               </select>
             </div>
@@ -111,13 +160,11 @@ export default function KillCalculatorPage() {
                 className={selectClass}
                 data-testid="select-target-armor"
                 disabled={armorQuery.isLoading}
-                style={{ direction: "ltr", textAlign: language === "ar" ? "right" : "left" }}
+                style={selectStyle}
               >
                 <option value="0">{t("killCalc.noArmor")}</option>
                 {(armorQuery.data ?? []).map((a) => (
-                  <option key={a.id} value={String(a.id)}>
-                    {`${a.name} (DEF +${a.defenseBonus})`}
-                  </option>
+                  <option key={a.id} value={String(a.id)}>{armorLabel(a)}</option>
                 ))}
               </select>
             </div>
@@ -128,15 +175,17 @@ export default function KillCalculatorPage() {
                 onChange={(e) => setGuards(e.target.value)}
                 className={selectClass}
                 data-testid="select-bodyguards"
-                style={{ direction: "ltr", textAlign: language === "ar" ? "right" : "left" }}
+                style={selectStyle}
               >
-                {Array.from({ length: 11 }, (_, i) => i).map((n) => (
-                  <option key={n} value={String(n)}>{n}</option>
+                {Array.from({ length: MAX_BODYGUARDS + 1 }, (_, i) => i).map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n === 0 ? t("killCalc.noGuards") : `${n} ${isAr ? "حارس" : n === 1 ? "guard" : "guards"}`}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
-          <div style={{ direction: language === "ar" ? "rtl" : "ltr" }}>
+          <div style={dirStyle}>
             <Button onClick={() => calc.mutate()} disabled={calc.isPending} data-testid="button-calculate">
               {calc.isPending ? t("common.loading") : t("killCalc.calculate")}
             </Button>
@@ -145,7 +194,7 @@ export default function KillCalculatorPage() {
       </Card>
 
       {result && (
-        <Card data-testid="kill-calculator-result" style={{ direction: language === "ar" ? "rtl" : "ltr" }}>
+        <Card data-testid="kill-calculator-result" style={dirStyle}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {result.canAttack
@@ -163,8 +212,16 @@ export default function KillCalculatorPage() {
               </div>
               <div className="space-y-1 text-sm">
                 <div className="font-semibold">{t("killCalc.targetSummary")}</div>
-                <div>{result.target.username ?? `Rank #${result.target.rank}`} • HP {result.target.hp}</div>
-                <div className="text-muted-foreground">DEF {result.target.totalDef} {result.target.armorName ? `(${result.target.armorName})` : ""}</div>
+                <div>
+                  {result.target.username
+                    ?? `${isAr ? "رتبة" : "Rank"} #${result.target.rank}`} • HP {result.target.hp}
+                </div>
+                <div className="text-muted-foreground">
+                  DEF {result.target.totalDef}
+                  {result.target.armorName
+                    ? ` (${isAr ? (ARMOR_NAME_AR[result.target.armorName] ?? result.target.armorName) : result.target.armorName})`
+                    : ""}
+                </div>
               </div>
             </div>
             <div className="border-t border-border pt-4 grid gap-2 md:grid-cols-2 text-sm">
@@ -181,7 +238,7 @@ export default function KillCalculatorPage() {
                 <div className="text-xs font-semibold text-amber-400">{t("killCalc.suggestions")}</div>
                 {result.suggestions.map((s, i) => (
                   <div key={i} className="text-sm flex items-center justify-between bg-amber-900/20 border border-amber-800/50 rounded px-3 py-2">
-                    <span>{language === "ar" ? s.messageAr : s.message}</span>
+                    <span>{isAr ? s.messageAr : s.message}</span>
                     {s.cost ? <span className="font-mono text-amber-300">{formatMoney(s.cost)}</span> : null}
                   </div>
                 ))}

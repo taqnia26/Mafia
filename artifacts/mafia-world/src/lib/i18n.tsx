@@ -88,6 +88,7 @@ const translations: Translations = {
   "killCalc.noArmor": { en: "No Armor", ar: "بدون درع" },
   "killCalc.rank": { en: "Rank", ar: "رتبة" },
   "killCalc.bodyguards": { en: "Bodyguards", ar: "الحراس الشخصيون" },
+  "killCalc.noGuards": { en: "No bodyguards", ar: "بدون حراس" },
   "killCalc.bulletsForGuards": { en: "Bullets for guards", ar: "الرصاص للحراس" },
   "killCalc.optionalPlayerId": { en: "(optional)", ar: "(اختياري)" },
   "killCalc.optionalArmorId": { en: "(optional)", ar: "(اختياري)" },
