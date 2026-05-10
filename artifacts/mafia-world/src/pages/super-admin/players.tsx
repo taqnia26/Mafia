@@ -295,38 +295,106 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   );
 }
 
+function toNum(v: string): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function EditPlayerDialog({ player, onSave, onClose }: { player: Player; onSave: (b: Record<string, number>) => void; onClose: () => void }) {
   const [money, setMoney] = useState(player.money);
   const [level, setLevel] = useState(player.level);
   const [xp, setXp] = useState(player.xp);
   const [atk, setAtk] = useState(player.attackPower);
   const [def, setDef] = useState(player.defensePower);
+  const [saving, setSaving] = useState(false);
   return (
     <Modal title={`Edit ${player.username}`} onClose={onClose}>
       <div className="space-y-3">
         {([ ["Money", money, setMoney], ["Level", level, setLevel], ["XP", xp, setXp], ["ATK", atk, setAtk], ["DEF", def, setDef] ] as [string, number, (n: number) => void][]).map(([label, val, setter]) => (
           <div key={label}>
             <label className="text-xs text-slate-400">{label}</label>
-            <input type="number" value={val} onChange={e => setter(Number(e.target.value))} className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm" />
+            <input
+              type="number"
+              value={Number.isFinite(val) ? val : 0}
+              onChange={e => setter(toNum(e.target.value))}
+              className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm"
+            />
           </div>
         ))}
-        <button onClick={() => onSave({ money, level, xp, attackPower: atk, defensePower: def })} className="w-full bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-lg py-2 text-sm font-medium mt-2">Save Changes</button>
+        <button
+          disabled={saving}
+          onClick={async () => {
+            setSaving(true);
+            try { await onSave({ money, level, xp, attackPower: atk, defensePower: def }); }
+            finally { setSaving(false); }
+          }}
+          className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-60 text-white rounded-lg py-2 text-sm font-medium mt-2"
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
       </div>
     </Modal>
   );
 }
 
+const QUICK_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
+
 function AddMoneyDialog({ player, onSave, onClose }: { player: Player; onSave: (a: number) => void; onClose: () => void }) {
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+  const preview = player.money + amount;
   return (
     <Modal title={`Adjust Money — ${player.username}`} onClose={onClose}>
       <div className="space-y-3">
-        <p className="text-sm text-slate-400">Current: ${player.money.toLocaleString()}</p>
+        <p className="text-sm text-slate-400">Current: <span className="text-white font-mono">${player.money.toLocaleString()}</span></p>
+
         <div>
           <label className="text-xs text-slate-400">Amount (negative to deduct)</label>
-          <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm" />
+          <input
+            type="number"
+            step={1000}
+            value={Number.isFinite(amount) ? amount : 0}
+            onChange={e => setAmount(toNum(e.target.value))}
+            placeholder="Enter cash amount"
+            className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm font-mono"
+          />
         </div>
-        <button onClick={() => onSave(amount)} className="w-full bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-lg py-2 text-sm font-medium">Apply</button>
+
+        <div className="flex flex-wrap gap-1">
+          {QUICK_AMOUNTS.map(v => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setAmount(a => a + v)}
+              className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded"
+            >
+              +${v >= 1_000_000 ? `${v / 1_000_000}M` : `${v / 1000}K`}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setAmount(0)}
+            className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded ml-auto"
+          >
+            Clear
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-500">
+          New balance: <span className={preview < 0 ? "text-red-400" : "text-green-400"}>${preview.toLocaleString()}</span>
+        </p>
+
+        <button
+          disabled={saving || amount === 0}
+          onClick={async () => {
+            setSaving(true);
+            try { await onSave(amount); }
+            finally { setSaving(false); }
+          }}
+          className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-50 text-white rounded-lg py-2 text-sm font-medium"
+        >
+          {saving ? "Applying..." : amount >= 0 ? `Add $${amount.toLocaleString()}` : `Deduct $${Math.abs(amount).toLocaleString()}`}
+        </button>
       </div>
     </Modal>
   );
