@@ -86,6 +86,13 @@ router.post("/weapons/:weaponId/buy", requireAuth, requireAlive, requireNotInPri
           updatedAt: new Date(),
         })
         .where(eq(playersTable.id, player.id));
+
+      // Auto-equip if the player has no weapon equipped yet
+      if (!player.equippedWeaponId) {
+        await tx.update(playersTable)
+          .set({ equippedWeaponId: weaponId, updatedAt: new Date() })
+          .where(eq(playersTable.id, player.id));
+      }
     });
 
     res.json({

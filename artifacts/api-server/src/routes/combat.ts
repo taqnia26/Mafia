@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "../lib/db";
 import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
-  playersTable, weaponsTable, armorItemsTable, playerAmmoTable, ammoTable,
+  playersTable, weaponsTable, armorItemsTable, playerAmmoTable, ammoTable, playerWeaponsTable,
 } from "@workspace/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getCurrentRank, getRankRow } from "../lib/phase1";
@@ -40,16 +40,31 @@ router.post("/combat/calculate", requireAuth, async (req, res) => {
       targetRankNum = await getCurrentRank(target.id);
     }
 
-    // Get attacker weapon
+    // Get attacker weapon (equipped, or fall back to strongest owned weapon)
     let weapon: typeof weaponsTable.$inferSelect | null = null;
     if (player.equippedWeaponId) {
       const [w] = await db.select().from(weaponsTable).where(eq(weaponsTable.id, player.equippedWeaponId)).limit(1);
       weapon = w ?? null;
     }
     if (!weapon) {
+      const owned = await db.select({
+        weapon: weaponsTable,
+      })
+        .from(playerWeaponsTable)
+        .innerJoin(weaponsTable, eq(weaponsTable.id, playerWeaponsTable.weaponId))
+        .where(eq(playerWeaponsTable.playerId, player.id));
+      if (owned.length > 0) {
+        owned.sort((a, b) => (b.weapon.attackPower ?? 0) - (a.weapon.attackPower ?? 0));
+        weapon = owned[0].weapon;
+        await db.update(playersTable)
+          .set({ equippedWeaponId: weapon.id, updatedAt: new Date() })
+          .where(eq(playersTable.id, player.id));
+      }
+    }
+    if (!weapon) {
       return void res.status(400).json({
-        error: "No weapon equipped",
-        errorAr: "لا يوجد سلاح مجهّز. توجّه إلى صفحة الأسلحة وجهّز سلاحك أولاً.",
+        error: "No weapon owned",
+        errorAr: "لا تملك أي سلاح. توجّه إلى صفحة الأسلحة واشترِ سلاحاً أولاً.",
         code: "no_weapon",
       });
     }
