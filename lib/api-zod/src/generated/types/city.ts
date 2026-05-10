@@ -13,5 +13,6 @@ export interface City {
   country: string;
   playerCount: number;
   description: string;
+  descriptionAr: string;
   imageUrl?: string | null;
 }

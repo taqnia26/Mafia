@@ -1,4 +1,4 @@
-import { useListBlackMarket, useGetMyListings, useBuyListing, useCreateListing, useCancelListing, getListBlackMarketQueryKey, getGetMyListingsQueryKey, getGetMyProfileQueryKey, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
+import { useListBlackMarket, useGetMyListings, useBuyListing, useCreateListing, useCancelListing, useGetMyWeapons, useGetMyAmmo, useGetMyArmor, getListBlackMarketQueryKey, getGetMyListingsQueryKey, getGetMyProfileQueryKey, getGetDashboardStatsQueryKey, getGetMyWeaponsQueryKey, getGetMyAmmoQueryKey, getGetMyArmorQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
@@ -42,6 +42,16 @@ export default function BlackMarket() {
     { query: { queryKey: getListBlackMarketQueryKey({ type: filterType === "all" ? undefined : filterType }) } }
   );
   const { data: myListings, isLoading: isMyListingsLoading } = useGetMyListings({ query: { queryKey: getGetMyListingsQueryKey() } });
+  const { data: myWeapons } = useGetMyWeapons({ query: { queryKey: getGetMyWeaponsQueryKey(), enabled: isCreateOpen } });
+  const { data: myAmmo } = useGetMyAmmo({ query: { queryKey: getGetMyAmmoQueryKey(), enabled: isCreateOpen } });
+  const { data: myArmor } = useGetMyArmor({ query: { queryKey: getGetMyArmorQueryKey(), enabled: isCreateOpen } });
+
+  const ownedOptions: { id: number; name: string; max: number }[] = (() => {
+    if (newItemType === "weapon") return (myWeapons ?? []).filter(w => w.quantity > 0).map(w => ({ id: w.weaponId, name: w.weaponName ?? `#${w.weaponId}`, max: w.quantity }));
+    if (newItemType === "ammo") return (myAmmo ?? []).filter(a => a.quantity > 0).map(a => ({ id: a.ammoId, name: a.ammoName ?? `#${a.ammoId}`, max: a.quantity }));
+    if (newItemType === "armor") return (myArmor ?? []).filter(a => a.quantity > 0).map(a => ({ id: a.armorId, name: a.armorName ?? `#${a.armorId}`, max: a.quantity }));
+    return [];
+  })();
 
   const buyListing = useBuyListing({
     mutation: {
@@ -111,7 +121,7 @@ export default function BlackMarket() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>{t("blackmarket.itemType")}</Label>
-                <Select value={newItemType} onValueChange={(val) => setNewItemType(val as ItemType)}>
+                <Select value={newItemType} onValueChange={(val) => { setNewItemType(val as ItemType); setNewItemId(""); }}>
                   <SelectTrigger className="bg-background">
                     <SelectValue />
                   </SelectTrigger>
@@ -123,8 +133,19 @@ export default function BlackMarket() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>{t("blackmarket.itemId")}</Label>
-                <Input type="number" value={newItemId} onChange={(e) => setNewItemId(e.target.value)} className="bg-background" />
+                <Label>{t("blackmarket.selectItem")}</Label>
+                <Select value={newItemId} onValueChange={setNewItemId} disabled={ownedOptions.length === 0}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder={ownedOptions.length === 0 ? t("blackmarket.noOwnedItems") : t("blackmarket.chooseItem")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ownedOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={String(opt.id)}>
+                        {opt.name} (×{opt.max})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>{t("common.quantity")}</Label>

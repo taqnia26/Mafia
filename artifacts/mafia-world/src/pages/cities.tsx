@@ -85,7 +85,7 @@ export default function Cities() {
                 </div>
               </div>
               <CardContent className="flex-1 flex flex-col pt-4">
-                <p className="text-sm text-muted-foreground flex-1 mb-4">{city.description}</p>
+                <p className="text-sm text-muted-foreground flex-1 mb-4">{language === "ar" ? (city.descriptionAr || city.description) : city.description}</p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                   <Users className="w-4 h-4" />
                   <span>{city.playerCount} {t("common.players")}</span>

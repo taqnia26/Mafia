@@ -8,6 +8,7 @@ export const citiesTable = pgTable("cities", {
   nameAr: text("name_ar").notNull(),
   country: text("country").notNull(),
   description: text("description").notNull().default(""),
+  descriptionAr: text("description_ar").notNull().default(""),
   travelHoursBase: integer("travel_hours_base").notNull().default(4),
   imageUrl: text("image_url"),
 });

@@ -23,12 +23,12 @@ async function seed() {
   const existingCities = await db.select().from(schema.citiesTable);
   if (existingCities.length === 0) {
     await db.insert(schema.citiesTable).values([
-      { name: "New York", nameAr: "نيويورك", country: "USA", description: "The city that never sleeps. Home to the most powerful crime families.", travelHoursBase: 4, imageUrl: "/images/cities/new-york.png" },
-      { name: "Chicago", nameAr: "شيكاغو", country: "USA", description: "The Windy City. Known for bootleggers and organized crime since Prohibition.", travelHoursBase: 5, imageUrl: "/images/cities/chicago.png" },
-      { name: "Las Vegas", nameAr: "لاس فيغاس", country: "USA", description: "The city of sin. Where fortunes are made and lost overnight.", travelHoursBase: 6, imageUrl: "/images/cities/las-vegas.png" },
-      { name: "Miami", nameAr: "ميامي", country: "USA", description: "Paradise city. Gateway to the south, controlling the drug trade.", travelHoursBase: 5, imageUrl: "/images/cities/miami.png" },
-      { name: "Los Angeles", nameAr: "لوس أنجلوس", country: "USA", description: "City of Angels. Where gang wars rage beneath the Hollywood lights.", travelHoursBase: 6, imageUrl: "/images/cities/los-angeles.png" },
-      { name: "Beirut", nameAr: "بيروت", country: "Lebanon", description: "The Paris of the Middle East. A crossroads of power and intrigue.", travelHoursBase: 4, imageUrl: "/images/cities/beirut.png" },
+      { name: "New York", nameAr: "نيويورك", country: "USA", description: "The city that never sleeps. Home to the most powerful crime families.", descriptionAr: "المدينة التي لا تنام. موطن لأقوى عائلات الجريمة المنظمة.", travelHoursBase: 4, imageUrl: "/images/cities/new-york.png" },
+      { name: "Chicago", nameAr: "شيكاغو", country: "USA", description: "The Windy City. Known for bootleggers and organized crime since Prohibition.", descriptionAr: "مدينة الرياح. اشتهرت بمهربي الخمور والجريمة المنظمة منذ عصر الحظر.", travelHoursBase: 5, imageUrl: "/images/cities/chicago.png" },
+      { name: "Las Vegas", nameAr: "لاس فيغاس", country: "USA", description: "The city of sin. Where fortunes are made and lost overnight.", descriptionAr: "مدينة الخطيئة. حيث تُصنع الثروات وتُفقد بين عشية وضحاها.", travelHoursBase: 6, imageUrl: "/images/cities/las-vegas.png" },
+      { name: "Miami", nameAr: "ميامي", country: "USA", description: "Paradise city. Gateway to the south, controlling the drug trade.", descriptionAr: "مدينة الفردوس. بوابة الجنوب التي تتحكم في تجارة المخدرات.", travelHoursBase: 5, imageUrl: "/images/cities/miami.png" },
+      { name: "Los Angeles", nameAr: "لوس أنجلوس", country: "USA", description: "City of Angels. Where gang wars rage beneath the Hollywood lights.", descriptionAr: "مدينة الملائكة. حيث تشتعل حروب العصابات تحت أضواء هوليوود.", travelHoursBase: 6, imageUrl: "/images/cities/los-angeles.png" },
+      { name: "Beirut", nameAr: "بيروت", country: "Lebanon", description: "The Paris of the Middle East. A crossroads of power and intrigue.", descriptionAr: "باريس الشرق الأوسط. ملتقى السلطة والمؤامرات.", travelHoursBase: 4, imageUrl: "/images/cities/beirut.png" },
     ]);
     console.log("Cities seeded");
   } else {

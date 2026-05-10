@@ -1,0 +1,607 @@
+═══════════════════════════════════════════════════════════════════
+           ⚠️ تعديلات حرجة على نظام الموت والتجسس
+═══════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────┐
+│        تعديل 1️⃣: نظام الموت النهائي المحسّن (Permaban)         │
+└─────────────────────────────────────────────────────────────────┘
+
+📌 التغييرات المطلوبة:
+
+عند موت اللاعب (HP ≤ 0):
+├── ✅ يُقفل حسابه نهائياً (is_permanently_dead = TRUE)
+├── ✅ لا يستطيع تسجيل الدخول أبداً
+├── ✅ صفحته الشخصية تعرض: "الحالة: مقتول ☠️"
+├── ✅ عند محاولة الدخول: صفحة قبر + رسالة
+└── ✅ يجب إنشاء حساب Clerk جديد للعب مرة أخرى
+
+📁 الملفات المطلوب تعديلها:
+
+A) Migration: lib/db/migrations/007_permadeath_enhanced.sql
+────────────────────────────────────────────────────────
+-- إضافة عمود الموت النهائي
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_permanently_dead BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS death_date TIMESTAMP;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS killed_by_id INTEGER REFERENCES players(id);
+
+CREATE INDEX idx_players_dead ON players(is_permanently_dead);
+
+COMMENT ON COLUMN players.is_permanently_dead IS 'هل اللاعب مقتول نهائياً - لا يمكنه الدخول';
+COMMENT ON COLUMN players.death_date IS 'تاريخ الموت النهائي';
+COMMENT ON COLUMN players.killed_by_id IS 'من قتله';
+
+
+B) Schema: lib/db/src/schema/players.ts
+────────────────────────────────────────────────────────
+// أضف في جدول players:
+isPermanentlyDead: boolean('is_permanently_dead').notNull().default(false),
+deathDate: timestamp('death_date'),
+killedById: integer('killed_by_id').references(() => players.id),
+
+
+C) Backend Middleware: artifacts/api-server/src/middlewares/checkDeath.ts (جديد)
+────────────────────────────────────────────────────────
+import { Request, Response, NextFunction } from 'express';
+import { db } from '../lib/db';
+import { players } from '@workspace/db/schema';
+import { eq } from 'drizzle-orm';
+
+export async function checkIfDead(req: Request, res: Response, next: NextFunction) {
+  if (!req.auth?.userId) {
+    return next();
+  }
+
+  const player = await db.select({
+    id: players.id,
+    isDead: players.isPermanentlyDead,
+    deathDate: players.deathDate,
+    killedByName: players.username
+  })
+  .from(players)
+  .leftJoin(players as any, eq((players as any).id, players.killedById))
+  .where(eq(players.clerkId, req.auth.userId))
+  .limit(1);
+
+  if (player[0]?.isDead) {
+    return res.status(403).json({
+      error: 'ACCOUNT_DEAD',
+      message: 'Your character is permanently dead. Create a new account to play again.',
+      deathDate: player[0].deathDate,
+      killedBy: player[0].killedByName
+    });
+  }
+
+  next();
+}
+
+
+D) تطبيق Middleware في app.ts:
+────────────────────────────────────────────────────────
+import { checkIfDead } from './middlewares/checkDeath';
+
+// بعد requireAuth وقبل كل الـ routes:
+app.use('/api/*', checkIfDead);
+
+// استثناءات (صفحات يمكن الوصول لها حتى لو ميت):
+app.get('/api/players/me', requireAuth, async (req, res) => {
+  // هذا endpoint يجب أن يعمل حتى لو ميت (لعرض الحالة)
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  if (player[0]?.isPermanentlyDead) {
+    return res.json({
+      ...player[0],
+      status: 'DEAD',
+      canPlay: false
+    });
+  }
+
+  res.json(player[0]);
+});
+
+
+E) Worker: artifacts/api-server/src/lib/worker.ts
+────────────────────────────────────────────────────────
+// في دالة processArrivedAttacks، عند الموت:
+
+if (newHealth <= 0) {
+  logger.info({ attackId: attack.id, targetId: attack.targetId }, 'PERMADEATH triggered');
+
+  // ... كل الكود السابق للموت ...
+
+  // ⚠️ الإضافة المهمة:
+  await tx.update(players)
+    .set({
+      level: 1,
+      xp: 0,
+      money: 0,
+      health: 0, // ← صفر، ليس 100
+      gangId: null,
+      gangRank: null,
+      attackPower: 10,
+      defensePower: 10,
+      isPermanentlyDead: true, // ← قفل نهائي
+      deathDate: new Date(),
+      killedById: attack.attackerId
+    })
+    .where(eq(players.id, attack.targetId));
+
+  // ... بقية الكود ...
+}
+
+
+F) Frontend: artifacts/mafia-world/src/App.tsx
+────────────────────────────────────────────────────────
+// في الـ Root Component، تحقق من الحالة:
+
+import { useQuery } from '@tanstack/react-query';
+import DeadPage from '@/pages/dead';
+
+function App() {
+  const { data: player } = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => {
+      const res = await fetch('/api/players/me');
+      if (!res.ok) {
+        const error = await res.json();
+        if (error.error === 'ACCOUNT_DEAD') {
+          return { isDead: true, ...error };
+        }
+        throw error;
+      }
+      return res.json();
+    }
+  });
+
+  // إذا ميت، اعرض صفحة القبر
+  if (player?.isDead || player?.status === 'DEAD') {
+    return <DeadPage player={player} />;
+  }
+
+  // الكود العادي...
+  return (
+    <Router>
+      {/* ... routes */}
+    </Router>
+  );
+}
+
+
+G) Frontend Page: artifacts/mafia-world/src/pages/dead.tsx (جديد)
+────────────────────────────────────────────────────────
+import { useClerk } from '@clerk/react';
+import { Button } from '@/components/ui/button';
+import { Skull } from 'lucide-react';
+
+interface DeadPageProps {
+  player: {
+    username: string;
+    deathDate: string;
+    killedBy?: string;
+  };
+}
+
+export default function DeadPage({ player }: DeadPageProps) {
+  const { signOut } = useClerk();
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full text-center space-y-8">
+        {/* صورة القبر */}
+        <div className="relative">
+          <div className="w-64 h-80 mx-auto bg-gradient-to-b from-gray-700 to-gray-900 rounded-t-full relative overflow-hidden">
+            {/* شاهد القبر */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Skull className="w-32 h-32 text-red-500" />
+            </div>
+            
+            {/* النص على الشاهدة */}
+            <div className="absolute bottom-8 left-0 right-0 text-center">
+              <div className="text-2xl font-bold text-gray-300 font-serif">
+                {player.username}
+              </div>
+              <div className="text-sm text-gray-500 mt-2">
+                ☠️ R.I.P ☠️
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                {new Date(player.deathDate).toLocaleDateString('ar-SA')}
+              </div>
+            </div>
+          </div>
+
+          {/* الأرض */}
+          <div className="h-16 bg-gradient-to-b from-gray-800 to-gray-900 -mt-4"></div>
+          <div className="h-2 bg-green-900"></div>
+        </div>
+
+        {/* الرسالة */}
+        <div className="space-y-4 bg-gray-900/50 border border-gray-800 rounded-lg p-8">
+          <h1 className="text-4xl font-bold text-red-500">
+            لقد متَّ نهائياً
+          </h1>
+          <p className="text-xl text-gray-300">
+            Your Character is Permanently Dead
+          </p>
+
+          {player.killedBy && (
+            <div className="text-gray-400 mt-4">
+              <p className="text-sm">قُتلت على يد:</p>
+              <p className="text-lg font-bold text-red-400">{player.killedBy}</p>
+            </div>
+          )}
+
+          <div className="mt-6 p-4 bg-red-900/20 border border-red-800 rounded text-sm text-gray-300">
+            <p className="mb-2">⚠️ هذا الحساب مُقفل نهائياً ولا يمكن استخدامه مرة أخرى.</p>
+            <p>للعب من جديد، يجب إنشاء حساب جديد بإيميل مختلف.</p>
+          </div>
+
+          {/* زر تسجيل الخروج */}
+          <Button
+            onClick={() => signOut()}
+            className="mt-6 bg-red-600 hover:bg-red-700"
+            size="lg"
+          >
+            تسجيل الخروج وإنشاء حساب جديد
+          </Button>
+
+          <p className="text-xs text-gray-600 mt-4">
+            ستُحوّل إلى صفحة إنشاء حساب جديد
+          </p>
+        </div>
+
+        {/* إحصائيات الحساب الميت (اختياري) */}
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="bg-gray-900/30 p-4 rounded">
+            <div className="text-gray-500 text-sm">المستوى الأخير</div>
+            <div className="text-2xl font-bold text-gray-400">{player.level || 1}</div>
+          </div>
+          <div className="bg-gray-900/30 p-4 rounded">
+            <div className="text-gray-500 text-sm">عدد القتلى</div>
+            <div className="text-2xl font-bold text-gray-400">{player.killCount || 0}</div>
+          </div>
+          <div className="bg-gray-900/30 p-4 rounded">
+            <div className="text-gray-500 text-sm">أيام اللعب</div>
+            <div className="text-2xl font-bold text-gray-400">
+              {Math.floor((Date.now() - new Date(player.createdAt).getTime()) / (1000 * 60 * 60 * 24))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+H) Frontend: artifacts/mafia-world/src/pages/profile.tsx
+────────────────────────────────────────────────────────
+// في صفحة الملف الشخصي، أضف عرض الحالة:
+
+{player?.isPermanentlyDead && (
+  <div className="bg-black border-2 border-red-500 p-6 rounded-lg mb-6">
+    <div className="flex items-center gap-4">
+      <Skull className="w-12 h-12 text-red-500" />
+      <div>
+        <h3 className="text-2xl font-bold text-red-500">☠️ DEAD ☠️</h3>
+        <p className="text-gray-400">
+          Killed on {new Date(player.deathDate).toLocaleDateString()}
+        </p>
+        {player.killedByName && (
+          <p className="text-sm text-gray-500">
+            By: {player.killedByName}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│        تعديل 2️⃣: نظام Anti-Spy المدفوع (Paid Protection)       │
+└─────────────────────────────────────────────────────────────────┘
+
+📌 التغييرات المطلوبة:
+
+حذف: نظام Anti-Spy المجاني الحالي (toggle button)
+إضافة: نظام Anti-Spy مدفوع ومؤقت:
+├── 24 ساعة = 50,000$
+├── 48 ساعة = 75,000$
+├── 72 ساعة = 100,000$
+└── أسبوع = 150,000$
+
+📁 الملفات المطلوب تعديلها:
+
+A) Migration: lib/db/migrations/010_antispy_paid.sql
+────────────────────────────────────────────────────────
+-- حذف العمود القديم
+ALTER TABLE players DROP COLUMN IF EXISTS anti_spy_enabled;
+
+-- إضافة عمود جديد للحماية المؤقتة
+ALTER TABLE players ADD COLUMN IF NOT EXISTS anti_spy_until TIMESTAMP;
+
+CREATE INDEX idx_players_antispy ON players(anti_spy_until);
+
+COMMENT ON COLUMN players.anti_spy_until IS 'تاريخ انتهاء حماية Anti-Spy المدفوعة';
+
+
+B) Schema: lib/db/src/schema/players.ts
+────────────────────────────────────────────────────────
+// احذف:
+antiSpyEnabled: boolean('anti_spy_enabled').notNull().default(false),
+
+// أضف:
+antiSpyUntil: timestamp('anti_spy_until'),
+
+
+C) Backend Route: artifacts/api-server/src/routes/players.ts
+────────────────────────────────────────────────────────
+// احذف endpoint القديم: PATCH /api/players/anti-spy
+
+// أضف endpoint جديد:
+
+router.post('/me/anti-spy/purchase', requireAuth, async (req, res) => {
+  const { duration } = req.body; // 24, 48, 72, 168 (ساعات)
+
+  const prices = {
+    24: 50000,
+    48: 75000,
+    72: 100000,
+    168: 150000 // أسبوع
+  };
+
+  if (!prices[duration as keyof typeof prices]) {
+    return res.status(400).json({ error: 'Invalid duration' });
+  }
+
+  const price = prices[duration as keyof typeof prices];
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    if (player[0].money < price) {
+      throw new Error('Insufficient money');
+    }
+
+    // حساب تاريخ الانتهاء
+    const currentProtection = player[0].antiSpyUntil;
+    const now = new Date();
+    const startFrom = currentProtection && currentProtection > now 
+      ? currentProtection 
+      : now;
+
+    const newExpiryDate = new Date(startFrom.getTime() + duration * 60 * 60 * 1000);
+
+    // خصم المال وتفعيل الحماية
+    await tx.update(players)
+      .set({
+        money: sql`${players.money} - ${price}`,
+        antiSpyUntil: newExpiryDate
+      })
+      .where(eq(players.id, player[0].id));
+
+    // Activity log
+    await tx.insert(activityLog).values({
+      playerId: player[0].id,
+      type: 'antispy_purchase',
+      description: `Purchased Anti-Spy protection for ${duration} hours ($${price})`
+    });
+
+    res.json({
+      success: true,
+      expiresAt: newExpiryDate,
+      remainingMoney: player[0].money - price
+    });
+  });
+});
+
+
+D) Backend: artifacts/api-server/src/routes/attacks.ts
+────────────────────────────────────────────────────────
+// في endpoint التجسس POST /api/attacks/spy/:targetPlayerId
+// عدّل التحقق من Anti-Spy:
+
+// القديم:
+if (target[0].antiSpyEnabled) {
+  return res.status(403).json({ error: 'Target has Anti-Spy enabled' });
+}
+
+// الجديد:
+const now = new Date();
+if (target[0].antiSpyUntil && target[0].antiSpyUntil > now) {
+  const hoursLeft = Math.ceil((target[0].antiSpyUntil.getTime() - now.getTime()) / (1000 * 60 * 60));
+  return res.status(403).json({ 
+    error: 'Target is protected by Anti-Spy',
+    expiresIn: hoursLeft,
+    expiresAt: target[0].antiSpyUntil
+  });
+}
+
+
+E) Frontend: artifacts/mafia-world/src/pages/settings.tsx
+────────────────────────────────────────────────────────
+// احذف كل الكود المتعلق بـ Anti-Spy Toggle
+
+// أضف صفحة جديدة أو قسم جديد:
+
+import { Shield, Clock } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+
+export default function AntiSpySection() {
+  const { data: player } = useQuery({ queryKey: ['me'] });
+
+  const purchaseAntiSpy = useMutation({
+    mutationFn: async (duration: number) => {
+      const res = await fetch('/api/players/me/anti-spy/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration })
+      });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    }
+  });
+
+  const packages = [
+    { hours: 24, price: 50000, label: '24 Hours' },
+    { hours: 48, price: 75000, label: '2 Days', badge: 'Popular' },
+    { hours: 72, price: 100000, label: '3 Days' },
+    { hours: 168, price: 150000, label: '1 Week', badge: 'Best Value' }
+  ];
+
+  const isProtected = player?.antiSpyUntil && new Date(player.antiSpyUntil) > new Date();
+  const hoursLeft = isProtected 
+    ? Math.ceil((new Date(player.antiSpyUntil).getTime() - Date.now()) / (1000 * 60 * 60))
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-6 h-6" />
+            Anti-Spy Protection
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isProtected ? (
+            <div className="bg-green-900/20 border border-green-500 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-3">
+                <Shield className="w-8 h-8 text-green-400" />
+                <div>
+                  <div className="font-bold text-green-400">Protected</div>
+                  <div className="text-sm text-gray-400 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    {hoursLeft} hours remaining
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Expires: {new Date(player.antiSpyUntil).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-3">
+                <Shield className="w-8 h-8 text-red-400" />
+                <div>
+                  <div className="font-bold text-red-400">Not Protected</div>
+                  <div className="text-sm text-gray-400">
+                    Anyone can spy on you
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {packages.map((pkg) => (
+              <div
+                key={pkg.hours}
+                className="relative bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-blue-500 transition-colors"
+              >
+                {pkg.badge && (
+                  <div className="absolute -top-2 -right-2 bg-blue-600 text-xs px-2 py-1 rounded">
+                    {pkg.badge}
+                  </div>
+                )}
+                <div className="text-center mb-4">
+                  <div className="text-2xl font-bold">{pkg.label}</div>
+                  <div className="text-3xl font-bold text-blue-400 my-2">
+                    ${pkg.price.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    ${Math.round(pkg.price / pkg.hours).toLocaleString()}/hour
+                  </div>
+                </div>
+                <Button
+                  onClick={() => purchaseAntiSpy.mutate(pkg.hours)}
+                  disabled={player?.money < pkg.price}
+                  className="w-full"
+                >
+                  {player?.money < pkg.price ? 'Insufficient Funds' : 'Purchase'}
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700 rounded text-sm">
+            <p className="font-bold mb-2">How it works:</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-400">
+              <li>While protected, no one can spy on you</li>
+              <li>Protection time stacks if you purchase multiple packages</li>
+              <li>Protection persists even while offline</li>
+              <li>No refunds once purchased</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+F) Frontend: artifacts/mafia-world/src/pages/players.tsx
+────────────────────────────────────────────────────────
+// في قائمة اللاعبين، عدّل عرض Anti-Spy:
+
+// القديم:
+{player.antiSpyEnabled && <Shield className="w-4 h-4 text-blue-400" />}
+
+// الجديد:
+{player.antiSpyUntil && new Date(player.antiSpyUntil) > new Date() && (
+  <div className="flex items-center gap-1 text-blue-400">
+    <Shield className="w-4 h-4" />
+    <span className="text-xs">
+      {Math.ceil((new Date(player.antiSpyUntil).getTime() - Date.now()) / (1000 * 60 * 60))}h
+    </span>
+  </div>
+)}
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                      ✅ ملخص التعديلات                          │
+└─────────────────────────────────────────────────────────────────┘
+
+تعديل 1: الموت النهائي المحسّن
+├── Migration جديد لإضافة is_permanently_dead
+├── Middleware للتحقق من الموت عند كل request
+├── صفحة القبر (DeadPage) عند محاولة الدخول
+├── قفل الحساب نهائياً في Worker
+└── عرض حالة "DEAD" في الملف الشخصي
+
+تعديل 2: Anti-Spy المدفوع
+├── Migration لحذف القديم وإضافة anti_spy_until
+├── Endpoint جديد للشراء بـ 4 باقات
+├── صفحة/قسم Anti-Spy Protection
+├── عرض الحماية النشطة في قائمة اللاعبين
+└── التحقق من الحماية في endpoint التجسس
+
+
+═══════════════════════════════════════════════════════════════════
+                    🎯 تعليمات التنفيذ النهائية
+═══════════════════════════════════════════════════════════════════
+
+1. طبّق migrations بالترتيب:
+   psql $DATABASE_URL < lib/db/migrations/007_permadeath_enhanced.sql
+   psql $DATABASE_URL < lib/db/migrations/010_antispy_paid.sql
+
+2. حدّث Schema files في lib/db/src/schema/
+
+3. أضف/عدّل الـ routes في artifacts/api-server/src/routes/
+
+4. أضف الـ middleware في artifacts/api-server/src/middlewares/
+
+5. أنشئ الصفحات الجديدة في artifacts/mafia-world/src/pages/
+
+6. حدّث i18n في artifacts/mafia-world/src/lib/i18n.tsx
+
+7. أعد بناء المشروع:
+   pnpm run build
+
+8. أعد تشغيل السيرفر:
+   pm2 restart mafia-world-api
+
+✅ انتهى - النظام جاهز!

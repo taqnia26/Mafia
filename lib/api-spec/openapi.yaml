@@ -2427,6 +2427,8 @@ components:
           type: integer
         description:
           type: string
+        descriptionAr:
+          type: string
         imageUrl:
           type: string
           nullable: true
@@ -2437,6 +2439,7 @@ components:
         - country
         - playerCount
         - description
+        - descriptionAr
 
     TravelInput:
       type: object

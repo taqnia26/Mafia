@@ -1,0 +1,1398 @@
+═══════════════════════════════════════════════════════════════════
+      🎯 مشروع Mafia World - الميزات المتقدمة (الجزء الثاني)
+═══════════════════════════════════════════════════════════════════
+
+المطلوب: تنفيذ 5 ميزات متقدمة بشكل كامل ومتكامل.
+
+⚠️ تعليمات مهمة:
+├── نفذ كل شيء بدون توقف
+├── اكتب الكود كاملاً (لا تختصر)
+├── اتبع نفس أسلوب الكود الموجود
+├── استخدم خط Cairo في كل الواجهات
+├── كل نص ثنائي اللغة (EN/AR)
+└── اختبر كل endpoint بعد الإضافة
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│         الميزة 3️⃣: المفاعل النووي (Nuclear Reactor)            │
+└─────────────────────────────────────────────────────────────────┘
+
+📌 الوصف الكامل:
+
+العقار الأقوى في اللعبة - حصري للناشونال باشا
+├── السعر: 500,000,000$ (نصف مليار)
+├── الرتبة المطلوبة: 11 (الناشونال باشا)
+├── الدخل: 50,000$/ساعة (1.2M يومياً)
+├── الحد الأقصى: 3 مفاعلات فقط في كل مدينة
+├── وقت البناء: 7 أيام (168 ساعة)
+├── الإنتاج: وحدة طاقة نووية كل 24 ساعة
+│
+├── استخدامات الطاقة النووية:
+│   ├── 1. صاروخ نووي (Nuclear Strike)
+│   │   ├── يدمر عقار عدو لمدة 72 ساعة
+│   │   ├── العقار يتوقف عن الإنتاج
+│   │   ├── Cooldown: 7 أيام بين كل صاروخ
+│   │   └── التكلفة: 1 وحدة طاقة
+│   │
+│   ├── 2. درع نووي (Nuclear Shield)
+│   │   ├── حماية كاملة من الهجمات 48 ساعة
+│   │   ├── لا يمكن لأحد مهاجمتك
+│   │   ├── Cooldown: 14 يوم
+│   │   └── التكلفة: 2 وحدة طاقة
+│   │
+│   └── 3. بيع الطاقة
+│       ├── في السوق السوداء
+│       ├── السعر: 5M - 10M$ (حسب الطلب)
+│       └── لاعبون آخرون يشترونها
+│
+├── السلاح الحصري: القنبلة القذرة (Dirty Bomb)
+│   ├── ATK: 200 (أقوى سلاح!)
+│   ├── الذخيرة: وحدات الطاقة النووية (بدل الرصاص)
+│   ├── ضرر إضافي: إشعاع 24 ساعة (-5 HP/ساعة)
+│   └── يُعطى تلقائياً عند امتلاك المفاعل
+│
+└── منطقة الإشعاع:
+    ├── الحي الذي فيه المفاعل = منطقة إشعاع
+    ├── أي هجوم في الحي: -10 HP/ساعة للمهاجم
+    ├── -15% دقة الهجوم
+    └── الحل: شراء بدلة واقية ($500k)
+
+📁 الملفات المطلوب إنشاؤها/تعديلها:
+
+A) Migration: lib/db/migrations/011_nuclear_reactor.sql
+────────────────────────────────────────────────────────
+-- 1. تحديث property_types لإضافة المفاعل
+INSERT INTO property_types (name_en, name_ar, price, base_income_per_hour, required_level, max_level, description_en, description_ar)
+VALUES (
+  'Nuclear Reactor',
+  'مفاعل نووي',
+  500000000,
+  50000,
+  11, -- رتبة ناشونال باشا
+  1,  -- لا ترقيات
+  'Ultimate power source. Generates nuclear energy for devastating attacks.',
+  'مصدر الطاقة الأقوى. ينتج طاقة نووية لهجمات مدمرة.'
+);
+
+-- 2. جدول وحدات الطاقة النووية
+CREATE TABLE IF NOT EXISTS nuclear_energy (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  reactor_property_id INTEGER NOT NULL REFERENCES player_properties(id) ON DELETE CASCADE,
+  units INTEGER NOT NULL DEFAULT 0,
+  last_generated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  UNIQUE(player_id, reactor_property_id)
+);
+
+CREATE INDEX idx_nuclear_energy_player ON nuclear_energy(player_id);
+
+-- 3. جدول الضربات النووية
+CREATE TABLE IF NOT EXISTS nuclear_strikes (
+  id SERIAL PRIMARY KEY,
+  attacker_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  target_property_id INTEGER NOT NULL REFERENCES player_properties(id) ON DELETE CASCADE,
+  property_owner_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  struck_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  disabled_until TIMESTAMP NOT NULL, -- 72 ساعة من الآن
+  energy_used INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX idx_nuclear_strikes_target ON nuclear_strikes(target_property_id);
+CREATE INDEX idx_nuclear_strikes_disabled ON nuclear_strikes(disabled_until);
+
+-- 4. جدول الدروع النووية
+CREATE TABLE IF NOT EXISTS nuclear_shields (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  activated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMP NOT NULL, -- 48 ساعة من الآن
+  energy_used INTEGER NOT NULL DEFAULT 2,
+  UNIQUE(player_id) -- لاعب واحد درع واحد نشط
+);
+
+CREATE INDEX idx_nuclear_shields_player ON nuclear_shields(player_id);
+CREATE INDEX idx_nuclear_shields_expires ON nuclear_shields(expires_at);
+
+-- 5. حد أقصى للمفاعلات في كل مدينة
+CREATE TABLE IF NOT EXISTS nuclear_reactor_limits (
+  city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+  reactor_count INTEGER NOT NULL DEFAULT 0,
+  last_updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (city_id),
+  CHECK (reactor_count <= 3)
+);
+
+-- تهيئة العدادات لكل مدينة
+INSERT INTO nuclear_reactor_limits (city_id, reactor_count)
+SELECT id, 0 FROM cities
+ON CONFLICT (city_id) DO NOTHING;
+
+-- 6. إضافة سلاح القنبلة القذرة
+INSERT INTO weapons (name, name_ar, type, attack_power, price, ammo_type, image_url, level_required, description_en, description_ar)
+VALUES (
+  'Dirty Bomb',
+  'القنبلة القذرة',
+  'nuclear',
+  200,
+  0, -- لا يُباع - يُعطى تلقائياً
+  'nuclear_energy',
+  '/images/weapons/dirty-bomb.png',
+  11,
+  'Exclusive nuclear weapon. Uses nuclear energy as ammunition. Causes radiation damage.',
+  'سلاح نووي حصري. يستخدم الطاقة النووية كذخيرة. يسبب ضرر إشعاعي.'
+);
+
+-- 7. إضافة أعمدة للاعبين
+ALTER TABLE players ADD COLUMN IF NOT EXISTS has_nuclear_reactor BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS last_nuke_strike_at TIMESTAMP;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS last_shield_activation_at TIMESTAMP;
+
+-- 8. إضافة حالة تعطيل العقار
+ALTER TABLE player_properties ADD COLUMN IF NOT EXISTS disabled_until TIMESTAMP;
+ALTER TABLE player_properties ADD COLUMN IF NOT EXISTS is_under_construction BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE player_properties ADD COLUMN IF NOT EXISTS construction_complete_at TIMESTAMP;
+
+COMMENT ON COLUMN player_properties.disabled_until IS 'العقار معطل (بسبب ضربة نووية) حتى هذا التاريخ';
+COMMENT ON COLUMN player_properties.is_under_construction IS 'المفاعل تحت الإنشاء (7 أيام)';
+
+
+B) Schema: lib/db/src/schema/nuclear.ts (جديد)
+────────────────────────────────────────────────────────
+import { pgTable, serial, integer, timestamp, boolean, unique } from 'drizzle-orm/pg-core';
+import { players } from './players';
+import { playerProperties } from './properties';
+import { cities } from './cities';
+
+export const nuclearEnergy = pgTable('nuclear_energy', {
+  id: serial('id').primaryKey(),
+  playerId: integer('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  reactorPropertyId: integer('reactor_property_id').notNull().references(() => playerProperties.id, { onDelete: 'cascade' }),
+  units: integer('units').notNull().default(0),
+  lastGeneratedAt: timestamp('last_generated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow()
+}, (table) => ({
+  uniquePlayerReactor: unique().on(table.playerId, table.reactorPropertyId)
+}));
+
+export const nuclearStrikes = pgTable('nuclear_strikes', {
+  id: serial('id').primaryKey(),
+  attackerId: integer('attacker_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  targetPropertyId: integer('target_property_id').notNull().references(() => playerProperties.id, { onDelete: 'cascade' }),
+  propertyOwnerId: integer('property_owner_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  struckAt: timestamp('struck_at').notNull().defaultNow(),
+  disabledUntil: timestamp('disabled_until').notNull(),
+  energyUsed: integer('energy_used').notNull().default(1)
+});
+
+export const nuclearShields = pgTable('nuclear_shields', {
+  id: serial('id').primaryKey(),
+  playerId: integer('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  activatedAt: timestamp('activated_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+  energyUsed: integer('energy_used').notNull().default(2)
+}, (table) => ({
+  uniquePlayer: unique().on(table.playerId)
+}));
+
+export const nuclearReactorLimits = pgTable('nuclear_reactor_limits', {
+  cityId: integer('city_id').primaryKey().references(() => cities.id, { onDelete: 'cascade' }),
+  reactorCount: integer('reactor_count').notNull().default(0),
+  lastUpdatedAt: timestamp('last_updated_at').notNull().defaultNow()
+});
+
+// تحديث player_properties schema:
+// أضف في lib/db/src/schema/properties.ts:
+disabledUntil: timestamp('disabled_until'),
+isUnderConstruction: boolean('is_under_construction').notNull().default(false),
+constructionCompleteAt: timestamp('construction_complete_at'),
+
+// تحديث players schema:
+// أضف في lib/db/src/schema/players.ts:
+hasNuclearReactor: boolean('has_nuclear_reactor').notNull().default(false),
+lastNukeStrikeAt: timestamp('last_nuke_strike_at'),
+lastShieldActivationAt: timestamp('last_shield_activation_at'),
+
+
+C) Backend Route: artifacts/api-server/src/routes/nuclear.ts (جديد)
+────────────────────────────────────────────────────────
+import { Router } from 'express';
+import { db } from '../lib/db';
+import { requireAuth } from '../lib/auth';
+import { 
+  nuclearEnergy, 
+  nuclearStrikes, 
+  nuclearShields, 
+  nuclearReactorLimits,
+  players,
+  playerProperties,
+  propertyTypes,
+  cities
+} from '@workspace/db/schema';
+import { eq, and, sql, gt } from 'drizzle-orm';
+
+const router = Router();
+
+// GET /api/nuclear/status - حالة المفاعل النووي
+router.get('/status', requireAuth, async (req, res) => {
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  if (!player[0]) {
+    return res.status(404).json({ error: 'Player not found' });
+  }
+
+  // جلب المفاعل
+  const reactorType = await db.select().from(propertyTypes)
+    .where(eq(propertyTypes.nameEn, 'Nuclear Reactor'))
+    .limit(1);
+
+  const reactor = await db.select({
+    id: playerProperties.id,
+    level: playerProperties.level,
+    isUnderConstruction: playerProperties.isUnderConstruction,
+    constructionCompleteAt: playerProperties.constructionCompleteAt,
+    disabledUntil: playerProperties.disabledUntil,
+    cityId: playerProperties.cityId
+  })
+  .from(playerProperties)
+  .where(and(
+    eq(playerProperties.playerId, player[0].id),
+    eq(playerProperties.propertyTypeId, reactorType[0].id)
+  ))
+  .limit(1);
+
+  if (!reactor[0]) {
+    return res.json({ hasReactor: false });
+  }
+
+  // جلب الطاقة
+  const energy = await db.select().from(nuclearEnergy)
+    .where(and(
+      eq(nuclearEnergy.playerId, player[0].id),
+      eq(nuclearEnergy.reactorPropertyId, reactor[0].id)
+    ))
+    .limit(1);
+
+  // التحقق من الدرع النشط
+  const shield = await db.select().from(nuclearShields)
+    .where(and(
+      eq(nuclearShields.playerId, player[0].id),
+      gt(nuclearShields.expiresAt, new Date())
+    ))
+    .limit(1);
+
+  res.json({
+    hasReactor: true,
+    reactor: reactor[0],
+    energy: energy[0]?.units || 0,
+    lastGenerated: energy[0]?.lastGeneratedAt,
+    shield: shield[0] || null,
+    canStrike: player[0].lastNukeStrikeAt 
+      ? (Date.now() - new Date(player[0].lastNukeStrikeAt).getTime()) > 7 * 24 * 60 * 60 * 1000
+      : true,
+    canShield: player[0].lastShieldActivationAt
+      ? (Date.now() - new Date(player[0].lastShieldActivationAt).getTime()) > 14 * 24 * 60 * 60 * 1000
+      : true
+  });
+});
+
+// POST /api/nuclear/purchase - شراء المفاعل
+router.post('/purchase', requireAuth, async (req, res) => {
+  const { cityId } = req.body;
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    // التحقق من الرتبة (11 = ناشونال باشا)
+    const currentRank = await tx.select().from(playerRanks)
+      .where(eq(playerRanks.rankNumber, player[0].currentRankNumber || 1))
+      .limit(1);
+
+    if ((player[0].currentRankNumber || 1) < 11) {
+      throw new Error('Must be National Pasha (Rank 11) to purchase Nuclear Reactor');
+    }
+
+    // التحقق من الحد الأقصى في المدينة
+    const cityLimit = await tx.select().from(nuclearReactorLimits)
+      .where(eq(nuclearReactorLimits.cityId, cityId))
+      .limit(1);
+
+    if (cityLimit[0] && cityLimit[0].reactorCount >= 3) {
+      throw new Error('Maximum 3 nuclear reactors per city reached');
+    }
+
+    // التحقق من المال
+    const reactorType = await tx.select().from(propertyTypes)
+      .where(eq(propertyTypes.nameEn, 'Nuclear Reactor'))
+      .limit(1);
+
+    if (player[0].money < reactorType[0].price) {
+      throw new Error('Insufficient money');
+    }
+
+    // خصم المال
+    await tx.update(players)
+      .set({ 
+        money: sql`${players.money} - ${reactorType[0].price}`,
+        hasNuclearReactor: true
+      })
+      .where(eq(players.id, player[0].id));
+
+    // إنشاء المفاعل (تحت الإنشاء 7 أيام)
+    const constructionComplete = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const [newReactor] = await tx.insert(playerProperties).values({
+      playerId: player[0].id,
+      propertyTypeId: reactorType[0].id,
+      level: 1,
+      cityId,
+      isUnderConstruction: true,
+      constructionCompleteAt: constructionComplete,
+      lastIncomeCollectedAt: new Date()
+    }).returning();
+
+    // إنشاء سجل الطاقة
+    await tx.insert(nuclearEnergy).values({
+      playerId: player[0].id,
+      reactorPropertyId: newReactor.id,
+      units: 0,
+      lastGeneratedAt: constructionComplete // يبدأ الإنتاج بعد البناء
+    });
+
+    // تحديث عداد المدينة
+    await tx.insert(nuclearReactorLimits).values({
+      cityId,
+      reactorCount: 1
+    }).onConflictDoUpdate({
+      target: nuclearReactorLimits.cityId,
+      set: { 
+        reactorCount: sql`${nuclearReactorLimits.reactorCount} + 1`,
+        lastUpdatedAt: new Date()
+      }
+    });
+
+    // منح سلاح القنبلة القذرة
+    const dirtyBomb = await tx.select().from(weapons)
+      .where(eq(weapons.type, 'nuclear'))
+      .limit(1);
+
+    await tx.insert(playerWeapons).values({
+      playerId: player[0].id,
+      weaponId: dirtyBomb[0].id,
+      quantity: 1
+    }).onConflictDoUpdate({
+      target: [playerWeapons.playerId, playerWeapons.weaponId],
+      set: { quantity: sql`${playerWeapons.quantity} + 1` }
+    });
+
+    res.json({
+      success: true,
+      reactor: newReactor,
+      constructionComplete
+    });
+  });
+});
+
+// POST /api/nuclear/strike - إطلاق صاروخ نووي
+router.post('/strike', requireAuth, async (req, res) => {
+  const { targetPropertyId } = req.body;
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    // التحقق من Cooldown (7 أيام)
+    if (player[0].lastNukeStrikeAt) {
+      const daysSince = (Date.now() - new Date(player[0].lastNukeStrikeAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < 7) {
+        throw new Error(`Cooldown active. ${Math.ceil(7 - daysSince)} days remaining`);
+      }
+    }
+
+    // التحقق من الطاقة
+    const energy = await tx.select().from(nuclearEnergy)
+      .where(eq(nuclearEnergy.playerId, player[0].id))
+      .limit(1);
+
+    if (!energy[0] || energy[0].units < 1) {
+      throw new Error('Insufficient nuclear energy (need 1 unit)');
+    }
+
+    // جلب العقار المستهدف
+    const targetProperty = await tx.select({
+      id: playerProperties.id,
+      ownerId: playerProperties.playerId,
+      cityId: playerProperties.cityId,
+      disabledUntil: playerProperties.disabledUntil
+    })
+    .from(playerProperties)
+    .where(eq(playerProperties.id, targetPropertyId))
+    .limit(1);
+
+    if (!targetProperty[0]) {
+      throw new Error('Target property not found');
+    }
+
+    if (targetProperty[0].ownerId === player[0].id) {
+      throw new Error('Cannot nuke your own property');
+    }
+
+    // التحقق من درع نووي نشط
+    const targetShield = await tx.select().from(nuclearShields)
+      .where(and(
+        eq(nuclearShields.playerId, targetProperty[0].ownerId),
+        gt(nuclearShields.expiresAt, new Date())
+      ))
+      .limit(1);
+
+    if (targetShield[0]) {
+      throw new Error('Target is protected by Nuclear Shield');
+    }
+
+    // خصم الطاقة
+    await tx.update(nuclearEnergy)
+      .set({ units: sql`${nuclearEnergy.units} - 1` })
+      .where(eq(nuclearEnergy.id, energy[0].id));
+
+    // تعطيل العقار لمدة 72 ساعة
+    const disabledUntil = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    await tx.update(playerProperties)
+      .set({ disabledUntil })
+      .where(eq(playerProperties.id, targetPropertyId));
+
+    // تسجيل الضربة
+    await tx.insert(nuclearStrikes).values({
+      attackerId: player[0].id,
+      targetPropertyId,
+      propertyOwnerId: targetProperty[0].ownerId,
+      disabledUntil,
+      energyUsed: 1
+    });
+
+    // تحديث Cooldown
+    await tx.update(players)
+      .set({ lastNukeStrikeAt: new Date() })
+      .where(eq(players.id, player[0].id));
+
+    // إشعارات
+    await tx.insert(notifications).values({
+      playerId: targetProperty[0].ownerId,
+      type: 'nuclear_strike',
+      message: `☢️ NUCLEAR STRIKE! ${player[0].username} hit your property. Disabled for 72 hours!`,
+      messageAr: `☢️ ضربة نووية! ${player[0].username} دمر عقارك. معطل لمدة 72 ساعة!`,
+      link: '/properties'
+    });
+
+    res.json({ success: true, disabledUntil });
+  });
+});
+
+// POST /api/nuclear/shield - تفعيل الدرع النووي
+router.post('/shield', requireAuth, async (req, res) => {
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    // Cooldown (14 يوم)
+    if (player[0].lastShieldActivationAt) {
+      const daysSince = (Date.now() - new Date(player[0].lastShieldActivationAt).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < 14) {
+        throw new Error(`Cooldown active. ${Math.ceil(14 - daysSince)} days remaining`);
+      }
+    }
+
+    // التحقق من الطاقة (2 وحدات)
+    const energy = await tx.select().from(nuclearEnergy)
+      .where(eq(nuclearEnergy.playerId, player[0].id))
+      .limit(1);
+
+    if (!energy[0] || energy[0].units < 2) {
+      throw new Error('Insufficient nuclear energy (need 2 units)');
+    }
+
+    // خصم الطاقة
+    await tx.update(nuclearEnergy)
+      .set({ units: sql`${nuclearEnergy.units} - 2` })
+      .where(eq(nuclearEnergy.id, energy[0].id));
+
+    // تفعيل الدرع
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    await tx.insert(nuclearShields).values({
+      playerId: player[0].id,
+      expiresAt,
+      energyUsed: 2
+    }).onConflictDoUpdate({
+      target: nuclearShields.playerId,
+      set: { 
+        activatedAt: new Date(),
+        expiresAt,
+        energyUsed: 2
+      }
+    });
+
+    await tx.update(players)
+      .set({ lastShieldActivationAt: new Date() })
+      .where(eq(players.id, player[0].id));
+
+    res.json({ success: true, expiresAt });
+  });
+});
+
+export default router;
+
+
+D) Worker: artifacts/api-server/src/lib/worker.ts
+────────────────────────────────────────────────────────
+// أضف في دالة worker الرئيسية:
+
+async function generateNuclearEnergy() {
+  logger.info('Generating nuclear energy...');
+
+  await db.transaction(async (tx) => {
+    // جلب كل المفاعلات النشطة (غير قيد الإنشاء)
+    const reactors = await tx.select({
+      energyId: nuclearEnergy.id,
+      units: nuclearEnergy.units,
+      lastGenerated: nuclearEnergy.lastGeneratedAt,
+      reactorId: playerProperties.id,
+      isConstruction: playerProperties.isUnderConstruction,
+      constructionComplete: playerProperties.constructionCompleteAt
+    })
+    .from(nuclearEnergy)
+    .innerJoin(playerProperties, eq(nuclearEnergy.reactorPropertyId, playerProperties.id))
+    .where(eq(playerProperties.isUnderConstruction, false));
+
+    const now = new Date();
+
+    for (const reactor of reactors) {
+      const hoursSinceGeneration = (now.getTime() - new Date(reactor.lastGenerated).getTime()) / (1000 * 60 * 60);
+
+      // إنتاج وحدة كل 24 ساعة
+      if (hoursSinceGeneration >= 24) {
+        const unitsToGenerate = Math.floor(hoursSinceGeneration / 24);
+
+        await tx.update(nuclearEnergy)
+          .set({
+            units: sql`${nuclearEnergy.units} + ${unitsToGenerate}`,
+            lastGeneratedAt: now
+          })
+          .where(eq(nuclearEnergy.id, reactor.energyId));
+
+        logger.info({ reactorId: reactor.reactorId, generated: unitsToGenerate }, 'Nuclear energy generated');
+      }
+    }
+
+    // إكمال بناء المفاعلات
+    await tx.update(playerProperties)
+      .set({ isUnderConstruction: false })
+      .where(and(
+        eq(playerProperties.isUnderConstruction, true),
+        sql`${playerProperties.constructionCompleteAt} <= NOW()`
+      ));
+  });
+}
+
+// استدعاء في الـ main worker loop:
+setInterval(async () => {
+  await generateNuclearEnergy();
+}, 60 * 60 * 1000); // كل ساعة
+
+
+E) Frontend Page: artifacts/mafia-world/src/pages/nuclear.tsx (جديد)
+────────────────────────────────────────────────────────
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioactiveIcon, Shield, Rocket, Clock, AlertTriangle } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
+
+export default function NuclearPage() {
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const [targetPropertyId, setTargetPropertyId] = useState('');
+
+  const { data: status } = useQuery({
+    queryKey: ['nuclear-status'],
+    queryFn: async () => {
+      const res = await fetch('/api/nuclear/status');
+      return res.json();
+    }
+  });
+
+  const purchaseReactor = useMutation({
+    mutationFn: async (cityId: number) => {
+      const res = await fetch('/api/nuclear/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cityId })
+      });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['nuclear-status'] })
+  });
+
+  const launchStrike = useMutation({
+    mutationFn: async (propertyId: string) => {
+      const res = await fetch('/api/nuclear/strike', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetPropertyId: Number(propertyId) })
+      });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nuclear-status'] });
+      setTargetPropertyId('');
+    }
+  });
+
+  const activateShield = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/nuclear/shield', {
+        method: 'POST'
+      });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['nuclear-status'] })
+  });
+
+  if (!status?.hasReactor && status?.hasReactor !== false) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (!status.hasReactor) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3 text-3xl">
+              <RadioactiveIcon className="w-10 h-10 text-yellow-500" />
+              {t('nuclear.title')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="bg-gradient-to-r from-yellow-900/20 to-red-900/20 border-2 border-yellow-500 rounded-lg p-8">
+              <h2 className="text-2xl font-bold mb-4">☢️ Nuclear Reactor</h2>
+              <p className="text-gray-300 mb-6">
+                The ultimate power source. Only for National Pasha rank (11).
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-black/30 p-4 rounded">
+                  <div className="text-sm text-gray-400">Price</div>
+                  <div className="text-2xl font-bold text-yellow-400">$500,000,000</div>
+                </div>
+                <div className="bg-black/30 p-4 rounded">
+                  <div className="text-sm text-gray-400">Income</div>
+                  <div className="text-2xl font-bold text-green-400">$50,000/hour</div>
+                </div>
+                <div className="bg-black/30 p-4 rounded">
+                  <div className="text-sm text-gray-400">Build Time</div>
+                  <div className="text-2xl font-bold text-blue-400">7 Days</div>
+                </div>
+                <div className="bg-black/30 p-4 rounded">
+                  <div className="text-sm text-gray-400">Max per City</div>
+                  <div className="text-2xl font-bold text-red-400">3 Only</div>
+                </div>
+              </div>
+
+              <div className="bg-red-900/20 border border-red-700 rounded p-4 mb-6">
+                <p className="text-sm text-gray-300">
+                  ⚠️ Requires: National Pasha rank (Level 150+)
+                </p>
+              </div>
+
+              <Button 
+                onClick={() => purchaseReactor.mutate(1)} 
+                className="w-full bg-yellow-600 hover:bg-yellow-700"
+                size="lg"
+              >
+                Purchase Nuclear Reactor
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isUnderConstruction = status.reactor?.isUnderConstruction;
+  const hoursUntilComplete = isUnderConstruction
+    ? Math.ceil((new Date(status.reactor.constructionCompleteAt).getTime() - Date.now()) / (1000 * 60 * 60))
+    : 0;
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-4xl font-bold flex items-center gap-3">
+        <RadioactiveIcon className="w-10 h-10 text-yellow-500" />
+        {t('nuclear.control')}
+      </h1>
+
+      {/* Construction Progress */}
+      {isUnderConstruction && (
+        <Card className="border-yellow-500">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Clock className="w-8 h-8 text-yellow-400 animate-spin" />
+              <div>
+                <div className="font-bold text-xl">Under Construction</div>
+                <div className="text-gray-400">
+                  Completion in {hoursUntilComplete} hours ({Math.floor(hoursUntilComplete / 24)} days)
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Energy Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle>⚡ Nuclear Energy</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-5xl font-bold text-yellow-400 mb-2">
+            {status.energy} {t('nuclear.units')}
+          </div>
+          <p className="text-sm text-gray-400">
+            Generates 1 unit every 24 hours
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Shield Status */}
+      {status.shield && (
+        <Card className="border-blue-500">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <Shield className="w-8 h-8 text-blue-400" />
+              <div>
+                <div className="font-bold text-xl text-blue-400">Nuclear Shield Active</div>
+                <div className="text-sm text-gray-400">
+                  Expires: {new Date(status.shield.expiresAt).toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Nuclear Strike */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Rocket className="w-6 h-6 text-red-500" />
+            Nuclear Strike
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-red-900/20 border border-red-700 rounded p-4">
+            <p className="text-sm">
+              ☢️ Disables target property for 72 hours. Costs 1 energy unit. 7-day cooldown.
+            </p>
+          </div>
+          
+          <Select value={targetPropertyId} onValueChange={setTargetPropertyId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select target property..." />
+            </SelectTrigger>
+            <SelectContent>
+              {/* يجب جلب قائمة العقارات من API */}
+              <SelectItem value="123">Enemy Casino (New York)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button
+            onClick={() => launchStrike.mutate(targetPropertyId)}
+            disabled={!status.canStrike || status.energy < 1 || !targetPropertyId || isUnderConstruction}
+            className="w-full bg-red-600 hover:bg-red-700"
+          >
+            {!status.canStrike && '⏱️ Cooldown Active'}
+            {status.canStrike && status.energy < 1 && '⚡ Need 1 Energy'}
+            {status.canStrike && status.energy >= 1 && '🚀 Launch Strike'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Nuclear Shield */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-6 h-6 text-blue-500" />
+            Nuclear Shield
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-blue-900/20 border border-blue-700 rounded p-4">
+            <p className="text-sm">
+              🛡️ Complete protection from all attacks for 48 hours. Costs 2 energy units. 14-day cooldown.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => activateShield.mutate()}
+            disabled={!status.canShield || status.energy < 2 || !!status.shield || isUnderConstruction}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+          >
+            {!status.canShield && '⏱️ Cooldown Active'}
+            {status.canShield && status.energy < 2 && '⚡ Need 2 Energy'}
+            {status.canShield && status.energy >= 2 && !!status.shield && '✓ Shield Active'}
+            {status.canShield && status.energy >= 2 && !status.shield && '🛡️ Activate Shield'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+F) تسجيل Route في app.ts:
+────────────────────────────────────────────────────────
+import nuclearRouter from './routes/nuclear';
+app.use('/api/nuclear', nuclearRouter);
+
+
+G) i18n additions:
+────────────────────────────────────────────────────────
+nuclear: {
+  title: { en: "Nuclear Reactor", ar: "المفاعل النووي" },
+  control: { en: "Nuclear Control Center", ar: "مركز التحكم النووي" },
+  units: { en: "Units", ar: "وحدات" },
+  purchase: { en: "Purchase Reactor", ar: "شراء المفاعل" },
+  strike: { en: "Nuclear Strike", ar: "ضربة نووية" },
+  shield: { en: "Nuclear Shield", ar: "درع نووي" }
+}
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│     الميزة 4️⃣: البنك المتطور (Advanced Bank System)            │
+└─────────────────────────────────────────────────────────────────┘
+
+📌 الوصف الكامل:
+
+البنك ليس مجرد عقار - نظام مصرفي متكامل
+├── عقار البنك: 1,000,000$ (موجود مسبقاً)
+├── الدخل الأساسي: 10,000$/ساعة
+│
+├── 1. نظام الإيداع والفوائد
+│   ├── الحد الأدنى للإيداع: 100,000$
+│   ├── الحد الأقصى: 100,000,000$ (لكل لاعب)
+│   ├── مدد الإيداع:
+│   │   ├── 7 أيام: 0.6% يومياً (4.2% إجمالي)
+│   │   ├── 14 يوم: 1.0% يومياً (14% إجمالي)
+│   │   └── 30 يوم: 1.5% يومياً (45% إجمالي)
+│   ├── السحب المبكر: خسارة كل الفوائد + رسوم 5%
+│   └── الحماية: المال المودع لا يُسرق عند الموت
+│
+├── 2. نظام القروض
+│   ├── الحد الأدنى: 500,000$
+│   ├── الحد الأقصى: 50,000,000$
+│   ├── الفائدة: 25% إجمالية
+│   ├── مدة السداد: 14 يوم
+│   └── عقوبة عدم السداد:
+│       ├── Blacklist (لا يمكن استخدام البنك)
+│       ├── Bounty تلقائي = قيمة القرض
+│       └── مالك البنك يحصل على المال من Bounty
+│
+└── دخل مالك البنك:
+    ├── رسوم إيداع: 2% من كل إيداع جديد
+    ├── رسوم سحب مبكر: 50% من رسوم السحب (2.5%)
+    ├── فوائد القروض: 25% من كل قرض
+    └── المتوسط: 500k - 1.5M يومياً
+
+📁 الملفات:
+
+A) Migration: lib/db/migrations/012_advanced_bank.sql
+────────────────────────────────────────────────────────
+-- 1. جدول الودائع
+CREATE TABLE IF NOT EXISTS bank_deposits (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  bank_property_id INTEGER NOT NULL REFERENCES player_properties(id) ON DELETE CASCADE,
+  bank_owner_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  duration_days INTEGER NOT NULL CHECK (duration_days IN (7, 14, 30)),
+  daily_interest_rate DECIMAL(4,3) NOT NULL, -- 0.006, 0.010, 0.015
+  deposited_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  matures_at TIMESTAMP NOT NULL,
+  withdrawn_at TIMESTAMP,
+  final_amount INTEGER,
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'withdrawn', 'early_withdrawn')),
+  CONSTRAINT positive_amount CHECK (amount >= 100000 AND amount <= 100000000)
+);
+
+CREATE INDEX idx_bank_deposits_player ON bank_deposits(player_id);
+CREATE INDEX idx_bank_deposits_status ON bank_deposits(status);
+CREATE INDEX idx_bank_deposits_matures ON bank_deposits(matures_at);
+
+-- 2. جدول القروض
+CREATE TABLE IF NOT EXISTS bank_loans (
+  id SERIAL PRIMARY KEY,
+  borrower_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  bank_property_id INTEGER NOT NULL REFERENCES player_properties(id) ON DELETE CASCADE,
+  bank_owner_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  principal_amount INTEGER NOT NULL,
+  interest_rate DECIMAL(4,3) NOT NULL DEFAULT 0.250, -- 25%
+  total_amount INTEGER NOT NULL, -- principal + interest
+  borrowed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  due_at TIMESTAMP NOT NULL,
+  repaid_at TIMESTAMP,
+  status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'repaid', 'defaulted')),
+  CONSTRAINT positive_loan CHECK (principal_amount >= 500000 AND principal_amount <= 50000000)
+);
+
+CREATE INDEX idx_bank_loans_borrower ON bank_loans(borrower_id);
+CREATE INDEX idx_bank_loans_status ON bank_loans(status);
+CREATE INDEX idx_bank_loans_due ON bank_loans(due_at);
+
+-- 3. القائمة السوداء
+CREATE TABLE IF NOT EXISTS bank_blacklist (
+  player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+  reason VARCHAR(100) NOT NULL,
+  blacklisted_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- 4. إضافة أعمدة للاعبين
+ALTER TABLE players ADD COLUMN IF NOT EXISTS total_bank_deposits INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS total_bank_loans INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_bank_blacklisted BOOLEAN NOT NULL DEFAULT FALSE;
+
+COMMENT ON COLUMN players.total_bank_deposits IS 'المال الحالي المودع في البنوك';
+COMMENT ON COLUMN players.is_bank_blacklisted IS 'محظور من البنوك (لم يسدد قرض)';
+
+
+B) Schema: lib/db/src/schema/bank.ts (جديد)
+────────────────────────────────────────────────────────
+import { pgTable, serial, integer, decimal, varchar, timestamp, check } from 'drizzle-orm/pg-core';
+import { players } from './players';
+import { playerProperties } from './properties';
+
+export const bankDeposits = pgTable('bank_deposits', {
+  id: serial('id').primaryKey(),
+  playerId: integer('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  bankPropertyId: integer('bank_property_id').notNull().references(() => playerProperties.id, { onDelete: 'cascade' }),
+  bankOwnerId: integer('bank_owner_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  durationDays: integer('duration_days').notNull(),
+  dailyInterestRate: decimal('daily_interest_rate', { precision: 4, scale: 3 }).notNull(),
+  depositedAt: timestamp('deposited_at').notNull().defaultNow(),
+  maturesAt: timestamp('matures_at').notNull(),
+  withdrawnAt: timestamp('withdrawn_at'),
+  finalAmount: integer('final_amount'),
+  status: varchar('status', { length: 20 }).notNull().default('active')
+}, (table) => ({
+  amountCheck: check('positive_amount', sql`amount >= 100000 AND amount <= 100000000`)
+}));
+
+export const bankLoans = pgTable('bank_loans', {
+  id: serial('id').primaryKey(),
+  borrowerId: integer('borrower_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  bankPropertyId: integer('bank_property_id').notNull().references(() => playerProperties.id, { onDelete: 'cascade' }),
+  bankOwnerId: integer('bank_owner_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  principalAmount: integer('principal_amount').notNull(),
+  interestRate: decimal('interest_rate', { precision: 4, scale: 3 }).notNull().default('0.250'),
+  totalAmount: integer('total_amount').notNull(),
+  borrowedAt: timestamp('borrowed_at').notNull().defaultNow(),
+  dueAt: timestamp('due_at').notNull(),
+  repaidAt: timestamp('repaid_at'),
+  status: varchar('status', { length: 20 }).notNull().default('active')
+}, (table) => ({
+  loanCheck: check('positive_loan', sql`principal_amount >= 500000 AND principal_amount <= 50000000`)
+}));
+
+export const bankBlacklist = pgTable('bank_blacklist', {
+  playerId: integer('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  reason: varchar('reason', { length: 100 }).notNull(),
+  blacklistedAt: timestamp('blacklisted_at').notNull().defaultNow()
+});
+
+// تحديث players schema:
+totalBankDeposits: integer('total_bank_deposits').notNull().default(0),
+totalBankLoans: integer('total_bank_loans').notNull().default(0),
+isBankBlacklisted: boolean('is_bank_blacklisted').notNull().default(false),
+
+
+C) Backend Route: artifacts/api-server/src/routes/bank.ts (جديد)
+────────────────────────────────────────────────────────
+import { Router } from 'express';
+import { db } from '../lib/db';
+import { requireAuth } from '../lib/auth';
+import { 
+  bankDeposits, 
+  bankLoans, 
+  bankBlacklist,
+  players,
+  playerProperties,
+  propertyTypes
+} from '@workspace/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
+
+const router = Router();
+
+// GET /api/bank/status - حالة البنك
+router.get('/status', requireAuth, async (req, res) => {
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  // الودائع النشطة
+  const deposits = await db.select().from(bankDeposits)
+    .where(and(
+      eq(bankDeposits.playerId, player[0].id),
+      eq(bankDeposits.status, 'active')
+    ));
+
+  // القروض النشطة
+  const loans = await db.select().from(bankLoans)
+    .where(and(
+      eq(bankLoans.borrowerId, player[0].id),
+      eq(bankLoans.status, 'active')
+    ));
+
+  res.json({
+    deposits,
+    loans,
+    isBlacklisted: player[0].isBankBlacklisted,
+    totalDeposited: player[0].totalBankDeposits,
+    totalBorrowed: player[0].totalBankLoans
+  });
+});
+
+// POST /api/bank/deposit - إيداع
+router.post('/deposit', requireAuth, async (req, res) => {
+  const { amount, durationDays, bankPropertyId } = req.body;
+
+  const rates = {
+    7: 0.006,   // 0.6%
+    14: 0.010,  // 1.0%
+    30: 0.015   // 1.5%
+  };
+
+  if (!rates[durationDays as keyof typeof rates]) {
+    return res.status(400).json({ error: 'Invalid duration' });
+  }
+
+  if (amount < 100000 || amount > 100000000) {
+    return res.status(400).json({ error: 'Amount must be between $100k - $100M' });
+  }
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    if (player[0].isBankBlacklisted) {
+      throw new Error('You are blacklisted from banks');
+    }
+
+    if (player[0].money < amount) {
+      throw new Error('Insufficient money');
+    }
+
+    // جلب البنك
+    const bank = await tx.select().from(playerProperties)
+      .where(eq(playerProperties.id, bankPropertyId))
+      .limit(1);
+
+    if (!bank[0]) {
+      throw new Error('Bank not found');
+    }
+
+    // رسوم الإيداع 2% للبنك
+    const depositFee = Math.floor(amount * 0.02);
+    const netDeposit = amount - depositFee;
+
+    // خصم المال
+    await tx.update(players)
+      .set({ 
+        money: sql`${players.money} - ${amount}`,
+        totalBankDeposits: sql`${players.totalBankDeposits} + ${netDeposit}`
+      })
+      .where(eq(players.id, player[0].id));
+
+    // إضافة رسوم للبنك
+    await tx.update(players)
+      .set({ money: sql`${players.money} + ${depositFee}` })
+      .where(eq(players.id, bank[0].playerId));
+
+    // إنشاء الإيداع
+    const maturesAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
+    const [deposit] = await tx.insert(bankDeposits).values({
+      playerId: player[0].id,
+      bankPropertyId,
+      bankOwnerId: bank[0].playerId,
+      amount: netDeposit,
+      durationDays,
+      dailyInterestRate: rates[durationDays as keyof typeof rates].toString(),
+      maturesAt
+    }).returning();
+
+    res.json({ success: true, deposit, fee: depositFee });
+  });
+});
+
+// POST /api/bank/withdraw/:depositId - سحب
+router.post('/withdraw/:depositId', requireAuth, async (req, res) => {
+  const { depositId } = req.params;
+  const { early } = req.body; // هل سحب مبكر؟
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const deposit = await tx.select().from(bankDeposits)
+      .where(and(
+        eq(bankDeposits.id, Number(depositId)),
+        eq(bankDeposits.playerId, player[0].id),
+        eq(bankDeposits.status, 'active')
+      ))
+      .limit(1);
+
+    if (!deposit[0]) {
+      throw new Error('Deposit not found');
+    }
+
+    const now = new Date();
+    const isMatured = now >= new Date(deposit[0].maturesAt);
+
+    let finalAmount: number;
+    let bankOwnerGain = 0;
+
+    if (early || !isMatured) {
+      // سحب مبكر: خسارة الفوائد + رسوم 5%
+      const penalty = Math.floor(deposit[0].amount * 0.05);
+      finalAmount = deposit[0].amount - penalty;
+      bankOwnerGain = Math.floor(penalty * 0.5); // 50% من الرسوم للبنك
+
+      await tx.update(bankDeposits)
+        .set({
+          status: 'early_withdrawn',
+          withdrawnAt: now,
+          finalAmount
+        })
+        .where(eq(bankDeposits.id, deposit[0].id));
+
+    } else {
+      // سحب عادي: حساب الفوائد
+      const days = deposit[0].durationDays;
+      const rate = parseFloat(deposit[0].dailyInterestRate);
+      const totalInterest = Math.floor(deposit[0].amount * rate * days);
+      finalAmount = deposit[0].amount + totalInterest;
+
+      await tx.update(bankDeposits)
+        .set({
+          status: 'withdrawn',
+          withdrawnAt: now,
+          finalAmount
+        })
+        .where(eq(bankDeposits.id, deposit[0].id));
+    }
+
+    // إضافة المال للاعب
+    await tx.update(players)
+      .set({
+        money: sql`${players.money} + ${finalAmount}`,
+        totalBankDeposits: sql`${players.totalBankDeposits} - ${deposit[0].amount}`
+      })
+      .where(eq(players.id, player[0].id));
+
+    // مكافأة صاحب البنك
+    if (bankOwnerGain > 0) {
+      await tx.update(players)
+        .set({ money: sql`${players.money} + ${bankOwnerGain}` })
+        .where(eq(players.id, deposit[0].bankOwnerId));
+    }
+
+    res.json({ success: true, finalAmount, penalty: early });
+  });
+});
+
+// POST /api/bank/loan - طلب قرض
+router.post('/loan', requireAuth, async (req, res) => {
+  const { amount, bankPropertyId } = req.body;
+
+  if (amount < 500000 || amount > 50000000) {
+    return res.status(400).json({ error: 'Loan must be between $500k - $50M' });
+  }
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    if (player[0].isBankBlacklisted) {
+      throw new Error('Blacklisted from banks');
+    }
+
+    // التحقق من وجود قرض نشط
+    const existingLoan = await tx.select().from(bankLoans)
+      .where(and(
+        eq(bankLoans.borrowerId, player[0].id),
+        eq(bankLoans.status, 'active')
+      ))
+      .limit(1);
+
+    if (existingLoan[0]) {
+      throw new Error('You already have an active loan');
+    }
+
+    const bank = await tx.select().from(playerProperties)
+      .where(eq(playerProperties.id, bankPropertyId))
+      .limit(1);
+
+    const interestRate = 0.25; // 25%
+    const totalAmount = Math.floor(amount * (1 + interestRate));
+    const dueAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 يوم
+
+    // إعطاء المال للاعب
+    await tx.update(players)
+      .set({
+        money: sql`${players.money} + ${amount}`,
+        totalBankLoans: sql`${players.totalBankLoans} + ${totalAmount}`
+      })
+      .where(eq(players.id, player[0].id));
+
+    // إنشاء القرض
+    const [loan] = await tx.insert(bankLoans).values({
+      borrowerId: player[0].id,
+      bankPropertyId,
+      bankOwnerId: bank[0].playerId,
+      principalAmount: amount,
+      interestRate: interestRate.toString(),
+      totalAmount,
+      dueAt
+    }).returning();
+
+    res.json({ success: true, loan, totalDue: totalAmount });
+  });
+});
+
+// POST /api/bank/repay/:loanId - سداد قرض
+router.post('/repay/:loanId', requireAuth, async (req, res) => {
+  const { loanId } = req.params;
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const loan = await tx.select().from(bankLoans)
+      .where(and(
+        eq(bankLoans.id, Number(loanId)),
+        eq(bankLoans.borrowerId, player[0].id),
+        eq(bankLoans.status, 'active')
+      ))
+      .limit(1);
+
+    if (!loan[0]) {
+      throw new Error('Loan not found');
+    }
+
+    if (player[0].money < loan[0].totalAmount) {
+      throw new Error('Insufficient money to repay');
+    }
+
+    // خصم المال
+    await tx.update(players)
+      .set({
+        money: sql`${players.money} - ${loan[0].totalAmount}`,
+        totalBankLoans: sql`${players.totalBankLoans} - ${loan[0].totalAmount}`
+      })
+      .where(eq(players.id, player[0].id));
+
+    // إضافة للبنك (المبلغ الكامل بالفائدة)
+    await tx.update(players)
+      .set({ money: sql`${players.money} + ${loan[0].totalAmount}` })
+      .where(eq(players.id, loan[0].bankOwnerId));
+
+    // تحديث القرض
+    await tx.update(bankLoans)
+      .set({
+        status: 'repaid',
+        repaidAt: new Date()
+      })
+      .where(eq(bankLoans.id, loan[0].id));
+
+    res.json({ success: true });
+  });
+});
+
+export default router;
+
+
+D) Worker: artifacts/api-server/src/lib/worker.ts
+────────────────────────────────────────────────────────
+// أضف دالة للتحقق من القروض المتأخرة
+
+async function checkOverdueLoans() {
+  logger.info('Checking overdue loans...');
+
+  await db.transaction(async (tx) => {
+    const overdueLoans = await tx.select()
+      .from(bankLoans)
+      .where(and(
+        eq(bankLoans.status, 'active'),
+        sql`${bankLoans.dueAt} < NOW()`
+      ));
+
+    for (const loan of overdueLoans) {
+      // وضع في القائمة السوداء
+      await tx.insert(bankBlacklist).values({
+        playerId: loan.borrowerId,
+        reason: `Failed to repay loan of $${loan.totalAmount}`
+      }).onConflictDoNothing();
+
+      await tx.update(players)
+        .set({ isBankBlacklisted: true })
+        .where(eq(players.id, loan.borrowerId));
+
+      // تحديث القرض
+      await tx.update(bankLoans)
+        .set({ status: 'defaulted' })
+        .where(eq(bankLoans.id, loan.id));
+
+      // إشعار
+      await tx.insert(notifications).values({
+        playerId: loan.borrowerId,
+        type: 'loan_default',
+        message: `⚠️ LOAN DEFAULT! You are now blacklisted from all banks.`,
+        messageAr: `⚠️ تعثر في السداد! أنت الآن في القائمة السوداء لكل البنوك.`,
+        link: '/bank'
+      });
+
+      logger.warn({ loanId: loan.id, borrowerId: loan.borrowerId }, 'Loan defaulted');
+    }
+  });
+}
+
+// استدعاء كل ساعة
+setInterval(checkOverdueLoans, 60 * 60 * 1000);
+
+
+E) Frontend Page: artifacts/mafia-world/src/pages/bank.tsx (جديد)
+────────────────────────────────────────────────────────
+(الكود طويل جداً - سأكمله في الرسالة التالية...)
+
+
+⚠️ هل تريد أن أكمل:
+- صفحة البنك Frontend (bank.tsx)
+- المستشفى (نظام العلاج)
+- الحرس الملكي
+- التصويت لعزل البوس
+
+أم تريد هذا الجزء كافٍ الآن؟

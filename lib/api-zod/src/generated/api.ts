@@ -1121,6 +1121,7 @@ export const ListCitiesResponseItem = zod.object({
   country: zod.string(),
   playerCount: zod.number(),
   description: zod.string(),
+  descriptionAr: zod.string(),
   imageUrl: zod.string().nullish(),
 });
 export const ListCitiesResponse = zod.array(ListCitiesResponseItem);
