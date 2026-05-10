@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Crosshair, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/format";
+import { Link } from "wouter";
 
 interface Calc {
   attacker: { username: string; rank: number; weaponName: string; weaponAtk: number; totalAtk: number; ammoType: string };
@@ -63,6 +64,7 @@ export default function KillCalculatorPage() {
   const [armorId, setArmorId] = useState("0");
   const [guards, setGuards] = useState("0");
   const [result, setResult] = useState<Calc | null>(null);
+  const [errorInfo, setErrorInfo] = useState<{ message: string; code?: string } | null>(null);
   const isAr = language === "ar";
 
   const armorQuery = useQuery<ArmorItem[]>({
@@ -96,11 +98,22 @@ export default function KillCalculatorPage() {
         body: JSON.stringify(body),
       });
       const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? "Failed");
+      if (!r.ok) {
+        const msg = isAr && data.errorAr ? data.errorAr : (data.error ?? "Failed");
+        const err = new Error(msg) as Error & { code?: string };
+        err.code = data.code;
+        throw err;
+      }
       return data as Calc;
     },
-    onSuccess: setResult,
-    onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
+    onSuccess: (d) => {
+      setErrorInfo(null);
+      setResult(d);
+    },
+    onError: (e: Error & { code?: string }) => {
+      setResult(null);
+      setErrorInfo({ message: e.message, code: e.code });
+    },
   });
 
   const selectClass =
@@ -192,6 +205,24 @@ export default function KillCalculatorPage() {
           </div>
         </CardContent>
       </Card>
+
+      {errorInfo && (
+        <Card className="border-red-500/40 bg-red-950/30" style={dirStyle} data-testid="kill-calculator-error">
+          <CardContent className="py-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-2">
+              <div className="text-sm text-red-100 font-semibold">{errorInfo.message}</div>
+              {errorInfo.code === "no_weapon" && (
+                <Link href="/weapons">
+                  <Button size="sm" variant="outline" className="border-red-400/50 text-red-100 hover:bg-red-900/30">
+                    {isAr ? "اذهب إلى الأسلحة" : "Go to Weapons"}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {result && (
         <Card data-testid="kill-calculator-result" style={dirStyle}>

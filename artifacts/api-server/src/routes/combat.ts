@@ -47,7 +47,11 @@ router.post("/combat/calculate", requireAuth, async (req, res) => {
       weapon = w ?? null;
     }
     if (!weapon) {
-      return void res.status(400).json({ error: "No weapon equipped" });
+      return void res.status(400).json({
+        error: "No weapon equipped",
+        errorAr: "لا يوجد سلاح مجهّز. توجّه إلى صفحة الأسلحة وجهّز سلاحك أولاً.",
+        code: "no_weapon",
+      });
     }
 
     const attackerRankRow = await getRankRow(await getCurrentRank(player.id));
