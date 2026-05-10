@@ -16,7 +16,6 @@ import { WebView, type WebViewNavigation } from "react-native-webview";
 import { Feather } from "@expo/vector-icons";
 
 const SITE_URL = "https://mafia.ntaqnia.com/";
-const ALLOWED_HOSTS = ["mafia.ntaqnia.com", "ntaqnia.com", "clerk.com", "accounts.dev"];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -47,14 +46,7 @@ export default function HomeScreen() {
     currentUrlRef.current = nav.url;
   }, []);
 
-  const handleShouldStartLoad = useCallback((req: { url: string }) => {
-    try {
-      const u = new URL(req.url);
-      return ALLOWED_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith("." + h));
-    } catch {
-      return true;
-    }
-  }, []);
+  const handleShouldStartLoad = useCallback(() => true, []);
 
   const reload = useCallback(() => {
     setError(null);
@@ -115,8 +107,10 @@ export default function HomeScreen() {
         cacheEnabled
         mixedContentMode="compatibility"
         originWhitelist={["https://*", "http://*"]}
+        setSupportMultipleWindows={false}
+        javaScriptCanOpenWindowsAutomatically
         userAgent={Platform.OS === "android"
-          ? "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Mobile Safari/537.36 MafiaWorld/1.0"
+          ? "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
           : undefined}
       />
       {loading && (
