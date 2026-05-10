@@ -49,7 +49,24 @@ export default function SuperAdminActivityLog() {
           className="bg-[#1e293b] border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#ef4444] w-56"
         />
 
-        <div className="bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
+        {/* Mobile card stack */}
+        <div className="md:hidden space-y-2">
+          {loading ? (
+            <div className="bg-[#1e293b] rounded-xl border border-slate-700 py-8 text-center text-slate-500 text-sm">Loading...</div>
+          ) : events.map(e => (
+            <div key={e.id} className="bg-[#1e293b] rounded-xl border border-slate-700 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${TYPE_COLORS[e.type] ?? "text-slate-400 bg-slate-700/20"}`}>{e.type}</span>
+                <span className="text-xs text-slate-500 text-right shrink-0">{new Date(e.createdAt).toLocaleString()}</span>
+              </div>
+              <div className="mt-1.5 text-xs text-slate-300 break-words">{e.description}</div>
+              <div className="mt-1 text-xs text-slate-500">{e.username ?? "—"}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-400 uppercase border-b border-slate-700">

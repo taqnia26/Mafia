@@ -9,7 +9,7 @@ interface City {
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#1e293b] border border-slate-700 rounded-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-[#1e293b] border border-slate-700 rounded-xl w-full max-w-sm p-5 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-white text-sm">{title}</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white">✕</button>

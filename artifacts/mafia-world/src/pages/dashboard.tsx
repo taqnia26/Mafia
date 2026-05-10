@@ -150,8 +150,8 @@ export default function Dashboard() {
               <div className="divide-y divide-border/50">
                 {activity.map((item) => (
                   <div key={item.id} className="p-4 flex items-start gap-4 hover:bg-secondary/30 transition-colors">
-                    <div className="flex-1">
-                      <p className="text-sm text-foreground">{item.description}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground break-words">{item.description}</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: language === "ar" ? arLocale : undefined })}
                       </p>

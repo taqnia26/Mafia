@@ -143,7 +143,58 @@ export default function SuperAdminPlayers() {
           </label>
         </div>
 
-        <div className="bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
+        {/* Mobile card stack */}
+        <div className="md:hidden space-y-2">
+          {loading ? (
+            <div className="bg-[#1e293b] rounded-xl border border-slate-700 py-8 text-center text-slate-500 text-sm">Loading...</div>
+          ) : players.map(p => (
+            <div key={p.id} className={`bg-[#1e293b] rounded-xl border border-slate-700 p-3 ${p.isBanned ? "opacity-60" : ""}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-white text-sm flex items-center gap-1.5 flex-wrap">
+                    <span className="truncate">{p.username}</span>
+                    {p.isBanned && <span className="text-xs bg-red-900/50 text-red-400 border border-red-700/40 px-1.5 py-0.5 rounded">banned</span>}
+                    {p.isPermanentlyDead && <span className="text-xs bg-red-950/70 text-red-300 border border-red-800/60 px-1.5 py-0.5 rounded">💀</span>}
+                  </div>
+                  <div className="text-xs text-slate-500">{p.cityName} • Lvl {p.level}</div>
+                </div>
+                {p.isPermanentlyDead ? (
+                  <span className="text-xs bg-red-950/60 text-red-300 border border-red-800/60 px-2 py-0.5 rounded-full shrink-0">DEAD</span>
+                ) : p.isInPrison ? (
+                  <span className="text-xs bg-orange-900/30 text-orange-400 border border-orange-700/50 px-2 py-0.5 rounded-full shrink-0">Prison</span>
+                ) : (
+                  <span className="text-xs bg-green-900/20 text-green-400 border border-green-700/30 px-2 py-0.5 rounded-full shrink-0">Active</span>
+                )}
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">
+                <div><span className="text-slate-500">$</span> <span className="text-slate-300 font-mono">{p.money.toLocaleString()}</span></div>
+                <div><span className="text-slate-500">K/D</span> <span className="text-slate-300 font-mono">{p.killCount}/{p.deathCount}</span></div>
+                <div><span className="text-slate-500">A/D</span> <span className="text-slate-300 font-mono">{p.attackPower}/{p.defensePower}</span></div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                <button onClick={() => setDialog({ type: "edit", player: p })} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded">Edit</button>
+                <button onClick={() => setDialog({ type: "add-money", player: p })} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded">💰</button>
+                {p.isInPrison
+                  ? <button onClick={() => releasePlayer(p)} className="text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded">Release</button>
+                  : <button onClick={() => setDialog({ type: "jail", player: p })} className="text-xs bg-orange-900/50 hover:bg-orange-800 text-orange-300 px-2 py-1 rounded">Jail</button>}
+                {p.isBanned
+                  ? <button onClick={() => unbanPlayer(p)} className="text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded">Unban</button>
+                  : <button onClick={() => setDialog({ type: "ban", player: p })} className="text-xs bg-red-900/40 hover:bg-red-800 text-red-400 px-2 py-1 rounded">Ban</button>}
+                {p.isChatMuted
+                  ? <button onClick={() => unmuteChat(p)} className="text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded">Unmute</button>
+                  : <button onClick={() => setDialog({ type: "chat-mute", player: p })} className="text-xs bg-purple-900/40 hover:bg-purple-800 text-purple-300 px-2 py-1 rounded">Mute</button>}
+                {p.isPermanentlyDead && (
+                  <button onClick={() => setDialog({ type: "revive", player: p })} className="text-xs bg-emerald-800/50 hover:bg-emerald-700 text-emerald-200 px-2 py-1 rounded">Revive</button>
+                )}
+                <button onClick={() => setDialog({ type: "reset", player: p })} className="text-xs bg-yellow-900/40 hover:bg-yellow-800/60 text-yellow-400 px-2 py-1 rounded">Reset</button>
+                <button onClick={() => setDialog({ type: "delete", player: p })} className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded">Del</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-400 uppercase border-b border-slate-700">
@@ -233,7 +284,7 @@ export default function SuperAdminPlayers() {
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#1e293b] border border-slate-700 rounded-xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-[#1e293b] border border-slate-700 rounded-xl w-full max-w-sm p-5 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-white text-sm">{title}</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-white">✕</button>

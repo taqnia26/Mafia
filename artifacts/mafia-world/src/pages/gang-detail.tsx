@@ -83,12 +83,12 @@ export default function GangDetail() {
           ) : members && members.length > 0 ? (
             <div className="divide-y divide-border/50">
               {members.map((member) => (
-                <div key={member.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-foreground">{member.username}</p>
+                <div key={member.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-foreground truncate">{member.username}</p>
                     <p className="text-xs text-muted-foreground">{t("common.level")} {member.level}</p>
                   </div>
-                  <Badge variant="outline" className={`${getRankColor(member.rank)} font-bold tracking-wider uppercase`}>
+                  <Badge variant="outline" className={`${getRankColor(member.rank)} font-bold tracking-wider uppercase shrink-0`}>
                     {member.rank === "Boss" && <Crown className="w-3 h-3 mr-1" />}
                     {getRankLabel(member.rank)}
                   </Badge>

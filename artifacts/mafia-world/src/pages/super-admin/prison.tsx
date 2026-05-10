@@ -46,7 +46,27 @@ export default function SuperAdminPrison() {
         {prisoners.length === 0 && !loading ? (
           <div className="bg-[#1e293b] rounded-xl border border-slate-700 py-12 text-center text-slate-500">No players in prison</div>
         ) : (
-          <div className="bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
+          <>
+          {/* Mobile card stack */}
+          <div className="md:hidden space-y-2">
+            {loading ? (
+              <div className="bg-[#1e293b] rounded-xl border border-slate-700 py-8 text-center text-slate-500 text-sm">Loading...</div>
+            ) : prisoners.map(p => (
+              <div key={p.id} className="bg-[#1e293b] rounded-xl border border-slate-700 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-white text-sm truncate">{p.username} <span className="text-xs text-slate-500">Lvl {p.level}</span></p>
+                    <p className="text-xs text-slate-500 truncate">{p.prisonCrime ?? "—"}</p>
+                  </div>
+                  <span className="text-orange-400 text-xs font-mono shrink-0">{timeLeft(p.prisonReleaseAt)}</span>
+                </div>
+                <button onClick={() => release(p)} className="mt-2 text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded w-full">Release</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-slate-400 uppercase border-b border-slate-700">
@@ -76,6 +96,7 @@ export default function SuperAdminPrison() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </AdminLayout>

@@ -302,10 +302,10 @@ export default function Attack() {
               <div className="divide-y divide-border/50">
                 {myAttacks.map((atk) => (
                   <div key={atk.id} className="p-4 flex flex-col gap-2 hover:bg-secondary/20">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-bold font-heading uppercase text-lg">{t("attack.target")}: {atk.targetUsername}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold font-heading uppercase text-base sm:text-lg break-words">{t("attack.target")}: {atk.targetUsername}</p>
+                        <p className="text-xs text-muted-foreground mt-1 break-words">
                           {atk.weaponName} — {atk.ammoUsed} {t("attack.rounds")} — {atk.fromCityName} → {atk.toCityName}
                         </p>
                       </div>

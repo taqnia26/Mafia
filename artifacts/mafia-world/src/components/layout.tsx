@@ -25,6 +25,8 @@ import {
   MessageCircle,
   Mail,
   Menu,
+  DollarSign,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +39,7 @@ import {
 } from "@/components/ui/sheet";
 import { useQuery } from "@tanstack/react-query";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 
 
 interface LayoutProps {
@@ -133,8 +136,8 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
             >
-              <Icon className="w-5 h-5" />
-              <span>{t(item.label)}</span>
+              <Icon className="w-5 h-5 shrink-0" />
+              <span className="truncate">{t(item.label)}</span>
             </Link>
           );
         })}
@@ -149,8 +152,8 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
                 : "text-primary/70 hover:bg-primary/10 hover:text-primary"
             }`}
           >
-            <ShieldAlert className="w-5 h-5" />
-            <span>{t("nav.admin")}</span>
+            <ShieldAlert className="w-5 h-5 shrink-0" />
+            <span className="truncate">{t("nav.admin")}</span>
           </Link>
         )}
       </nav>
@@ -182,7 +185,7 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
         <Button
           variant="ghost"
           className="w-full justify-start text-muted-foreground hover:text-destructive"
-          onClick={() => signOut()}
+          onClick={() => { onNavigate?.(); signOut(); }}
         >
           <LogOut className="w-5 h-5 mr-2" />
           {t("nav.logout")}
@@ -193,8 +196,9 @@ function SidebarBody({ onNavigate }: SidebarBodyProps) {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { t, dir } = useI18n();
+  const { t, dir, language } = useI18n();
   const [open, setOpen] = useState(false);
+  const { data: profileForTopbar } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey(), staleTime: 30000 } });
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row">
@@ -231,7 +235,21 @@ export function Layout({ children }: LayoutProps) {
           </span>
         </Link>
 
-        <NotificationBell />
+        <div className="flex items-center gap-1.5 shrink-0">
+          {profileForTopbar && (
+            <>
+              <span className="flex items-center gap-1 text-xs font-mono text-green-500 bg-green-500/10 px-1.5 py-1 rounded" data-testid="topbar-money">
+                <DollarSign className="w-3 h-3" />
+                <span className="tabular-nums">{Intl.NumberFormat(language === "ar" ? "ar-EG" : "en-US", { notation: "compact", maximumFractionDigits: 1 }).format(profileForTopbar.money)}</span>
+              </span>
+              <span className="flex items-center gap-1 text-xs font-mono text-primary bg-primary/10 px-1.5 py-1 rounded" data-testid="topbar-level">
+                <Star className="w-3 h-3" />
+                <span className="tabular-nums">{profileForTopbar.level}</span>
+              </span>
+            </>
+          )}
+          <NotificationBell />
+        </div>
       </header>
 
       {/* Desktop sidebar */}
@@ -239,7 +257,7 @@ export function Layout({ children }: LayoutProps) {
         <SidebarBody />
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
+      <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-8 min-w-0">
         <div className="max-w-6xl mx-auto">{children}</div>
       </main>
     </div>

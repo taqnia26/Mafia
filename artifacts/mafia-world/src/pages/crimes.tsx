@@ -184,9 +184,9 @@ export default function Crimes() {
 
                   <div className="flex flex-col sm:flex-row">
                     <div className="p-5 flex-1 space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-lg font-bold font-heading uppercase">{crime.name}</h3>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base sm:text-lg font-bold font-heading uppercase break-words">{crime.name}</h3>
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {t("common.level")} {crime.requiredLevel} {t("crimes.levelRequired")}
                           </p>
@@ -220,7 +220,7 @@ export default function Crimes() {
                       </div>
                     </div>
 
-                    <div className="bg-secondary/20 p-5 flex flex-col justify-center items-center sm:border-l border-border/50 sm:w-44 gap-3">
+                    <div className="bg-secondary/20 p-4 sm:p-5 flex flex-col justify-center items-center border-t sm:border-t-0 sm:border-l border-border/50 sm:w-44 gap-3">
                       {isLocked ? (
                         <div className="flex flex-col items-center gap-1 text-center">
                           <Lock className="w-5 h-5 text-muted-foreground" />

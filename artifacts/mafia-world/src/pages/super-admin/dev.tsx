@@ -105,9 +105,9 @@ export default function SuperAdminDev() {
           <p className="text-xs text-slate-400 mt-1">SQL console, data operations, and server logs.</p>
         </div>
 
-        <div className="flex gap-1 bg-[#1e293b] border border-slate-700 rounded-lg p-1 w-fit">
+        <div className="flex gap-1 bg-[#1e293b] border border-slate-700 rounded-lg p-1 w-fit max-w-full overflow-x-auto">
           {(["sql", "seed", "logs"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-md text-sm font-medium capitalize transition-colors ${tab === t ? "bg-[#ef4444] text-white" : "text-slate-400 hover:text-white"}`}>
+            <button key={t} onClick={() => setTab(t)} className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium capitalize transition-colors whitespace-nowrap ${tab === t ? "bg-[#ef4444] text-white" : "text-slate-400 hover:text-white"}`}>
               {t === "sql" ? "SQL Console" : t === "seed" ? "Data Tools" : "Server Logs"}
             </button>
           ))}

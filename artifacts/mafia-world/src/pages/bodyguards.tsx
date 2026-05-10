@@ -205,14 +205,14 @@ export default function Bodyguards() {
                   {isRequestsLoading ? (
                     <div className="p-4"><Skeleton className="h-16 w-full bg-secondary" /></div>
                   ) : incomingRequests.map(r => (
-                    <div key={r.id} className="p-4 flex items-center justify-between gap-4">
-                      <div>
+                    <div key={r.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
                         <p className="font-bold font-heading uppercase">{r.fromUsername}</p>
                         {r.offeredMoney > 0 && (
                           <p className="text-xs text-green-500 font-mono mt-1">{t("bodyguards.offering")}: ${r.offeredMoney.toLocaleString()}</p>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button
                           size="sm"
                           className="font-heading uppercase"

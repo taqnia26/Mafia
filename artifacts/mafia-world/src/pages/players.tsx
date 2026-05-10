@@ -95,9 +95,9 @@ export default function Players() {
             return (
               <Card key={player.id} className="bg-card border-border hover:border-primary/50 transition-colors">
                 <CardContent className="p-5">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-lg font-heading uppercase">{player.username}</h3>
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold text-lg font-heading uppercase truncate">{player.username}</h3>
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm text-muted-foreground">{t("common.level")} {player.level} • {player.cityName}</p>
                         {player.isInPrison && (

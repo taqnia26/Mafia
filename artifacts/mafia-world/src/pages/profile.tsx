@@ -217,14 +217,14 @@ export default function Profile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div
-                className={`flex items-center justify-between p-4 rounded-lg border ${
+                className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg border ${
                   antiSpyActive
                     ? "bg-emerald-950/30 border-emerald-800/50"
                     : "bg-secondary/30 border-border/50"
                 }`}
                 data-testid="status-anti-spy"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   {antiSpyActive ? (
                     <ShieldCheck className="w-8 h-8 text-emerald-400" />
                   ) : (
@@ -238,8 +238,8 @@ export default function Profile() {
                   </div>
                 </div>
                 {antiSpyActive && (
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground flex items-center justify-end gap-1">
+                  <div className="sm:text-right">
+                    <p className="text-xs text-muted-foreground flex items-center sm:justify-end gap-1">
                       <Clock className="w-3 h-3" />
                       {t("profile.antiSpyTimeRemaining")}
                     </p>

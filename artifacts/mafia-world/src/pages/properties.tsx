@@ -348,7 +348,7 @@ export default function Properties() {
                     <Progress value={r.integrity} className="h-2" />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
                     <div>
                       <div>{t("properties.reactor.energyPerHour")}</div>
                       <div className="text-foreground font-medium">{r.energyPerHour}</div>

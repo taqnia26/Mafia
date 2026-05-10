@@ -34,7 +34,31 @@ export default function SuperAdminBlackMarket() {
           {msg && <span className="text-xs text-green-400 bg-green-900/20 px-2 py-1 rounded">{msg}</span>}
         </div>
 
-        <div className="bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
+        {/* Mobile card stack */}
+        <div className="md:hidden space-y-2">
+          {loading ? (
+            <div className="bg-[#1e293b] rounded-xl border border-slate-700 py-8 text-center text-slate-500 text-sm">Loading...</div>
+          ) : listings.length === 0 ? (
+            <div className="bg-[#1e293b] rounded-xl border border-slate-700 py-8 text-center text-slate-500 text-sm">No listings</div>
+          ) : listings.map(l => (
+            <div key={l.id} className="bg-[#1e293b] rounded-xl border border-slate-700 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-white text-sm truncate">{l.item_name}</p>
+                  <p className="text-xs text-slate-500 truncate">{l.seller_name}</p>
+                </div>
+                <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded shrink-0">{l.item_type}</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-xs">
+                <span className="text-slate-400">Qty <span className="text-slate-200 font-mono">{l.quantity}</span> &nbsp;·&nbsp; <span className="text-slate-200 font-mono">${l.price.toLocaleString()}</span></span>
+                <button onClick={() => removeListing(l.id)} className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded">Remove</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-[#1e293b] rounded-xl border border-slate-700 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-400 uppercase border-b border-slate-700">
