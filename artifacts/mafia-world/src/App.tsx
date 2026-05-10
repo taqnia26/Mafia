@@ -41,7 +41,9 @@ import Prison from "@/pages/prison";
 import Admin from "@/pages/admin";
 import Ranks from "@/pages/ranks";
 import Properties from "@/pages/properties";
+import Dead from "@/pages/dead";
 import { Layout } from "@/components/layout";
+import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 
@@ -154,13 +156,27 @@ function HomeRedirect() {
   );
 }
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function DeathGate({ children }: { children: React.ReactNode }) {
+  const { data: profile } = useGetMyProfile({ query: { queryKey: getGetMyProfileQueryKey() } });
+  if (profile?.isPermanentlyDead) {
+    return <Redirect to="/dead" />;
+  }
+  return <>{children}</>;
+}
+
+function ProtectedRoute({ component: Component, allowDead = false }: { component: React.ComponentType; allowDead?: boolean }) {
   return (
     <>
       <Show when="signed-in">
-        <Layout>
+        {allowDead ? (
           <Component />
-        </Layout>
+        ) : (
+          <DeathGate>
+            <Layout>
+              <Component />
+            </Layout>
+          </DeathGate>
+        )}
       </Show>
       <Show when="signed-out">
         <Redirect to="/sign-in" />
@@ -231,6 +247,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/admin"><ProtectedRoute component={Admin} /></Route>
               <Route path="/ranks"><ProtectedRoute component={Ranks} /></Route>
               <Route path="/properties"><ProtectedRoute component={Properties} /></Route>
+              <Route path="/dead"><ProtectedRoute component={Dead} allowDead /></Route>
 
               <Route component={NotFound} />
             </Switch>

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, requireAlive, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   attacksTable, playersTable, weaponsTable, citiesTable,
   playerWeaponsTable, playerAmmoTable, playerNpcGuardsTable, playerArmorTable, armorItemsTable,
@@ -13,7 +13,7 @@ import { recordSpy, hasRecentSpy } from "../lib/spyCache";
 
 const router = Router();
 
-router.post("/attacks/spy/:targetPlayerId", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/attacks/spy/:targetPlayerId", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -23,6 +23,9 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, requireNotInPrison, asy
 
     const target = await db.select().from(playersTable).where(eq(playersTable.id, targetId)).limit(1);
     if (!target[0]) return void res.status(404).json({ error: "Target not found" });
+    if (target[0].isPermanentlyDead) {
+      return void res.status(400).json({ error: "Target is already dead", code: "PLAYER_DEAD_TARGET" });
+    }
 
     const t = target[0];
 
@@ -77,7 +80,7 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, requireNotInPrison, asy
   }
 });
 
-router.post("/attacks", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/attacks", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -105,6 +108,9 @@ router.post("/attacks", requireAuth, requireNotInPrison, async (req, res) => {
     if (!target[0]) return void res.status(404).json({ error: "Target not found" });
     if (!weaponCatalog[0]) return void res.status(404).json({ error: "Weapon not found" });
     if (target[0].id === player.id) return void res.status(400).json({ error: "Cannot attack yourself" });
+    if (target[0].isPermanentlyDead) {
+      return void res.status(400).json({ error: "Target is already dead", code: "PLAYER_DEAD_TARGET" });
+    }
 
     if (!ownedWeapon[0] || ownedWeapon[0].quantity < 1) {
       return void res.status(403).json({ error: "You do not own that weapon" });
@@ -253,7 +259,7 @@ router.get("/attacks/incoming", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/attacks/:attackId/cancel", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/attacks/:attackId/cancel", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

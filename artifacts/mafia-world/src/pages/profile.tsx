@@ -70,6 +70,16 @@ export default function Profile() {
             </div>
             <div>
               <h2 className="text-2xl font-bold font-heading uppercase">{profile.username}</h2>
+              {profile.isPermanentlyDead && (
+                <Badge
+                  variant="outline"
+                  className="mt-2 border-red-700 bg-red-950/40 text-red-400 flex items-center gap-1"
+                  data-testid="badge-dead"
+                >
+                  <Skull className="w-3 h-3" />
+                  {t("dead.badge")}
+                </Badge>
+              )}
               <p className="text-muted-foreground flex items-center justify-center gap-1 mt-1">
                 <MapPin className="w-4 h-4" /> {profile.cityName}
               </p>

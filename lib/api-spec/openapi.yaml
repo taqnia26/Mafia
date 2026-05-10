@@ -82,6 +82,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Player"
 
+  /players/me/restart:
+    post:
+      operationId: restartAfterDeath
+      tags: [players]
+      summary: Reset the current player after a permanent death
+      responses:
+        "200":
+          description: Restart successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestartResponse"
+        "400":
+          description: Player is not dead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /players/me/anti-spy:
     post:
       operationId: toggleAntiSpy
@@ -1490,6 +1509,16 @@ components:
           type: string
         rankColor:
           type: string
+        isPermanentlyDead:
+          type: boolean
+        diedAt:
+          type: ["string", "null"]
+        killedByPlayerId:
+          type: ["integer", "null"]
+        killedByUsername:
+          type: ["string", "null"]
+        deathCause:
+          type: ["string", "null"]
       required:
         - id
         - clerkId
@@ -1516,6 +1545,21 @@ components:
         - rankNameEn
         - rankNameAr
         - rankColor
+        - isPermanentlyDead
+        - diedAt
+        - killedByPlayerId
+        - deathCause
+
+    RestartResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        message:
+          type: string
+      required:
+        - ok
+        - message
 
     PlayerUpdate:
       type: object

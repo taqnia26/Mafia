@@ -7,6 +7,7 @@ interface Player {
   isInPrison: boolean; prisonReleaseAt: string | null; isAdmin: boolean;
   adminRole: string | null; gangId: number | null; createdAt: string;
   cityName: string; isBanned: boolean; banReason: string | null;
+  isPermanentlyDead?: boolean; diedAt?: string | null; deathCause?: string | null;
 }
 
 type Dialog =
@@ -16,6 +17,7 @@ type Dialog =
   | { type: "ban"; player: Player }
   | { type: "delete"; player: Player }
   | { type: "reset"; player: Player }
+  | { type: "revive"; player: Player }
   | null;
 
 function api(path: string, opts?: RequestInit) {
@@ -94,6 +96,12 @@ export default function SuperAdminPlayers() {
     notify("Reset"); setDialog(null); load();
   }
 
+  async function revivePlayer(p: Player) {
+    const r = await api(`/super-admin/players/${p.id}/revive`, { method: "POST" });
+    if (r.ok) { notify("Revived"); setDialog(null); load(); }
+    else { const d = await r.json() as { error: string }; notify("Error: " + d.error); }
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-4">
@@ -140,6 +148,7 @@ export default function SuperAdminPlayers() {
                     <div className="font-medium text-white flex items-center gap-1.5">
                       {p.username}
                       {p.isBanned && <span className="text-xs bg-red-900/50 text-red-400 border border-red-700/40 px-1.5 py-0.5 rounded">banned</span>}
+                      {p.isPermanentlyDead && <span className="text-xs bg-red-950/70 text-red-300 border border-red-800/60 px-1.5 py-0.5 rounded">💀 dead</span>}
                     </div>
                     <div className="text-xs text-slate-500">{p.cityName}</div>
                   </td>
@@ -148,7 +157,9 @@ export default function SuperAdminPlayers() {
                   <td className="px-3 py-3 text-right text-slate-300">{p.killCount}/{p.deathCount}</td>
                   <td className="px-3 py-3 text-right text-slate-300">{p.attackPower}/{p.defensePower}</td>
                   <td className="px-3 py-3 text-center">
-                    {p.isInPrison ? (
+                    {p.isPermanentlyDead ? (
+                      <span className="text-xs bg-red-950/60 text-red-300 border border-red-800/60 px-2 py-0.5 rounded-full">DEAD</span>
+                    ) : p.isInPrison ? (
                       <span className="text-xs bg-orange-900/30 text-orange-400 border border-orange-700/50 px-2 py-0.5 rounded-full">Prison</span>
                     ) : (
                       <span className="text-xs bg-green-900/20 text-green-400 border border-green-700/30 px-2 py-0.5 rounded-full">Active</span>
@@ -166,6 +177,9 @@ export default function SuperAdminPlayers() {
                         ? <button onClick={() => unbanPlayer(p)} className="text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded">Unban</button>
                         : <button onClick={() => setDialog({ type: "ban", player: p })} className="text-xs bg-red-900/40 hover:bg-red-800 text-red-400 px-2 py-1 rounded">Ban</button>
                       }
+                      {p.isPermanentlyDead && (
+                        <button onClick={() => setDialog({ type: "revive", player: p })} className="text-xs bg-emerald-800/50 hover:bg-emerald-700 text-emerald-200 px-2 py-1 rounded">Revive</button>
+                      )}
                       <button onClick={() => setDialog({ type: "reset", player: p })} className="text-xs bg-yellow-900/40 hover:bg-yellow-800/60 text-yellow-400 px-2 py-1 rounded">Reset</button>
                       <button onClick={() => setDialog({ type: "delete", player: p })} className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded">Del</button>
                     </div>
@@ -189,6 +203,7 @@ export default function SuperAdminPlayers() {
       {dialog?.type === "ban" && <BanDialog player={dialog.player} onBan={(r) => banPlayer(dialog.player, r)} onClose={() => setDialog(null)} />}
       {dialog?.type === "delete" && <ConfirmDialog title={`Delete ${dialog.player.username}?`} message="This permanently deletes the player and all their data." confirmLabel="Delete Player" danger onConfirm={() => deletePlayer(dialog.player)} onClose={() => setDialog(null)} />}
       {dialog?.type === "reset" && <ConfirmDialog title={`Reset ${dialog.player.username}?`} message="Resets money, level, stats to defaults. Cannot be undone." confirmLabel="Reset Stats" onConfirm={() => resetPlayer(dialog.player)} onClose={() => setDialog(null)} />}
+      {dialog?.type === "revive" && <ConfirmDialog title={`Revive ${dialog.player.username}?`} message={`Restores HP and clears the permadeath flag. ${dialog.player.deathCause ? `Death cause: ${dialog.player.deathCause}.` : ""}`} confirmLabel="Revive Player" onConfirm={() => revivePlayer(dialog.player)} onClose={() => setDialog(null)} />}
     </AdminLayout>
   );
 }

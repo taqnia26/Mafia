@@ -98,6 +98,26 @@ async function processAttackArrivals(): Promise<void> {
         continue;
       }
 
+      // Skip and refund-style cancel if the target is already permanently dead.
+      // Award no kill/xp/money — the run is already over.
+      if (target[0].isPermanentlyDead) {
+        await db.update(attacksTable)
+          .set({ status: "cancelled", damageDealt: 0, targetSurvived: true })
+          .where(eq(attacksTable.id, attack.id));
+        await logActivity(
+          attacker[0].id,
+          "attack_repelled",
+          `Attack on ${target[0].username} cancelled — target is already dead`,
+        );
+        await createNotification(
+          attacker[0].id,
+          "attack_resolved",
+          `⚠️ Your attack on ${target[0].username} was cancelled — they are already dead.`,
+          "/attack",
+        );
+        continue;
+      }
+
       // Combat stat model:
       //   - player.attackPower / player.defensePower are the source of truth for all combat.
       //   - Rank ATK/DEF bonuses are baked directly into these columns at rank-upgrade time
@@ -219,12 +239,24 @@ async function processAttackArrivals(): Promise<void> {
               updatedAt: new Date(),
             }).where(eq(playersTable.id, attacker[0].id));
 
-            await tx.update(playersTable).set({
-              health: targetDied ? 50 : Math.max(1, newHealth),
-              deathCount: targetDied ? sql`${playersTable.deathCount} + 1` : playersTable.deathCount,
-              money: sql`GREATEST(0, ${playersTable.money} - ${moneyStolen})`,
-              updatedAt: new Date(),
-            }).where(eq(playersTable.id, target[0].id));
+            if (targetDied) {
+              await tx.update(playersTable).set({
+                health: 0,
+                deathCount: sql`${playersTable.deathCount} + 1`,
+                money: sql`GREATEST(0, ${playersTable.money} - ${moneyStolen})`,
+                isPermanentlyDead: true,
+                diedAt: new Date(),
+                killedByPlayerId: attacker[0].id,
+                deathCause: `Killed by ${attacker[0].username}`,
+                updatedAt: new Date(),
+              }).where(eq(playersTable.id, target[0].id));
+            } else {
+              await tx.update(playersTable).set({
+                health: Math.max(1, newHealth),
+                money: sql`GREATEST(0, ${playersTable.money} - ${moneyStolen})`,
+                updatedAt: new Date(),
+              }).where(eq(playersTable.id, target[0].id));
+            }
           });
 
           await logActivity(
@@ -235,7 +267,7 @@ async function processAttackArrivals(): Promise<void> {
           await logActivity(
             target[0].id,
             "attack_lost",
-            `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}${targetDied ? " (eliminated — HP reset to 50)" : ""}`,
+            `Lost against ${attacker[0].username} — took ${damage} dmg, lost $${moneyStolen}${targetDied ? " (KILLED — permanent death)" : ""}`,
           );
           await Promise.all([
             createNotification(
@@ -250,7 +282,7 @@ async function processAttackArrivals(): Promise<void> {
               target[0].id,
               "attack_resolved",
               targetDied
-                ? `💀 You were eliminated by ${attacker[0].username}! -$${moneyStolen}`
+                ? `☠️ You were killed by ${attacker[0].username}. Your run is over. -$${moneyStolen}`
                 : `⚔️ ${attacker[0].username} attacked you — ${damage} dmg taken, -$${moneyStolen}`,
               "/attack",
             ),

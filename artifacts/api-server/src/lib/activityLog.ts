@@ -25,7 +25,9 @@ export type ActivityType =
   | "rank_upgrade"
   | "property_purchased"
   | "property_upgraded"
-  | "income_collected";
+  | "income_collected"
+  | "killed"
+  | "restart";
 
 export async function logActivity(playerId: number, type: ActivityType, description: string) {
   await db.insert(activityLogTable).values({ playerId, type, description });

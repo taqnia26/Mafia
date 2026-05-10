@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireAlive, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import { gangsTable, playersTable, gangRankEnum } from "@workspace/db/schema";
 import { eq, and, count, desc, sql } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
@@ -28,7 +28,7 @@ router.get("/gangs", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/gangs", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/gangs", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -87,7 +87,7 @@ router.get("/gangs/:gangId", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/gangs/:gangId/join", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/gangs/:gangId/join", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -107,7 +107,7 @@ router.post("/gangs/:gangId/join", requireAuth, requireNotInPrison, async (req, 
   }
 });
 
-router.post("/gangs/me/leave", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/gangs/me/leave", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -148,7 +148,7 @@ router.get("/gangs/:gangId/members", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/gangs/:gangId/members/:memberId/promote", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/gangs/:gangId/members/:memberId/promote", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -184,7 +184,7 @@ router.post("/gangs/:gangId/members/:memberId/promote", requireAuth, requireNotI
   }
 });
 
-router.post("/gangs/:gangId/deposit", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/gangs/:gangId/deposit", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireAlive, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   propertyTypesTable, playerPropertiesTable, playerRanksTable,
   playerRankProgressTable, playersTable,
@@ -155,7 +155,7 @@ router.get("/properties/my", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/properties/buy", requireAuth, async (req, res) => {
+router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -274,7 +274,7 @@ router.post("/properties/buy", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/properties/:id/upgrade", requireAuth, async (req, res) => {
+router.post("/properties/:id/upgrade", requireAuth, requireAlive, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -340,7 +340,7 @@ router.post("/properties/:id/upgrade", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/properties/collect", requireAuth, async (req, res) => {
+router.post("/properties/collect", requireAuth, requireAlive, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

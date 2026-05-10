@@ -85,6 +85,7 @@ export * from "./propertyType";
 export * from "./ranksResponse";
 export * from "./ranksResponsePlayer";
 export * from "./rankUpgradeResponse";
+export * from "./restartResponse";
 export * from "./spyResult";
 export * from "./travelInput";
 export * from "./travelResult";

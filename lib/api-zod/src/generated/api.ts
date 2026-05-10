@@ -43,6 +43,11 @@ export const GetMyProfileResponse = zod.object({
   rankNameEn: zod.string(),
   rankNameAr: zod.string(),
   rankColor: zod.string(),
+  isPermanentlyDead: zod.boolean(),
+  diedAt: zod.string().nullable(),
+  killedByPlayerId: zod.number().nullable(),
+  killedByUsername: zod.string().nullish(),
+  deathCause: zod.string().nullable(),
 });
 
 /**
@@ -78,6 +83,19 @@ export const UpdateMyProfileResponse = zod.object({
   rankNameEn: zod.string(),
   rankNameAr: zod.string(),
   rankColor: zod.string(),
+  isPermanentlyDead: zod.boolean(),
+  diedAt: zod.string().nullable(),
+  killedByPlayerId: zod.number().nullable(),
+  killedByUsername: zod.string().nullish(),
+  deathCause: zod.string().nullable(),
+});
+
+/**
+ * @summary Reset the current player after a permanent death
+ */
+export const RestartAfterDeathResponse = zod.object({
+  ok: zod.boolean(),
+  message: zod.string(),
 });
 
 /**
@@ -113,6 +131,11 @@ export const ToggleAntiSpyResponse = zod.object({
   rankNameEn: zod.string(),
   rankNameAr: zod.string(),
   rankColor: zod.string(),
+  isPermanentlyDead: zod.boolean(),
+  diedAt: zod.string().nullable(),
+  killedByPlayerId: zod.number().nullable(),
+  killedByUsername: zod.string().nullish(),
+  deathCause: zod.string().nullable(),
 });
 
 /**
@@ -156,6 +179,11 @@ export const ListPlayersResponse = zod.object({
       rankNameEn: zod.string(),
       rankNameAr: zod.string(),
       rankColor: zod.string(),
+      isPermanentlyDead: zod.boolean(),
+      diedAt: zod.string().nullable(),
+      killedByPlayerId: zod.number().nullable(),
+      killedByUsername: zod.string().nullish(),
+      deathCause: zod.string().nullable(),
     }),
   ),
   total: zod.number(),
@@ -196,6 +224,11 @@ export const GetPlayerResponse = zod.object({
   rankNameEn: zod.string(),
   rankNameAr: zod.string(),
   rankColor: zod.string(),
+  isPermanentlyDead: zod.boolean(),
+  diedAt: zod.string().nullable(),
+  killedByPlayerId: zod.number().nullable(),
+  killedByUsername: zod.string().nullish(),
+  deathCause: zod.string().nullable(),
 });
 
 /**

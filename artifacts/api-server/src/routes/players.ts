@@ -3,10 +3,22 @@ import { db } from "../lib/db";
 import { requireAuth, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   playersTable, gangsTable, citiesTable, playerRanksTable, playerRankProgressTable,
+  playerWeaponsTable, playerAmmoTable, playerArmorTable, playerNpcGuardsTable,
+  playerGuardsTable, bodyguardRequestsTable, playerPropertiesTable,
+  attacksTable, blackMarketListingsTable, crimeRecordsTable, activityLogTable,
+  notificationsTable,
 } from "@workspace/db/schema";
-import { eq, ilike, and, count, SQL } from "drizzle-orm";
+import { eq, ilike, and, count, or, SQL } from "drizzle-orm";
+import { logActivity } from "../lib/activityLog";
 
 const router = Router();
+
+async function resolveKillerUsername(killerId: number | null): Promise<string | null> {
+  if (!killerId) return null;
+  const rows = await db.select({ username: playersTable.username })
+    .from(playersTable).where(eq(playersTable.id, killerId)).limit(1);
+  return rows[0]?.username ?? null;
+}
 
 async function resolveRankForPlayer(playerId: number): Promise<{ currentRank: number; rankNameEn: string; rankNameAr: string; rankColor: string } | null> {
   const progress = await db
@@ -37,6 +49,7 @@ router.get("/players/me", requireAuth, async (req, res) => {
       gangName = gang[0]?.name ?? null;
     }
     const rankInfo = await resolveRankForPlayer(player.id);
+    const killedByUsername = await resolveKillerUsername(player.killedByPlayerId);
     return void res.json({
       ...player,
       cityName: city[0]?.name ?? "",
@@ -49,7 +62,78 @@ router.get("/players/me", requireAuth, async (req, res) => {
       rankNameEn: rankInfo?.rankNameEn ?? "Street Rat",
       rankNameAr: rankInfo?.rankNameAr ?? "فأر الشوارع",
       rankColor: rankInfo?.rankColor ?? "#6b7280",
+      isPermanentlyDead: player.isPermanentlyDead,
+      diedAt: player.diedAt?.toISOString() ?? null,
+      killedByPlayerId: player.killedByPlayerId ?? null,
+      killedByUsername,
+      deathCause: player.deathCause ?? null,
     });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.post("/players/me/restart", requireAuth, async (req, res) => {
+  try {
+    const clerkId = getCurrentClerkId(req);
+    const player = await getOrCreatePlayer(clerkId);
+
+    if (!player.isPermanentlyDead) {
+      return void res.status(400).json({ error: "You can only restart after death." });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(playerWeaponsTable).where(eq(playerWeaponsTable.playerId, player.id));
+      await tx.delete(playerAmmoTable).where(eq(playerAmmoTable.playerId, player.id));
+      await tx.delete(playerArmorTable).where(eq(playerArmorTable.playerId, player.id));
+      await tx.delete(playerNpcGuardsTable).where(eq(playerNpcGuardsTable.playerId, player.id));
+      await tx.delete(playerGuardsTable).where(or(
+        eq(playerGuardsTable.protectedPlayerId, player.id),
+        eq(playerGuardsTable.guardPlayerId, player.id),
+      ));
+      await tx.delete(bodyguardRequestsTable).where(or(
+        eq(bodyguardRequestsTable.fromPlayerId, player.id),
+        eq(bodyguardRequestsTable.toPlayerId, player.id),
+      ));
+      await tx.delete(playerPropertiesTable).where(eq(playerPropertiesTable.playerId, player.id));
+      await tx.delete(playerRankProgressTable).where(eq(playerRankProgressTable.playerId, player.id));
+      await tx.delete(blackMarketListingsTable).where(eq(blackMarketListingsTable.sellerId, player.id));
+      await tx.delete(attacksTable).where(or(
+        eq(attacksTable.attackerId, player.id),
+        eq(attacksTable.targetId, player.id),
+      ));
+      await tx.delete(crimeRecordsTable).where(eq(crimeRecordsTable.playerId, player.id));
+      await tx.delete(notificationsTable).where(eq(notificationsTable.playerId, player.id));
+      await tx.delete(activityLogTable).where(eq(activityLogTable.playerId, player.id));
+
+      await tx.update(playersTable).set({
+        money: 5000,
+        health: 100,
+        maxHealth: 100,
+        level: 1,
+        xp: 0,
+        attackPower: 10,
+        defensePower: 10,
+        killCount: 0,
+        cityId: 1,
+        gangId: null,
+        gangRank: null,
+        isInPrison: false,
+        prisonReleaseAt: null,
+        prisonCrime: null,
+        isTraveling: false,
+        travelToCityId: null,
+        travelArrivalAt: null,
+        isPermanentlyDead: false,
+        diedAt: null,
+        killedByPlayerId: null,
+        deathCause: null,
+        updatedAt: new Date(),
+      }).where(eq(playersTable.id, player.id));
+    });
+
+    await logActivity(player.id, "restart", "Started over after death");
+    return void res.json({ ok: true, message: "Welcome back to the streets." });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
   }
@@ -71,6 +155,7 @@ router.patch("/players/me", requireAuth, async (req, res) => {
       gangName = gang[0]?.name ?? null;
     }
     const rankInfo = await resolveRankForPlayer(updated.id);
+    const killedByUsername = await resolveKillerUsername(updated.killedByPlayerId);
     return void res.json({
       ...updated,
       cityName: city[0]?.name ?? "",
@@ -83,6 +168,11 @@ router.patch("/players/me", requireAuth, async (req, res) => {
       rankNameEn: rankInfo?.rankNameEn ?? "Street Rat",
       rankNameAr: rankInfo?.rankNameAr ?? "فأر الشوارع",
       rankColor: rankInfo?.rankColor ?? "#6b7280",
+      isPermanentlyDead: updated.isPermanentlyDead,
+      diedAt: updated.diedAt?.toISOString() ?? null,
+      killedByPlayerId: updated.killedByPlayerId ?? null,
+      killedByUsername,
+      deathCause: updated.deathCause ?? null,
     });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
@@ -105,6 +195,7 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
       gangName = gang[0]?.name ?? null;
     }
     const rankInfo = await resolveRankForPlayer(updated.id);
+    const killedByUsername = await resolveKillerUsername(updated.killedByPlayerId);
     return void res.json({
       ...updated,
       cityName: city[0]?.name ?? "",
@@ -117,6 +208,11 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
       rankNameEn: rankInfo?.rankNameEn ?? "Street Rat",
       rankNameAr: rankInfo?.rankNameAr ?? "فأر الشوارع",
       rankColor: rankInfo?.rankColor ?? "#6b7280",
+      isPermanentlyDead: updated.isPermanentlyDead,
+      diedAt: updated.diedAt?.toISOString() ?? null,
+      killedByPlayerId: updated.killedByPlayerId ?? null,
+      killedByUsername,
+      deathCause: updated.deathCause ?? null,
     });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
@@ -159,6 +255,10 @@ router.get("/players", requireAuth, async (req, res) => {
         isTraveling: playersTable.isTraveling,
         travelArrivalAt: playersTable.travelArrivalAt,
         createdAt: playersTable.createdAt,
+        isPermanentlyDead: playersTable.isPermanentlyDead,
+        diedAt: playersTable.diedAt,
+        killedByPlayerId: playersTable.killedByPlayerId,
+        deathCause: playersTable.deathCause,
         cityName: citiesTable.name,
         currentRank: playerRankProgressTable.currentRank,
         rankNameEn: playerRanksTable.nameEn,
@@ -200,6 +300,10 @@ router.get("/players", requireAuth, async (req, res) => {
           rankNameEn: p.rankNameEn ?? "Street Rat",
           rankNameAr: p.rankNameAr ?? "فأر الشوارع",
           rankColor: p.rankColor ?? "#6b7280",
+          isPermanentlyDead: p.isPermanentlyDead,
+          diedAt: p.diedAt?.toISOString() ?? null,
+          killedByPlayerId: p.killedByPlayerId ?? null,
+          deathCause: p.deathCause ?? null,
         };
       }),
       total: totalResult[0]?.count ?? 0,
@@ -236,6 +340,10 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       isTraveling: playersTable.isTraveling,
       travelArrivalAt: playersTable.travelArrivalAt,
       createdAt: playersTable.createdAt,
+      isPermanentlyDead: playersTable.isPermanentlyDead,
+      diedAt: playersTable.diedAt,
+      killedByPlayerId: playersTable.killedByPlayerId,
+      deathCause: playersTable.deathCause,
       cityName: citiesTable.name,
       currentRank: playerRankProgressTable.currentRank,
       rankNameEn: playerRanksTable.nameEn,
@@ -260,6 +368,7 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       const gang = await db.select().from(gangsTable).where(eq(gangsTable.id, p.gangId)).limit(1);
       gangName = gang[0]?.name ?? null;
     }
+    const killedByUsername = await resolveKillerUsername(p.killedByPlayerId);
 
     return void res.json({
       ...p,
@@ -275,6 +384,11 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       rankNameEn: p.rankNameEn ?? "Street Rat",
       rankNameAr: p.rankNameAr ?? "فأر الشوارع",
       rankColor: p.rankColor ?? "#6b7280",
+      isPermanentlyDead: p.isPermanentlyDead,
+      diedAt: p.diedAt?.toISOString() ?? null,
+      killedByPlayerId: p.killedByPlayerId ?? null,
+      killedByUsername,
+      deathCause: p.deathCause ?? null,
     });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });

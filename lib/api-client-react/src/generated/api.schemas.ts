@@ -48,6 +48,20 @@ export interface Player {
   rankNameEn: string;
   rankNameAr: string;
   rankColor: string;
+  isPermanentlyDead: boolean;
+  /** @nullable */
+  diedAt: string | null;
+  /** @nullable */
+  killedByPlayerId: number | null;
+  /** @nullable */
+  killedByUsername?: string | null;
+  /** @nullable */
+  deathCause: string | null;
+}
+
+export interface RestartResponse {
+  ok: boolean;
+  message: string;
 }
 
 export interface PlayerUpdate {

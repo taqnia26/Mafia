@@ -152,11 +152,13 @@ router.get("/super-admin/players", requireSuperAdminSession, async (req, res) =>
         is_in_prison: boolean; prison_release_at: string | null; is_admin: boolean;
         admin_role: string | null; gang_id: number | null; created_at: string;
         city_name: string; is_banned: boolean; ban_reason: string | null;
+        is_permanently_dead: boolean; died_at: string | null; death_cause: string | null;
       }>(
         `SELECT p.id, p.username, p.level, p.xp, p.money, p.attack_power, p.defense_power,
           p.kill_count, p.death_count, p.is_in_prison, p.prison_release_at, p.is_admin,
           p.admin_role, p.gang_id, p.created_at, c.name AS city_name,
-          COALESCE(p.is_banned, FALSE) AS is_banned, p.ban_reason
+          COALESCE(p.is_banned, FALSE) AS is_banned, p.ban_reason,
+          COALESCE(p.is_permanently_dead, FALSE) AS is_permanently_dead, p.died_at, p.death_cause
          FROM players p
          LEFT JOIN cities c ON c.id = p.city_id
          ${whereClause}
@@ -179,6 +181,7 @@ router.get("/super-admin/players", requireSuperAdminSession, async (req, res) =>
         isAdmin: p.is_admin, adminRole: p.admin_role, gangId: p.gang_id,
         createdAt: p.created_at, cityName: p.city_name,
         isBanned: p.is_banned, banReason: p.ban_reason,
+        isPermanentlyDead: p.is_permanently_dead, diedAt: p.died_at, deathCause: p.death_cause,
       })),
       total: Number(totalRows.rows[0]?.cnt ?? 0),
       page: pageNum,
@@ -311,7 +314,29 @@ router.post("/super-admin/players/:id/reset", requireSuperAdminSession, async (r
     await db.update(playersTable).set({
       money: 5000, level: 1, xp: 0, attackPower: 10, defensePower: 10,
       killCount: 0, deathCount: 0, isInPrison: false, prisonReleaseAt: null,
-      prisonCrime: null, gangId: null, gangRank: null, updatedAt: new Date(),
+      prisonCrime: null, gangId: null, gangRank: null,
+      health: 100, isPermanentlyDead: false, diedAt: null,
+      killedByPlayerId: null, deathCause: null,
+      updatedAt: new Date(),
+    }).where(eq(playersTable.id, playerId));
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.post("/super-admin/players/:id/revive", requireSuperAdminSession, async (req, res) => {
+  try {
+    const playerId = parseInt(String(req.params.id));
+    const rows = await db.select().from(playersTable).where(eq(playersTable.id, playerId)).limit(1);
+    if (!rows[0]) return void res.status(404).json({ error: "Player not found" });
+    await db.update(playersTable).set({
+      isPermanentlyDead: false,
+      diedAt: null,
+      killedByPlayerId: null,
+      deathCause: null,
+      health: rows[0].maxHealth,
+      updatedAt: new Date(),
     }).where(eq(playersTable.id, playerId));
     return void res.json({ ok: true });
   } catch (e) {

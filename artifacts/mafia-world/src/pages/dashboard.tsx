@@ -1,4 +1,4 @@
-import { useGetDashboardStats, useGetRecentActivity, useGetLeaderboard } from "@workspace/api-client-react";
+import { useGetDashboardStats, useGetRecentActivity, useGetLeaderboard, useGetMyProfile } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Lock,
   Award,
+  Skull,
 } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const { data: stats, isLoading: isStatsLoading } = useGetDashboardStats({ query: { queryKey: ["/api/dashboard/stats"] } });
   const { data: activity, isLoading: isActivityLoading } = useGetRecentActivity({ query: { queryKey: ["/api/dashboard/activity"] } });
   const { data: leaderboard, isLoading: isLeaderboardLoading } = useGetLeaderboard({ query: { queryKey: ["/api/dashboard/leaderboard"] } });
+  const { data: profile } = useGetMyProfile({ query: { queryKey: ["/api/players/me"] } });
 
   return (
     <div className="space-y-6">
@@ -86,7 +88,9 @@ export default function Dashboard() {
                   <Activity className="h-4 w-4 text-blue-500" />
                 </div>
                 <div className="flex flex-col gap-2 mt-2">
-                  {stats.isInPrison ? (
+                  {profile?.isPermanentlyDead ? (
+                    <Badge variant="destructive" className="w-fit flex gap-1 bg-red-900/70"><Skull className="w-3 h-3"/> {t("dead.badge")}</Badge>
+                  ) : stats.isInPrison ? (
                     <Badge variant="destructive" className="w-fit flex gap-1"><Lock className="w-3 h-3"/> {t("dashboard.inPrison")}</Badge>
                   ) : stats.isTraveling ? (
                     <Badge variant="secondary" className="w-fit">{t("dashboard.traveling")}</Badge>

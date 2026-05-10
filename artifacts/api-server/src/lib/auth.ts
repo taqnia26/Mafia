@@ -28,6 +28,21 @@ export async function requireNotInPrison(req: Request, res: Response, next: Next
   }
 }
 
+export async function requireAlive(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { userId } = getAuth(req);
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const player = await getOrCreatePlayer(userId);
+    if (player.isPermanentlyDead) {
+      res.status(403).json({ error: "You are dead. Start over to play again.", code: "PLAYER_DEAD" });
+      return;
+    }
+    next();
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+}
+
 export async function getOrCreatePlayer(clerkId: string, username?: string) {
   const existing = await db.select().from(playersTable).where(eq(playersTable.clerkId, clerkId)).limit(1);
   if (existing.length > 0) return existing[0];

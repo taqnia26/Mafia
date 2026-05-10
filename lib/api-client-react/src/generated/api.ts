@@ -79,6 +79,7 @@ import type {
   PropertyType,
   RankUpgradeResponse,
   RanksResponse,
+  RestartResponse,
   SpyResult,
   TravelInput,
   TravelResult,
@@ -328,6 +329,87 @@ export const useUpdateMyProfile = <
   TContext
 > => {
   return useMutation(getUpdateMyProfileMutationOptions(options));
+};
+
+/**
+ * @summary Reset the current player after a permanent death
+ */
+export const getRestartAfterDeathUrl = () => {
+  return `/api/players/me/restart`;
+};
+
+export const restartAfterDeath = async (
+  options?: RequestInit,
+): Promise<RestartResponse> => {
+  return customFetch<RestartResponse>(getRestartAfterDeathUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRestartAfterDeathMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restartAfterDeath>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof restartAfterDeath>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["restartAfterDeath"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof restartAfterDeath>>,
+    void
+  > = () => {
+    return restartAfterDeath(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RestartAfterDeathMutationResult = NonNullable<
+  Awaited<ReturnType<typeof restartAfterDeath>>
+>;
+
+export type RestartAfterDeathMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Reset the current player after a permanent death
+ */
+export const useRestartAfterDeath = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof restartAfterDeath>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof restartAfterDeath>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRestartAfterDeathMutationOptions(options));
 };
 
 /**

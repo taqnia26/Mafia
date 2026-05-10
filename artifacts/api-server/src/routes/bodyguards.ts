@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, requireAlive, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   npcBodyguardsTable, playerNpcGuardsTable, bodyguardRequestsTable,
   playerGuardsTable, playersTable,
@@ -38,7 +38,7 @@ router.get("/bodyguards/npc", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bodyguards/npc/:guardId/hire", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/bodyguards/npc/:guardId/hire", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -90,7 +90,7 @@ router.get("/bodyguards/requests", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/bodyguards/request", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/bodyguards/request", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -127,7 +127,7 @@ router.post("/bodyguards/request", requireAuth, requireNotInPrison, async (req, 
   }
 });
 
-router.post("/bodyguards/requests/:requestId/respond", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/bodyguards/requests/:requestId/respond", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -219,7 +219,7 @@ router.get("/bodyguards/my", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/bodyguards/:bodyguardId/dismiss", requireAuth, requireNotInPrison, async (req, res) => {
+router.delete("/bodyguards/:bodyguardId/dismiss", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

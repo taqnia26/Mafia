@@ -12,6 +12,19 @@ interface Translations {
 const translations: Translations = {
   "app.title": { en: "MAFIA WORLD", ar: "عالم المافيا" },
 
+  "dead.title": { en: "YOU ARE DEAD", ar: "أنت ميت" },
+  "dead.subtitle": { en: "Your run is over. Start over to play again.", ar: "انتهت جولتك. ابدأ من جديد للعب مرة أخرى." },
+  "dead.killedBy": { en: "Killed by", ar: "قُتل بواسطة" },
+  "dead.cause": { en: "Cause of death", ar: "سبب الوفاة" },
+  "dead.diedAt": { en: "Time of death", ar: "وقت الوفاة" },
+  "dead.unknown": { en: "Unknown", ar: "غير معروف" },
+  "dead.startOver": { en: "Start Over", ar: "ابدأ من جديد" },
+  "dead.startOverWarning": { en: "All money, weapons, gang membership, and properties will be wiped.", ar: "سيتم محو جميع الأموال والأسلحة والعضوية في العصابة والممتلكات." },
+  "dead.restarted": { en: "Welcome back", ar: "مرحبًا بعودتك" },
+  "dead.restartedDesc": { en: "Your record is wiped. Hit the streets.", ar: "تم مسح سجلك. اخرج إلى الشوارع." },
+  "dead.restartError": { en: "Could not restart. Try again.", ar: "تعذرت إعادة البدء. حاول مرة أخرى." },
+  "dead.badge": { en: "DEAD", ar: "ميت" },
+
   "nav.dashboard": { en: "Dashboard", ar: "لوحة القيادة" },
   "nav.profile": { en: "Profile", ar: "الملف الشخصي" },
   "nav.players": { en: "Players", ar: "اللاعبين" },

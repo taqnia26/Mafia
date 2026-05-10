@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, requireAlive, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import { crimeTypesTable, crimeRecordsTable, playersTable } from "@workspace/db/schema";
 import { eq, and, desc, gte, inArray } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
@@ -72,7 +72,7 @@ router.get("/crimes", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/crimes/attempt", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/crimes/attempt", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -227,7 +227,7 @@ router.get("/prison/status", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/prison/escape", requireAuth, async (req, res) => {
+router.post("/prison/escape", requireAuth, requireAlive, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -255,7 +255,7 @@ router.post("/prison/escape", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/prison/jailbreak/:targetPlayerId", requireAuth, async (req, res) => {
+router.post("/prison/jailbreak/:targetPlayerId", requireAuth, requireAlive, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);

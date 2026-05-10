@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../lib/db";
-import { requireAuth, requireNotInPrison, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
+import { requireAuth, requireNotInPrison, requireAlive, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import { weaponsTable, playerWeaponsTable, ammoTable, playerAmmoTable, playersTable } from "@workspace/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
@@ -41,7 +41,7 @@ router.get("/weapons/my", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/weapons/:weaponId/buy", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/weapons/:weaponId/buy", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
@@ -132,7 +132,7 @@ router.get("/ammo/my", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/ammo/:ammoId/buy", requireAuth, requireNotInPrison, async (req, res) => {
+router.post("/ammo/:ammoId/buy", requireAuth, requireAlive, requireNotInPrison, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
