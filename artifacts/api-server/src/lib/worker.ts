@@ -3,11 +3,13 @@ import {
   playersTable, attacksTable, weaponsTable,
   playerNpcGuardsTable, npcBodyguardsTable, playerGuardsTable,
   activityLogTable, playerPropertiesTable, propertyTypesTable,
+  nuclearReactorStateTable, notificationsTable,
 } from "@workspace/db/schema";
-import { eq, and, lte, lt, sql } from "drizzle-orm";
+import { eq, and, lte, lt, ne, sql } from "drizzle-orm";
 import { logActivity } from "./activityLog";
 import { createNotification } from "./notifications";
 import { logger } from "./logger";
+import { REACTOR } from "./reactor";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -259,6 +261,14 @@ async function processAttackArrivals(): Promise<void> {
             }
           });
 
+          // Reactor sabotage: a successful, unguarded hit also damages every reactor
+          // the target owns — independent of HP outcome. Process meltdowns inline.
+          try {
+            await damageTargetReactors(target[0].id, target[0].username, attacker[0].username);
+          } catch (rerr) {
+            logger.error({ rerr, targetId: target[0].id }, "worker: reactor damage hook failed");
+          }
+
           await logActivity(
             attacker[0].id,
             "attack_won",
@@ -344,7 +354,8 @@ async function collectPropertyIncome(): Promise<void> {
         baseIncomePerHour: propertyTypesTable.baseIncomePerHour,
       })
       .from(playerPropertiesTable)
-      .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id));
+      .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
+      .where(ne(propertyTypesTable.isReactor, true));
 
     const incomeByPlayer: Record<number, number> = {};
 
@@ -420,6 +431,147 @@ async function cleanupOldEvents(): Promise<void> {
   }
 }
 
+async function damageTargetReactors(targetId: number, targetUsername: string, attackerUsername: string): Promise<void> {
+  const reactors = await db
+    .select({
+      stateId: nuclearReactorStateTable.id,
+      ppId: nuclearReactorStateTable.playerPropertyId,
+      integrity: nuclearReactorStateTable.integrity,
+      isUnderConstruction: nuclearReactorStateTable.isUnderConstruction,
+    })
+    .from(nuclearReactorStateTable)
+    .leftJoin(playerPropertiesTable, eq(nuclearReactorStateTable.playerPropertyId, playerPropertiesTable.id))
+    .where(eq(playerPropertiesTable.playerId, targetId));
+
+  for (const r of reactors) {
+    const newIntegrity = (r.integrity ?? 100) - REACTOR.INTEGRITY_DAMAGE_PER_HIT;
+    if (newIntegrity > 0) {
+      await db.update(nuclearReactorStateTable)
+        .set({ integrity: newIntegrity })
+        .where(eq(nuclearReactorStateTable.id, r.stateId));
+      await logActivity(
+        targetId,
+        "reactor_damaged",
+        `Your Nuclear Reactor took sabotage damage from ${attackerUsername} — integrity ${newIntegrity}%`,
+      );
+      await createNotification(
+        targetId,
+        "reactor_damaged",
+        `☢️ Your Nuclear Reactor was damaged by ${attackerUsername} — integrity now ${newIntegrity}%`,
+        "/properties",
+      );
+    } else {
+      // Meltdown — delete reactor, deduct cleanup fee, broadcast to all alive players
+      await db.transaction(async (tx) => {
+        await tx.delete(playerPropertiesTable).where(eq(playerPropertiesTable.id, r.ppId));
+        await tx.update(playersTable)
+          .set({
+            money: sql`GREATEST(0, ${playersTable.money} - ${REACTOR.MELTDOWN_FEE})`,
+            updatedAt: new Date(),
+          })
+          .where(eq(playersTable.id, targetId));
+      });
+
+      await logActivity(
+        targetId,
+        "reactor_meltdown",
+        `Your Nuclear Reactor MELTED DOWN! Cleanup fee: $${REACTOR.MELTDOWN_FEE.toLocaleString()}`,
+      );
+
+      // Server-wide notification (all currently-alive players)
+      try {
+        await db.execute(sql`
+          INSERT INTO notifications (player_id, type, message, link)
+          SELECT id, 'reactor_meltdown',
+            ${"☢️ NUCLEAR MELTDOWN! " + targetUsername + "'s reactor exploded after sabotage by " + attackerUsername + "."},
+            '/properties'
+          FROM players
+          WHERE is_permanently_dead = false
+        `);
+      } catch (e) {
+        logger.error({ e }, "worker: reactor meltdown broadcast failed");
+      }
+
+      logger.warn({ targetId, attackerUsername }, "worker: reactor meltdown");
+    }
+  }
+}
+
+async function processReactors(): Promise<void> {
+  try {
+    const now = new Date();
+    // 1) Complete construction for any reactors whose timer has elapsed.
+    //    Anchor lastPayoutAt to constructionCompleteAt (not now) so any time
+    //    between completion and worker recovery still accrues income.
+    const completedRows = await db.update(nuclearReactorStateTable)
+      .set({
+        isUnderConstruction: false,
+        lastPayoutAt: nuclearReactorStateTable.constructionCompleteAt,
+      })
+      .where(and(
+        eq(nuclearReactorStateTable.isUnderConstruction, true),
+        lte(nuclearReactorStateTable.constructionCompleteAt, now),
+      ))
+      .returning({ id: nuclearReactorStateTable.id, ppId: nuclearReactorStateTable.playerPropertyId });
+
+    for (const c of completedRows) {
+      const [pp] = await db.select({ playerId: playerPropertiesTable.playerId })
+        .from(playerPropertiesTable)
+        .where(eq(playerPropertiesTable.id, c.ppId))
+        .limit(1);
+      if (pp) {
+        await logActivity(pp.playerId, "reactor_constructed", `Your Nuclear Reactor is online and producing energy!`);
+        await createNotification(pp.playerId, "reactor_built", `⚛️ Your Nuclear Reactor is online — energy production has begun!`, "/properties");
+      }
+    }
+
+    // 2) For each constructed reactor, advance one full hour at a time, automatically
+    //    converting generated energy into the owner's cash. Deterministic and idempotent
+    //    via the lastPayoutAt CAS guard.
+    const active = await db
+      .select({
+        stateId: nuclearReactorStateTable.id,
+        ppId: nuclearReactorStateTable.playerPropertyId,
+        energyUnits: nuclearReactorStateTable.energyUnits,
+        lastPayoutAt: nuclearReactorStateTable.lastPayoutAt,
+        playerId: playerPropertiesTable.playerId,
+      })
+      .from(nuclearReactorStateTable)
+      .leftJoin(playerPropertiesTable, eq(nuclearReactorStateTable.playerPropertyId, playerPropertiesTable.id))
+      .where(eq(nuclearReactorStateTable.isUnderConstruction, false));
+
+    for (const r of active) {
+      if (!r.playerId) continue;
+      const elapsedMs = now.getTime() - r.lastPayoutAt.getTime();
+      const fullHours = Math.min(REACTOR.MAX_CATCHUP_HOURS, Math.floor(elapsedMs / 3600000));
+      if (fullHours <= 0) continue;
+      // Persist accumulation up to the cap, then convert all stored energy
+      // to cash. Cap protects against unbounded payout if the worker has
+      // been offline for an extended period (within MAX_CATCHUP_HOURS).
+      const energyGenerated = REACTOR.ENERGY_PER_HOUR * fullHours;
+      const stored = Math.min(REACTOR.ENERGY_CAP, (r.energyUnits ?? 0) + energyGenerated);
+      const money = stored * REACTOR.MONEY_PER_ENERGY;
+      const newLastPayoutAt = new Date(r.lastPayoutAt.getTime() + fullHours * 3600000);
+
+      await db.transaction(async (tx) => {
+        const claimed = await tx.update(nuclearReactorStateTable)
+          .set({ energyUnits: 0, lastPayoutAt: newLastPayoutAt })
+          .where(and(
+            eq(nuclearReactorStateTable.id, r.stateId),
+            eq(nuclearReactorStateTable.lastPayoutAt, r.lastPayoutAt),
+          ))
+          .returning({ id: nuclearReactorStateTable.id });
+        if (claimed.length === 0) return;
+        await tx.update(playersTable)
+          .set({ money: sql`${playersTable.money} + ${money}`, updatedAt: new Date() })
+          .where(eq(playersTable.id, r.playerId!));
+      });
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: reactor processing error");
+  }
+}
+
 async function tick(): Promise<void> {
   try {
     await Promise.all([
@@ -427,6 +579,7 @@ async function tick(): Promise<void> {
       processPrisonReleases(),
       processAttackArrivals(),
       collectPropertyIncome(),
+      processReactors(),
       clearExpiredAntiSpy(),
       cleanupOldEvents(),
     ]);

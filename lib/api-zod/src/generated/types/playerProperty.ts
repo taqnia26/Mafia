@@ -5,6 +5,7 @@
  * Mafia World Game API
  * OpenAPI spec version: 0.1.0
  */
+import type { ReactorState } from "./reactorState";
 
 export interface PlayerProperty {
   id: number;
@@ -29,4 +30,6 @@ export interface PlayerProperty {
   maxLevel: number;
   pendingIncome: number;
   canCollect: boolean;
+  isReactor: boolean;
+  reactor?: ReactorState | null;
 }

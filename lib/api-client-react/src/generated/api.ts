@@ -47,6 +47,7 @@ import type {
   BuyWeaponInput,
   City,
   CollectIncomeResult,
+  CollectReactorResult,
   CrimeAttemptInput,
   CrimeRecord,
   CrimeResult,
@@ -79,6 +80,7 @@ import type {
   PropertyType,
   RankUpgradeResponse,
   RanksResponse,
+  ReactorDetails,
   RestartResponse,
   SpyResult,
   TravelInput,
@@ -998,7 +1000,7 @@ export const useUpgradeProperty = <
 };
 
 /**
- * @summary Manually collect accumulated income from all properties
+ * @summary Manually collect accumulated income from all properties (excludes reactors)
  */
 export const getCollectPropertyIncomeUrl = () => {
   return `/api/properties/collect`;
@@ -1056,7 +1058,7 @@ export type CollectPropertyIncomeMutationResult = NonNullable<
 export type CollectPropertyIncomeMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Manually collect accumulated income from all properties
+ * @summary Manually collect accumulated income from all properties (excludes reactors)
  */
 export const useCollectPropertyIncome = <
   TError = ErrorType<ErrorResponse>,
@@ -1076,6 +1078,177 @@ export const useCollectPropertyIncome = <
   TContext
 > => {
   return useMutation(getCollectPropertyIncomeMutationOptions(options));
+};
+
+/**
+ * @summary Get full details for a single nuclear reactor
+ */
+export const getGetReactorDetailsUrl = (id: number) => {
+  return `/api/properties/reactor/${id}`;
+};
+
+export const getReactorDetails = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ReactorDetails> => {
+  return customFetch<ReactorDetails>(getGetReactorDetailsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReactorDetailsQueryKey = (id: number) => {
+  return [`/api/properties/reactor/${id}`] as const;
+};
+
+export const getGetReactorDetailsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReactorDetails>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReactorDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetReactorDetailsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getReactorDetails>>
+  > = ({ signal }) => getReactorDetails(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReactorDetails>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReactorDetailsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReactorDetails>>
+>;
+export type GetReactorDetailsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get full details for a single nuclear reactor
+ */
+
+export function useGetReactorDetails<
+  TData = Awaited<ReturnType<typeof getReactorDetails>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReactorDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReactorDetailsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Sell stored energy units from a single reactor for cash
+ */
+export const getCollectReactorIncomeUrl = (id: number) => {
+  return `/api/properties/reactor/${id}/collect`;
+};
+
+export const collectReactorIncome = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CollectReactorResult> => {
+  return customFetch<CollectReactorResult>(getCollectReactorIncomeUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCollectReactorIncomeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof collectReactorIncome>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof collectReactorIncome>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["collectReactorIncome"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof collectReactorIncome>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return collectReactorIncome(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CollectReactorIncomeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof collectReactorIncome>>
+>;
+
+export type CollectReactorIncomeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Sell stored energy units from a single reactor for cash
+ */
+export const useCollectReactorIncome = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof collectReactorIncome>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof collectReactorIncome>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getCollectReactorIncomeMutationOptions(options));
 };
 
 /**

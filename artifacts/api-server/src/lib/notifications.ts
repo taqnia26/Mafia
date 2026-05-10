@@ -5,7 +5,10 @@ export type NotificationType =
   | "incoming_attack"
   | "attack_resolved"
   | "crime_completed"
-  | "bodyguard_request";
+  | "bodyguard_request"
+  | "reactor_built"
+  | "reactor_meltdown"
+  | "reactor_damaged";
 
 export async function createNotification(
   playerId: number,

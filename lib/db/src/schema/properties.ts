@@ -1,5 +1,6 @@
 import { pgTable, serial, text, integer, bigint, timestamp, boolean } from "drizzle-orm/pg-core";
 import { playersTable } from "./players";
+import { citiesTable } from "./cities";
 
 export const propertyTypesTable = pgTable("property_types", {
   id: serial("id").primaryKey(),
@@ -16,6 +17,7 @@ export const propertyTypesTable = pgTable("property_types", {
   perksEn: text("perks_en").notNull().default(""),
   perksAr: text("perks_ar").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),
+  isReactor: boolean("is_reactor").notNull().default(false),
 });
 
 export const playerPropertiesTable = pgTable("player_properties", {
@@ -27,5 +29,18 @@ export const playerPropertiesTable = pgTable("player_properties", {
   lastIncomeCollectedAt: timestamp("last_income_collected_at").notNull().defaultNow(),
 });
 
+export const nuclearReactorStateTable = pgTable("nuclear_reactor_state", {
+  id: serial("id").primaryKey(),
+  playerPropertyId: integer("player_property_id").notNull().unique()
+    .references(() => playerPropertiesTable.id, { onDelete: "cascade" }),
+  cityId: integer("city_id").notNull().references(() => citiesTable.id),
+  energyUnits: integer("energy_units").notNull().default(0),
+  integrity: integer("integrity").notNull().default(100),
+  lastPayoutAt: timestamp("last_payout_at").notNull().defaultNow(),
+  isUnderConstruction: boolean("is_under_construction").notNull().default(true),
+  constructionCompleteAt: timestamp("construction_complete_at").notNull(),
+});
+
 export type PropertyType = typeof propertyTypesTable.$inferSelect;
 export type PlayerProperty = typeof playerPropertiesTable.$inferSelect;
+export type NuclearReactorState = typeof nuclearReactorStateTable.$inferSelect;

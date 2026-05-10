@@ -3,10 +3,12 @@ import { db } from "../lib/db";
 import { requireAuth, requireAlive, getOrCreatePlayer, getCurrentClerkId } from "../lib/auth";
 import {
   propertyTypesTable, playerPropertiesTable, playerRanksTable,
-  playerRankProgressTable, playersTable,
+  playerRankProgressTable, playersTable, nuclearReactorStateTable,
 } from "@workspace/db/schema";
-import { eq, and, sql, count } from "drizzle-orm";
+import { eq, and, sql, count, ne } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
+import { createNotification } from "../lib/notifications";
+import { REACTOR, reactorIncomePerHour } from "../lib/reactor";
 
 const router = Router();
 
@@ -27,6 +29,37 @@ function calcPendingIncome(property: { baseIncomePerHour: number; level: number;
   const lastCollected = property.lastIncomeCollectedAt.getTime();
   const hoursElapsed = Math.min((now - lastCollected) / 3600000, MAX_HOURS);
   return Math.floor(hoursElapsed * incomePerHour(property.baseIncomePerHour, property.level));
+}
+
+// Reactor payout: full hours since lastPayoutAt are converted to cash; any
+// already-stored energy_units are also paid out. Always returns a result so
+// stored energy can be claimed even if no new full hour has elapsed.
+function calcReactorPayout(state: {
+  energyUnits: number;
+  lastPayoutAt: Date;
+}): { fullHours: number; energyGenerated: number; storedEnergy: number; totalEnergy: number; money: number; newLastPayoutAt: Date } {
+  const now = Date.now();
+  const elapsedMs = now - state.lastPayoutAt.getTime();
+  const fullHours = Math.min(REACTOR.MAX_CATCHUP_HOURS, Math.max(0, Math.floor(elapsedMs / 3600000)));
+  const energyGenerated = REACTOR.ENERGY_PER_HOUR * fullHours;
+  const storedEnergy = state.energyUnits ?? 0;
+  // Cap accumulated energy at ENERGY_CAP — same rule the worker applies.
+  const totalEnergy = Math.min(REACTOR.ENERGY_CAP, energyGenerated + storedEnergy);
+  return {
+    fullHours,
+    energyGenerated,
+    storedEnergy,
+    totalEnergy,
+    money: totalEnergy * REACTOR.MONEY_PER_ENERGY,
+    newLastPayoutAt: fullHours > 0
+      ? new Date(state.lastPayoutAt.getTime() + fullHours * 3600000)
+      : state.lastPayoutAt,
+  };
+}
+
+// Returns the timestamp at which the *next* hourly payout will fire.
+function nextReactorPayoutAt(lastPayoutAt: Date): Date {
+  return new Date(lastPayoutAt.getTime() + 3600000);
 }
 
 router.get("/properties/types", requireAuth, async (req, res) => {
@@ -70,6 +103,7 @@ router.get("/properties/types", requireAuth, async (req, res) => {
       imageUrl: t.imageUrl,
       perksEn: t.perksEn,
       perksAr: t.perksAr,
+      isReactor: t.isReactor,
       ownedCount: ownedByType[t.id] ?? 0,
       canAfford: player.money >= t.price,
       levelMet: player.level >= t.requiredLevel,
@@ -107,24 +141,62 @@ router.get("/properties/my", requireAuth, async (req, res) => {
         imageUrl: propertyTypesTable.imageUrl,
         perksEn: propertyTypesTable.perksEn,
         perksAr: propertyTypesTable.perksAr,
+        isReactor: propertyTypesTable.isReactor,
+        reactorEnergy: nuclearReactorStateTable.energyUnits,
+        reactorIntegrity: nuclearReactorStateTable.integrity,
+        reactorLastPayoutAt: nuclearReactorStateTable.lastPayoutAt,
+        reactorIsUnderConstruction: nuclearReactorStateTable.isUnderConstruction,
+        reactorConstructionCompleteAt: nuclearReactorStateTable.constructionCompleteAt,
+        reactorCityId: nuclearReactorStateTable.cityId,
       })
       .from(playerPropertiesTable)
       .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
+      .leftJoin(nuclearReactorStateTable, eq(nuclearReactorStateTable.playerPropertyId, playerPropertiesTable.id))
       .where(eq(playerPropertiesTable.playerId, player.id));
 
     const result = rows.map(r => {
-      const currentIncome = incomePerHour(r.baseIncomePerHour ?? 0, r.level);
-      const nextLevelIncome = r.level < (r.maxLevel ?? 4)
-        ? incomePerHour(r.baseIncomePerHour ?? 0, r.level + 1)
-        : null;
-      const upgradePrice = r.level < (r.maxLevel ?? 4)
-        ? upgradeCost(r.price ?? 0, r.level + 1)
-        : null;
-      const pendingIncome = calcPendingIncome({
-        baseIncomePerHour: r.baseIncomePerHour ?? 0,
-        level: r.level,
-        lastIncomeCollectedAt: r.lastIncomeCollectedAt,
-      });
+      const isReactor = !!r.isReactor;
+      const reactorState = (isReactor && r.reactorLastPayoutAt) ? {
+        energyUnits: r.reactorEnergy ?? 0,
+        integrity: r.reactorIntegrity ?? 100,
+        lastPayoutAt: r.reactorLastPayoutAt,
+        isUnderConstruction: !!r.reactorIsUnderConstruction,
+        constructionCompleteAt: r.reactorConstructionCompleteAt!,
+        cityId: r.reactorCityId ?? 0,
+      } : null;
+
+      let currentIncome: number;
+      let nextLevelIncome: number | null;
+      let upgradePrice: number | null;
+      let pendingIncome: number;
+
+      if (isReactor && reactorState) {
+        currentIncome = reactorState.isUnderConstruction ? 0 : reactorIncomePerHour();
+        nextLevelIncome = null;
+        upgradePrice = null;
+        if (reactorState.isUnderConstruction) {
+          pendingIncome = 0;
+        } else {
+          const payout = calcReactorPayout({
+            energyUnits: reactorState.energyUnits,
+            lastPayoutAt: reactorState.lastPayoutAt,
+          });
+          pendingIncome = payout.money;
+        }
+      } else {
+        currentIncome = incomePerHour(r.baseIncomePerHour ?? 0, r.level);
+        nextLevelIncome = r.level < (r.maxLevel ?? 4)
+          ? incomePerHour(r.baseIncomePerHour ?? 0, r.level + 1)
+          : null;
+        upgradePrice = r.level < (r.maxLevel ?? 4)
+          ? upgradeCost(r.price ?? 0, r.level + 1)
+          : null;
+        pendingIncome = calcPendingIncome({
+          baseIncomePerHour: r.baseIncomePerHour ?? 0,
+          level: r.level,
+          lastIncomeCollectedAt: r.lastIncomeCollectedAt,
+        });
+      }
 
       return {
         id: r.id,
@@ -146,6 +218,21 @@ router.get("/properties/my", requireAuth, async (req, res) => {
         maxLevel: r.maxLevel ?? 4,
         pendingIncome,
         canCollect: pendingIncome > 0,
+        isReactor,
+        reactor: reactorState ? {
+          energyUnits: reactorState.energyUnits,
+          energyCap: REACTOR.ENERGY_CAP,
+          integrity: reactorState.integrity,
+          isUnderConstruction: reactorState.isUnderConstruction,
+          constructionCompleteAt: reactorState.constructionCompleteAt.toISOString(),
+          lastPayoutAt: reactorState.lastPayoutAt.toISOString(),
+          nextPayoutAt: reactorState.isUnderConstruction
+            ? reactorState.constructionCompleteAt.toISOString()
+            : nextReactorPayoutAt(reactorState.lastPayoutAt).toISOString(),
+          energyPerHour: REACTOR.ENERGY_PER_HOUR,
+          moneyPerEnergy: REACTOR.MONEY_PER_ENERGY,
+          cityId: reactorState.cityId,
+        } : null,
       };
     });
 
@@ -179,6 +266,21 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
       return void res.status(400).json({ error: "Insufficient funds" });
     }
 
+    if (propType.isReactor) {
+      const existingReactor = await db
+        .select({ id: nuclearReactorStateTable.id })
+        .from(nuclearReactorStateTable)
+        .leftJoin(playerPropertiesTable, eq(nuclearReactorStateTable.playerPropertyId, playerPropertiesTable.id))
+        .where(and(
+          eq(playerPropertiesTable.playerId, player.id),
+          eq(nuclearReactorStateTable.cityId, player.cityId),
+        ))
+        .limit(1);
+      if (existingReactor.length > 0) {
+        return void res.status(400).json({ error: "You already own a Nuclear Reactor in this city" });
+      }
+    }
+
     const rankProgressRows = await db.select().from(playerRankProgressTable)
       .where(eq(playerRankProgressTable.playerId, player.id)).limit(1);
     const currentRankNum = rankProgressRows[0]?.currentRank ?? 1;
@@ -198,6 +300,7 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
     }
 
     const now = new Date();
+    const constructionCompleteAt = new Date(now.getTime() + REACTOR.CONSTRUCTION_HOURS * 3600 * 1000);
     let newProp: typeof playerPropertiesTable.$inferSelect | undefined;
     try {
       newProp = await db.transaction(async (tx) => {
@@ -223,6 +326,19 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
           purchasedAt: now,
           lastIncomeCollectedAt: now,
         }).returning();
+
+        if (propType.isReactor) {
+          await tx.insert(nuclearReactorStateTable).values({
+            playerPropertyId: inserted.id,
+            cityId: player.cityId,
+            energyUnits: 0,
+            integrity: 100,
+            lastPayoutAt: constructionCompleteAt,
+            isUnderConstruction: true,
+            constructionCompleteAt,
+          });
+        }
+
         return inserted;
       });
     } catch (e: unknown) {
@@ -242,9 +358,14 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
       return void res.status(500).json({ error: "Failed to purchase property" });
     }
 
-    await logActivity(player.id, "property_purchased", `Purchased ${propType.nameEn} for $${propType.price.toLocaleString()}`);
+    if (propType.isReactor) {
+      await logActivity(player.id, "reactor_built",
+        `Started construction on a Nuclear Reactor for $${propType.price.toLocaleString()} — completes in ${REACTOR.CONSTRUCTION_HOURS / 24} days`);
+    } else {
+      await logActivity(player.id, "property_purchased", `Purchased ${propType.nameEn} for $${propType.price.toLocaleString()}`);
+    }
 
-    const baseIncome = incomePerHour(propType.baseIncomePerHour, 1);
+    const baseIncome = propType.isReactor ? 0 : incomePerHour(propType.baseIncomePerHour, 1);
     const nextIncome = propType.maxLevel > 1 ? incomePerHour(propType.baseIncomePerHour, 2) : null;
     const upCost = propType.maxLevel > 1 ? upgradeCost(propType.price, 2) : null;
 
@@ -263,11 +384,24 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
       perksEn: propType.perksEn,
       perksAr: propType.perksAr,
       incomePerHour: baseIncome,
-      nextLevelIncome: nextIncome,
-      upgradePrice: upCost,
+      nextLevelIncome: propType.isReactor ? null : nextIncome,
+      upgradePrice: propType.isReactor ? null : upCost,
       maxLevel: propType.maxLevel,
       pendingIncome: 0,
       canCollect: false,
+      isReactor: propType.isReactor,
+      reactor: propType.isReactor ? {
+        energyUnits: 0,
+        energyCap: REACTOR.ENERGY_CAP,
+        integrity: 100,
+        isUnderConstruction: true,
+        constructionCompleteAt: constructionCompleteAt.toISOString(),
+        lastPayoutAt: constructionCompleteAt.toISOString(),
+        nextPayoutAt: constructionCompleteAt.toISOString(),
+        energyPerHour: REACTOR.ENERGY_PER_HOUR,
+        moneyPerEnergy: REACTOR.MONEY_PER_ENERGY,
+        cityId: player.cityId,
+      } : null,
     });
   } catch (err) {
     return void res.status(500).json({ error: "Failed to purchase property" });
@@ -294,6 +428,7 @@ router.post("/properties/:id/upgrade", requireAuth, requireAlive, async (req, re
         nameAr: propertyTypesTable.nameAr,
         maxLevel: propertyTypesTable.maxLevel,
         price: propertyTypesTable.price,
+        isReactor: propertyTypesTable.isReactor,
       })
       .from(playerPropertiesTable)
       .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
@@ -302,6 +437,9 @@ router.post("/properties/:id/upgrade", requireAuth, requireAlive, async (req, re
 
     if (!prop) {
       return void res.status(404).json({ error: "Property not found" });
+    }
+    if (prop.isReactor) {
+      return void res.status(400).json({ error: "Nuclear reactors cannot be upgraded" });
     }
     if (prop.level >= (prop.maxLevel ?? 4)) {
       return void res.status(400).json({ error: "Property is already at maximum level" });
@@ -345,6 +483,7 @@ router.post("/properties/collect", requireAuth, requireAlive, async (req, res) =
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
 
+    // Skip reactors here — they have their own collection endpoint.
     const rows = await db
       .select({
         id: playerPropertiesTable.id,
@@ -355,7 +494,10 @@ router.post("/properties/collect", requireAuth, requireAlive, async (req, res) =
       })
       .from(playerPropertiesTable)
       .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
-      .where(eq(playerPropertiesTable.playerId, player.id));
+      .where(and(
+        eq(playerPropertiesTable.playerId, player.id),
+        ne(propertyTypesTable.isReactor, true),
+      ));
 
     if (rows.length === 0) {
       return void res.status(400).json({ error: "No properties to collect income from" });
@@ -399,6 +541,161 @@ router.post("/properties/collect", requireAuth, requireAlive, async (req, res) =
     return void res.json({ success: true, totalIncome, propertiesCount: rows.length });
   } catch (err) {
     return void res.status(500).json({ error: "Failed to collect property income" });
+  }
+});
+
+router.get("/properties/reactor/:id", requireAuth, async (req, res) => {
+  try {
+    const clerkId = getCurrentClerkId(req);
+    const player = await getOrCreatePlayer(clerkId);
+    const propId = parseInt(String(req.params.id));
+    if (isNaN(propId)) return void res.status(400).json({ error: "Invalid property ID" });
+
+    const [row] = await db
+      .select({
+        id: playerPropertiesTable.id,
+        purchasedAt: playerPropertiesTable.purchasedAt,
+        nameEn: propertyTypesTable.nameEn,
+        nameAr: propertyTypesTable.nameAr,
+        descriptionEn: propertyTypesTable.descriptionEn,
+        descriptionAr: propertyTypesTable.descriptionAr,
+        icon: propertyTypesTable.icon,
+        isReactor: propertyTypesTable.isReactor,
+        energyUnits: nuclearReactorStateTable.energyUnits,
+        integrity: nuclearReactorStateTable.integrity,
+        lastPayoutAt: nuclearReactorStateTable.lastPayoutAt,
+        isUnderConstruction: nuclearReactorStateTable.isUnderConstruction,
+        constructionCompleteAt: nuclearReactorStateTable.constructionCompleteAt,
+        cityId: nuclearReactorStateTable.cityId,
+      })
+      .from(playerPropertiesTable)
+      .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
+      .leftJoin(nuclearReactorStateTable, eq(nuclearReactorStateTable.playerPropertyId, playerPropertiesTable.id))
+      .where(and(eq(playerPropertiesTable.id, propId), eq(playerPropertiesTable.playerId, player.id)))
+      .limit(1);
+
+    if (!row || !row.isReactor || !row.lastPayoutAt) {
+      return void res.status(404).json({ error: "Reactor not found" });
+    }
+
+    const payout = calcReactorPayout({
+      energyUnits: row.energyUnits ?? 0,
+      lastPayoutAt: row.lastPayoutAt,
+    });
+
+    return void res.json({
+      id: row.id,
+      nameEn: row.nameEn ?? "Nuclear Reactor",
+      nameAr: row.nameAr ?? "مفاعل نووي",
+      descriptionEn: row.descriptionEn ?? "",
+      descriptionAr: row.descriptionAr ?? "",
+      icon: row.icon ?? "atom",
+      purchasedAt: row.purchasedAt.toISOString(),
+      energyUnits: row.energyUnits ?? 0,
+      energyCap: REACTOR.ENERGY_CAP,
+      integrity: row.integrity ?? 100,
+      isUnderConstruction: !!row.isUnderConstruction,
+      constructionCompleteAt: row.constructionCompleteAt!.toISOString(),
+      lastPayoutAt: row.lastPayoutAt.toISOString(),
+      nextPayoutAt: row.isUnderConstruction
+        ? row.constructionCompleteAt!.toISOString()
+        : nextReactorPayoutAt(row.lastPayoutAt).toISOString(),
+      energyPerHour: REACTOR.ENERGY_PER_HOUR,
+      moneyPerEnergy: REACTOR.MONEY_PER_ENERGY,
+      incomePerHour: row.isUnderConstruction ? 0 : reactorIncomePerHour(),
+      pendingIncome: row.isUnderConstruction ? 0 : payout.money,
+      pendingFullHours: payout.fullHours,
+      cityId: row.cityId ?? 0,
+    });
+  } catch (err) {
+    return void res.status(500).json({ error: "Failed to load reactor" });
+  }
+});
+
+router.post("/properties/reactor/:id/collect", requireAuth, requireAlive, async (req, res) => {
+  try {
+    const clerkId = getCurrentClerkId(req);
+    const player = await getOrCreatePlayer(clerkId);
+    const propId = parseInt(String(req.params.id));
+    if (isNaN(propId)) return void res.status(400).json({ error: "Invalid reactor ID" });
+
+    const [row] = await db
+      .select({
+        stateId: nuclearReactorStateTable.id,
+        ppId: playerPropertiesTable.id,
+        energyUnits: nuclearReactorStateTable.energyUnits,
+        integrity: nuclearReactorStateTable.integrity,
+        lastPayoutAt: nuclearReactorStateTable.lastPayoutAt,
+        isUnderConstruction: nuclearReactorStateTable.isUnderConstruction,
+        isReactor: propertyTypesTable.isReactor,
+      })
+      .from(playerPropertiesTable)
+      .leftJoin(propertyTypesTable, eq(playerPropertiesTable.propertyTypeId, propertyTypesTable.id))
+      .leftJoin(nuclearReactorStateTable, eq(nuclearReactorStateTable.playerPropertyId, playerPropertiesTable.id))
+      .where(and(eq(playerPropertiesTable.id, propId), eq(playerPropertiesTable.playerId, player.id)))
+      .limit(1);
+
+    if (!row || !row.isReactor || !row.stateId || !row.lastPayoutAt) {
+      return void res.status(404).json({ error: "Reactor not found" });
+    }
+    if (row.isUnderConstruction) {
+      return void res.status(400).json({ error: "Reactor is still under construction" });
+    }
+
+    const payout = calcReactorPayout({
+      energyUnits: row.energyUnits ?? 0,
+      lastPayoutAt: row.lastPayoutAt,
+    });
+
+    // Always succeed — even if no full hour has elapsed and no stored energy,
+    // we return $0 with the next payout time so the UI can show a countdown.
+    if (payout.money <= 0) {
+      return void res.json({
+        success: true,
+        money: 0,
+        energyConverted: 0,
+        hoursCollected: 0,
+        nextPayoutAt: nextReactorPayoutAt(row.lastPayoutAt).toISOString(),
+      });
+    }
+
+    const updated = await db.transaction(async (tx) => {
+      const claimed = await tx.update(nuclearReactorStateTable)
+        .set({
+          energyUnits: 0,
+          lastPayoutAt: payout.newLastPayoutAt,
+        })
+        .where(and(
+          eq(nuclearReactorStateTable.id, row.stateId!),
+          eq(nuclearReactorStateTable.lastPayoutAt, row.lastPayoutAt!),
+        ))
+        .returning({ id: nuclearReactorStateTable.id });
+      if (claimed.length === 0) return false;
+      await tx.update(playersTable)
+        .set({ money: sql`${playersTable.money} + ${payout.money}`, updatedAt: new Date() })
+        .where(eq(playersTable.id, player.id));
+      return true;
+    });
+
+    if (!updated) {
+      return void res.status(409).json({ error: "Reactor was just collected by another process. Try again." });
+    }
+
+    await logActivity(
+      player.id,
+      "reactor_collected",
+      `Reactor sold ${payout.totalEnergy} energy units for $${payout.money.toLocaleString()}`,
+    );
+
+    return void res.json({
+      success: true,
+      money: payout.money,
+      energyConverted: payout.totalEnergy,
+      hoursCollected: payout.fullHours,
+      nextPayoutAt: nextReactorPayoutAt(payout.newLastPayoutAt).toISOString(),
+    });
+  } catch (err) {
+    return void res.status(500).json({ error: "Failed to collect reactor income" });
   }
 });
 

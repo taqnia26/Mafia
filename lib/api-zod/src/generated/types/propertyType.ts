@@ -26,4 +26,5 @@ export interface PropertyType {
   rankSlotAvailable: boolean;
   maxProperties: number;
   totalOwned: number;
+  isReactor: boolean;
 }

@@ -11,8 +11,9 @@ import { getApiError } from "@/lib/apiError";
 import {
   Building2, Home, Wrench, Music, FlaskConical, Zap, Shield,
   Dice6, Cross, Landmark, TrendingUp, DollarSign, Lock, ArrowUp,
-  Coins,
+  Coins, Atom, AlertTriangle, Hammer,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface PropertyType {
   id: number;
@@ -33,6 +34,20 @@ interface PropertyType {
   rankSlotAvailable: boolean;
   maxProperties: number;
   totalOwned: number;
+  isReactor: boolean;
+}
+
+interface ReactorState {
+  energyUnits: number;
+  energyCap: number;
+  integrity: number;
+  isUnderConstruction: boolean;
+  constructionCompleteAt: string;
+  lastPayoutAt: string;
+  energyPerHour: number;
+  moneyPerEnergy: number;
+  cityId: number;
+  nextPayoutAt: string;
 }
 
 interface PlayerProperty {
@@ -54,6 +69,8 @@ interface PlayerProperty {
   maxLevel: number;
   pendingIncome: number;
   canCollect: boolean;
+  isReactor: boolean;
+  reactor: ReactorState | null;
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -67,7 +84,19 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   cross: Cross,
   landmark: Landmark,
   building: Building2,
+  atom: Atom,
 };
+
+function formatCountdown(targetIso: string): string {
+  const ms = Math.max(0, new Date(targetIso).getTime() - Date.now());
+  const totalSec = Math.floor(ms / 1000);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
 
 function PropertyIcon({ icon, className }: { icon: string; className?: string }) {
   const IconComponent = ICON_MAP[icon] ?? Building2;
@@ -158,6 +187,32 @@ export default function Properties() {
     },
   });
 
+  const reactorCollectMutation = useMutation({
+    mutationFn: async (propertyId: number) => {
+      const res = await fetch(`/api/properties/reactor/${propertyId}/collect`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error: string };
+        throw new Error(err.error);
+      }
+      return res.json() as Promise<{ success: boolean; money: number; energyConverted: number; hoursCollected: number }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["my-properties"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["layout-player-rank"] });
+      toast({
+        title: t("properties.reactor.collectSuccess"),
+        description: `+${formatMoney(data.money)} (${data.energyConverted} energy units)`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: t("properties.collectFailed"), description: err.message, variant: "destructive" });
+    },
+  });
+
   const collectMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/properties/collect", {
@@ -184,8 +239,11 @@ export default function Properties() {
     },
   });
 
-  const totalPending = myProps?.reduce((sum, p) => sum + p.pendingIncome, 0) ?? 0;
-  const totalPerHour = myProps?.reduce((sum, p) => sum + p.incomePerHour, 0) ?? 0;
+  // Summary cards / "Collect All" exclude reactors — reactors have their own dedicated card.
+  const nonReactorProps = myProps?.filter(p => !p.isReactor) ?? [];
+  const reactorProps = myProps?.filter(p => p.isReactor && p.reactor) ?? [];
+  const totalPending = nonReactorProps.reduce((sum, p) => sum + p.pendingIncome, 0);
+  const totalPerHour = nonReactorProps.reduce((sum, p) => sum + p.incomePerHour, 0);
   const firstType = types?.[0];
   const maxProperties = firstType?.maxProperties ?? 0;
   const totalOwned = firstType?.totalOwned ?? 0;
@@ -199,6 +257,134 @@ export default function Properties() {
         </h1>
         <p className="text-muted-foreground text-sm mt-1">{t("properties.subtitle")}</p>
       </div>
+
+      {reactorProps.length > 0 && (
+        <div className="space-y-3">
+          {reactorProps.map(p => {
+            const r = p.reactor!;
+            const integrityColor = r.integrity > 60 ? "text-green-400"
+              : r.integrity > 30 ? "text-yellow-400" : "text-red-400";
+            const energyPct = Math.min(100, Math.round((r.energyUnits / r.energyCap) * 100));
+            const isCollecting = reactorCollectMutation.isPending && reactorCollectMutation.variables === p.id;
+            return (
+              <Card key={`reactor-${p.id}`}
+                className="bg-gradient-to-br from-yellow-500/10 via-card to-card border-yellow-500/40">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                        <Atom className="w-7 h-7 text-yellow-400 animate-pulse" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-heading flex items-center gap-2">
+                          {language === "ar" ? p.nameAr : p.nameEn}
+                          {r.isUnderConstruction ? (
+                            <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/40">
+                              <Hammer className="w-3 h-3 mr-1" />
+                              {t("properties.reactor.constructing")}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-green-500/20 text-green-300 border-green-500/40">
+                              {t("properties.reactor.constructionDone")}
+                            </Badge>
+                          )}
+                        </CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t("properties.reactor.subtitle")}
+                        </p>
+                      </div>
+                    </div>
+                    {!r.isUnderConstruction && (
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">{t("properties.pendingIncome")}</div>
+                        <div className="text-yellow-400 font-bold text-lg">{formatMoney(p.pendingIncome)}</div>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 pb-2">
+                  {r.isUnderConstruction ? (
+                    <div className="flex items-center justify-between p-3 rounded bg-orange-500/10 border border-orange-500/30">
+                      <span className="text-sm text-orange-300 flex items-center gap-2">
+                        <Hammer className="w-4 h-4" />
+                        {t("properties.reactor.constructionEta")}
+                      </span>
+                      <span className="font-mono font-bold text-orange-200">
+                        {formatCountdown(r.constructionCompleteAt)}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                            {t("properties.reactor.energy")}
+                          </span>
+                          <span className="font-mono">{r.energyUnits} / {r.energyCap}</span>
+                        </div>
+                        <Progress value={energyPct} className="h-2" />
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded bg-yellow-500/5 border border-yellow-500/20 text-xs">
+                        <span className="text-yellow-300/80 flex items-center gap-1">
+                          <Coins className="w-3.5 h-3.5" />
+                          {t("properties.reactor.nextPayout")}
+                        </span>
+                        <span className="font-mono font-bold text-yellow-200">
+                          {formatCountdown(r.nextPayoutAt)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Shield className="w-3.5 h-3.5" />
+                        {t("properties.reactor.integrity")}
+                      </span>
+                      <span className={`font-mono font-bold ${integrityColor}`}>{r.integrity}%</span>
+                    </div>
+                    <Progress value={r.integrity} className="h-2" />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                    <div>
+                      <div>{t("properties.reactor.energyPerHour")}</div>
+                      <div className="text-foreground font-medium">{r.energyPerHour}</div>
+                    </div>
+                    <div>
+                      <div>{t("properties.reactor.pricePerEnergy")}</div>
+                      <div className="text-foreground font-medium">{formatMoney(r.moneyPerEnergy)}</div>
+                    </div>
+                    <div>
+                      <div>{t("properties.reactor.cap")}</div>
+                      <div className="text-foreground font-medium">{r.energyCap}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 p-2 rounded bg-red-500/10 border border-red-500/30 text-xs text-red-300">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{t("properties.reactor.meltdownWarning")}</span>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Button
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
+                    disabled={r.isUnderConstruction || p.pendingIncome <= 0 || isCollecting}
+                    onClick={() => reactorCollectMutation.mutate(p.id)}
+                  >
+                    <Coins className="w-4 h-4 mr-1" />
+                    {isCollecting
+                      ? t("properties.reactor.collecting")
+                      : `${t("properties.reactor.collect")} — ${formatMoney(p.pendingIncome)}`}
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {myProps && myProps.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -353,14 +539,14 @@ export default function Properties() {
                 <Skeleton key={i} className="h-48 rounded-lg" />
               ))}
             </div>
-          ) : !myProps || myProps.length === 0 ? (
+          ) : nonReactorProps.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>{t("properties.noProperties")}</p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {myProps.map(prop => {
+              {nonReactorProps.map(prop => {
                 const isUpgrading = upgradingId === prop.id && upgradeMutation.isPending;
                 const maxed = prop.level >= prop.maxLevel;
 

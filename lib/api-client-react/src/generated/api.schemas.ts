@@ -774,6 +774,51 @@ export interface PropertyType {
   rankSlotAvailable: boolean;
   maxProperties: number;
   totalOwned: number;
+  isReactor: boolean;
+}
+
+export interface ReactorState {
+  energyUnits: number;
+  energyCap: number;
+  integrity: number;
+  isUnderConstruction: boolean;
+  constructionCompleteAt: string;
+  lastPayoutAt: string;
+  nextPayoutAt: string;
+  energyPerHour: number;
+  moneyPerEnergy: number;
+  cityId: number;
+}
+
+export interface ReactorDetails {
+  id: number;
+  nameEn: string;
+  nameAr: string;
+  descriptionEn: string;
+  descriptionAr: string;
+  icon: string;
+  purchasedAt: string;
+  energyUnits: number;
+  energyCap: number;
+  integrity: number;
+  isUnderConstruction: boolean;
+  constructionCompleteAt: string;
+  lastPayoutAt: string;
+  nextPayoutAt: string;
+  energyPerHour: number;
+  moneyPerEnergy: number;
+  incomePerHour: number;
+  pendingIncome: number;
+  pendingFullHours: number;
+  cityId: number;
+}
+
+export interface CollectReactorResult {
+  success: boolean;
+  money: number;
+  energyConverted: number;
+  hoursCollected: number;
+  nextPayoutAt?: string;
 }
 
 export interface PlayerProperty {
@@ -799,6 +844,8 @@ export interface PlayerProperty {
   maxLevel: number;
   pendingIncome: number;
   canCollect: boolean;
+  isReactor: boolean;
+  reactor?: ReactorState | null;
 }
 
 export interface BuyPropertyInput {

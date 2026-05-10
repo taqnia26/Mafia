@@ -263,6 +263,7 @@ export const ListPropertyTypesResponseItem = zod.object({
   rankSlotAvailable: zod.boolean(),
   maxProperties: zod.number(),
   totalOwned: zod.number(),
+  isReactor: zod.boolean(),
 });
 export const ListPropertyTypesResponse = zod.array(
   ListPropertyTypesResponseItem,
@@ -291,6 +292,24 @@ export const GetMyPropertiesResponseItem = zod.object({
   maxLevel: zod.number(),
   pendingIncome: zod.number(),
   canCollect: zod.boolean(),
+  isReactor: zod.boolean(),
+  reactor: zod
+    .union([
+      zod.object({
+        energyUnits: zod.number(),
+        energyCap: zod.number(),
+        integrity: zod.number(),
+        isUnderConstruction: zod.boolean(),
+        constructionCompleteAt: zod.string(),
+        lastPayoutAt: zod.string(),
+        nextPayoutAt: zod.string(),
+        energyPerHour: zod.number(),
+        moneyPerEnergy: zod.number(),
+        cityId: zod.number(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
 });
 export const GetMyPropertiesResponse = zod.array(GetMyPropertiesResponseItem);
 
@@ -315,12 +334,57 @@ export const UpgradePropertyResponse = zod.object({
 });
 
 /**
- * @summary Manually collect accumulated income from all properties
+ * @summary Manually collect accumulated income from all properties (excludes reactors)
  */
 export const CollectPropertyIncomeResponse = zod.object({
   success: zod.boolean(),
   totalIncome: zod.number(),
   propertiesCount: zod.number(),
+});
+
+/**
+ * @summary Get full details for a single nuclear reactor
+ */
+export const GetReactorDetailsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetReactorDetailsResponse = zod.object({
+  id: zod.number(),
+  nameEn: zod.string(),
+  nameAr: zod.string(),
+  descriptionEn: zod.string(),
+  descriptionAr: zod.string(),
+  icon: zod.string(),
+  purchasedAt: zod.string(),
+  energyUnits: zod.number(),
+  energyCap: zod.number(),
+  integrity: zod.number(),
+  isUnderConstruction: zod.boolean(),
+  constructionCompleteAt: zod.string(),
+  lastPayoutAt: zod.string(),
+  nextPayoutAt: zod.string(),
+  energyPerHour: zod.number(),
+  moneyPerEnergy: zod.number(),
+  incomePerHour: zod.number(),
+  pendingIncome: zod.number(),
+  pendingFullHours: zod.number(),
+  cityId: zod.number(),
+});
+
+/**
+ * @summary Sell stored energy units from a single reactor for cash
+ */
+export const CollectReactorIncomeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CollectReactorIncomeResponse = zod.object({
+  success: zod.boolean(),
+  money: zod.number(),
+  energyConverted: zod.number(),
+  hoursCollected: zod.number(),
+  nextPayoutAt: zod.string().optional(),
 });
 
 /**

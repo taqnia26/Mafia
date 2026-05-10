@@ -262,7 +262,7 @@ paths:
     post:
       operationId: collectPropertyIncome
       tags: [properties]
-      summary: Manually collect accumulated income from all properties
+      summary: Manually collect accumulated income from all properties (excludes reactors)
       responses:
         "200":
           description: Income collected
@@ -272,6 +272,62 @@ paths:
                 $ref: "#/components/schemas/CollectIncomeResult"
         "400":
           description: Nothing to collect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /properties/reactor/{id}:
+    get:
+      operationId: getReactorDetails
+      tags: [properties]
+      summary: Get full details for a single nuclear reactor
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reactor details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReactorDetails"
+        "404":
+          description: Reactor not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /properties/reactor/{id}/collect:
+    post:
+      operationId: collectReactorIncome
+      tags: [properties]
+      summary: Sell stored energy units from a single reactor for cash
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reactor energy sold
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectReactorResult"
+        "400":
+          description: Cannot collect (still under construction or no full hours)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Reactor not found
           content:
             application/json:
               schema:
@@ -2946,6 +3002,8 @@ components:
           type: integer
         totalOwned:
           type: integer
+        isReactor:
+          type: boolean
       required:
         - id
         - nameEn
@@ -2966,6 +3024,126 @@ components:
         - rankSlotAvailable
         - maxProperties
         - totalOwned
+        - isReactor
+
+    ReactorState:
+      type: object
+      properties:
+        energyUnits:
+          type: integer
+        energyCap:
+          type: integer
+        integrity:
+          type: integer
+        isUnderConstruction:
+          type: boolean
+        constructionCompleteAt:
+          type: string
+        lastPayoutAt:
+          type: string
+        nextPayoutAt:
+          type: string
+        energyPerHour:
+          type: integer
+        moneyPerEnergy:
+          type: integer
+        cityId:
+          type: integer
+      required:
+        - energyUnits
+        - energyCap
+        - integrity
+        - isUnderConstruction
+        - constructionCompleteAt
+        - lastPayoutAt
+        - nextPayoutAt
+        - energyPerHour
+        - moneyPerEnergy
+        - cityId
+
+    ReactorDetails:
+      type: object
+      properties:
+        id:
+          type: integer
+        nameEn:
+          type: string
+        nameAr:
+          type: string
+        descriptionEn:
+          type: string
+        descriptionAr:
+          type: string
+        icon:
+          type: string
+        purchasedAt:
+          type: string
+        energyUnits:
+          type: integer
+        energyCap:
+          type: integer
+        integrity:
+          type: integer
+        isUnderConstruction:
+          type: boolean
+        constructionCompleteAt:
+          type: string
+        lastPayoutAt:
+          type: string
+        nextPayoutAt:
+          type: string
+        energyPerHour:
+          type: integer
+        moneyPerEnergy:
+          type: integer
+        incomePerHour:
+          type: number
+        pendingIncome:
+          type: number
+        pendingFullHours:
+          type: integer
+        cityId:
+          type: integer
+      required:
+        - id
+        - nameEn
+        - nameAr
+        - descriptionEn
+        - descriptionAr
+        - icon
+        - purchasedAt
+        - energyUnits
+        - energyCap
+        - integrity
+        - isUnderConstruction
+        - constructionCompleteAt
+        - lastPayoutAt
+        - nextPayoutAt
+        - energyPerHour
+        - moneyPerEnergy
+        - incomePerHour
+        - pendingIncome
+        - pendingFullHours
+        - cityId
+
+    CollectReactorResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        money:
+          type: number
+        energyConverted:
+          type: integer
+        hoursCollected:
+          type: integer
+        nextPayoutAt:
+          type: string
+      required:
+        - success
+        - money
+        - energyConverted
+        - hoursCollected
 
     PlayerProperty:
       type: object
@@ -3008,6 +3186,12 @@ components:
           type: number
         canCollect:
           type: boolean
+        isReactor:
+          type: boolean
+        reactor:
+          oneOf:
+            - $ref: "#/components/schemas/ReactorState"
+            - type: "null"
       required:
         - id
         - level
@@ -3025,6 +3209,7 @@ components:
         - maxLevel
         - pendingIncome
         - canCollect
+        - isReactor
 
     BuyPropertyInput:
       type: object

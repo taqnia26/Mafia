@@ -195,10 +195,32 @@ async function seed() {
         price: 1000000, baseIncomePerHour: 10000, requiredLevel: 30, maxLevel: 4,
         icon: "landmark", perksEn: "Dominates financial income", perksAr: "يهيمن على الدخل المالي",
       },
+      {
+        nameEn: "Nuclear Reactor", nameAr: "مفاعل نووي",
+        descriptionEn: "A massive nuclear reactor selling energy units to NPCs. Extremely expensive, generates massive passive income, but vulnerable to sabotage.",
+        descriptionAr: "مفاعل نووي ضخم يبيع وحدات الطاقة لشخصيات غير اللاعبين. باهظ الثمن، يدر دخلاً سلبياً ضخماً، لكنه عرضة للتخريب.",
+        price: 50000000, baseIncomePerHour: 500000, requiredLevel: 30, maxLevel: 1,
+        icon: "atom", perksEn: "Massive passive income — vulnerable to attacks", perksAr: "دخل سلبي ضخم — عرضة للهجمات",
+        isReactor: true,
+      },
     ]);
     console.log("Property types seeded");
   } else {
-    console.log("Property types already exist, skipping");
+    // Ensure the reactor row exists even if other types were already seeded.
+    const hasReactor = existingPropertyTypes.some(t => t.isReactor);
+    if (!hasReactor) {
+      await db.insert(schema.propertyTypesTable).values({
+        nameEn: "Nuclear Reactor", nameAr: "مفاعل نووي",
+        descriptionEn: "A massive nuclear reactor selling energy units to NPCs. Extremely expensive, generates massive passive income, but vulnerable to sabotage.",
+        descriptionAr: "مفاعل نووي ضخم يبيع وحدات الطاقة لشخصيات غير اللاعبين. باهظ الثمن، يدر دخلاً سلبياً ضخماً، لكنه عرضة للتخريب.",
+        price: 50000000, baseIncomePerHour: 500000, requiredLevel: 30, maxLevel: 1,
+        icon: "atom", perksEn: "Massive passive income — vulnerable to attacks", perksAr: "دخل سلبي ضخم — عرضة للهجمات",
+        isReactor: true,
+      });
+      console.log("Nuclear Reactor property type added");
+    } else {
+      console.log("Property types already exist, skipping");
+    }
   }
 
   const existingRanks = await db.select().from(schema.playerRanksTable);
