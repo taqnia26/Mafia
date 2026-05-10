@@ -1,21 +1,30 @@
 import { useListWeapons, useGetMyWeapons, useListAmmo, useGetMyAmmo, useBuyWeapon, useBuyAmmo, getListWeaponsQueryKey, getGetMyWeaponsQueryKey, getListAmmoQueryKey, getGetMyAmmoQueryKey, getGetMyProfileQueryKey, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Package, Swords, Battery } from "lucide-react";
+import { Package, Swords, Battery, Minus, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { getApiError } from "@/lib/apiError";
 import { PageBanner } from "@/components/PageBanner";
 import { getWeaponImage, getAmmoImage } from "@/lib/itemImages";
+import { formatMoney } from "@/lib/format";
+
+const QUICK_QTYS = [10, 50, 100, 500];
 
 export default function Weapons() {
   const { t } = useI18n();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [ammoQty, setAmmoQty] = useState<Record<number, number>>({});
+
+  const getQty = (id: number) => Math.max(1, Math.floor(ammoQty[id] ?? 10));
+  const setQty = (id: number, v: number) =>
+    setAmmoQty((s) => ({ ...s, [id]: Math.max(1, Math.min(99999, Math.floor(v) || 1)) }));
 
   const { data: shopWeapons, isLoading: isWeaponsLoading } = useListWeapons({ query: { queryKey: getListWeaponsQueryKey() } });
   const { data: myWeapons, isLoading: isMyWeaponsLoading } = useGetMyWeapons({ query: { queryKey: getGetMyWeaponsQueryKey() } });
@@ -95,31 +104,85 @@ export default function Weapons() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {isAmmoLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full bg-card" />)
-              ) : shopAmmo?.map((a) => (
-                <Card key={a.id} className="bg-card border-border hover:border-primary/50 transition-colors flex flex-col overflow-hidden">
-                  <div className="relative h-28 overflow-hidden">
-                    <img
-                      src={a.imageUrl ?? getAmmoImage(a.name)}
-                      alt={a.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).src = getAmmoImage(a.name); }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
-                  </div>
-                  <CardHeader className="pb-2 pt-3">
-                    <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex-1 text-sm text-muted-foreground">
-                    <p>{t("weapons.damageBonus")}: <span className="text-orange-400 font-bold">+{a.damageBonus}</span></p>
-                  </CardContent>
-                  <CardFooter className="flex items-center justify-between pt-3 border-t border-border/50">
-                    <span className="text-green-500 font-mono font-bold">${a.price.toLocaleString("en-US")}</span>
-                    <Button size="sm" className="font-heading uppercase" onClick={() => buyAmmo.mutate({ ammoId: a.id, data: { quantity: 10 } })} disabled={buyAmmo.isPending}>
-                      {t("common.buy")}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+              ) : shopAmmo?.map((a) => {
+                const qty = getQty(a.id);
+                const total = a.price * qty;
+                return (
+                  <Card key={a.id} className="bg-card border-border hover:border-primary/50 transition-colors flex flex-col overflow-hidden">
+                    <div className="relative h-28 overflow-hidden">
+                      <img
+                        src={a.imageUrl ?? getAmmoImage(a.name)}
+                        alt={a.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).src = getAmmoImage(a.name); }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+                    </div>
+                    <CardHeader className="pb-2 pt-3">
+                      <CardTitle className="font-heading uppercase tracking-wider text-base">{a.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex-1 text-sm text-muted-foreground space-y-2">
+                      <p>{t("weapons.damageBonus")}: <span className="text-orange-400 font-bold">+{a.damageBonus}</span></p>
+                      <p>{t("weapons.unitPrice")}: <span className="text-foreground font-mono">${a.price.toLocaleString("en-US")}</span></p>
+                    </CardContent>
+                    <CardFooter className="flex flex-col gap-3 pt-3 border-t border-border/50">
+                      {/* Quantity controls */}
+                      <div className="w-full flex items-center justify-between gap-2">
+                        <span className="text-xs text-muted-foreground">{t("common.quantity")}</span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button" size="icon" variant="outline"
+                            className="h-8 w-8"
+                            onClick={() => setQty(a.id, qty - 1)}
+                            disabled={qty <= 1}
+                            aria-label="decrease"
+                          ><Minus className="w-3 h-3" /></Button>
+                          <input
+                            type="number" min={1} value={qty}
+                            onChange={(e) => setQty(a.id, Number(e.target.value))}
+                            className="w-16 h-8 text-center bg-background border border-border rounded-md font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                            style={{ direction: "ltr" }}
+                            data-testid={`input-ammo-qty-${a.id}`}
+                          />
+                          <Button
+                            type="button" size="icon" variant="outline"
+                            className="h-8 w-8"
+                            onClick={() => setQty(a.id, qty + 1)}
+                            aria-label="increase"
+                          ><Plus className="w-3 h-3" /></Button>
+                        </div>
+                      </div>
+                      <div className="w-full flex flex-wrap gap-1">
+                        {QUICK_QTYS.map((q) => (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => setQty(a.id, q)}
+                            className="px-2 py-0.5 text-[10px] rounded border border-border/60 hover:border-primary/50 hover:bg-primary/10 font-mono"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="w-full flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t("common.total")}</div>
+                          <div className="text-green-400 font-mono font-bold text-base">{formatMoney(total)}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="font-heading uppercase"
+                          onClick={() => buyAmmo.mutate({ ammoId: a.id, data: { quantity: qty } })}
+                          disabled={buyAmmo.isPending}
+                          data-testid={`button-buy-ammo-${a.id}`}
+                        >
+                          {t("common.buy")}
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </TabsContent>

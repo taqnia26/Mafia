@@ -113,6 +113,8 @@ const translations: Translations = {
   "common.buy": { en: "Buy", ar: "شراء" },
   "common.sell": { en: "Sell", ar: "بيع" },
   "common.quantity": { en: "Quantity", ar: "الكمية" },
+  "common.total": { en: "Total", ar: "الإجمالي" },
+  "weapons.unitPrice": { en: "Unit Price", ar: "سعر الوحدة" },
   "common.price": { en: "Price", ar: "السعر" },
   "common.back": { en: "Back", ar: "رجوع" },
   "common.level": { en: "Level", ar: "المستوى" },
