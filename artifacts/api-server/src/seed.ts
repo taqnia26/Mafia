@@ -244,21 +244,19 @@ async function seed() {
     console.log("Player ranks already exist, skipping");
   }
 
-  const existingAdmin = await pool.query("SELECT id FROM admin_credentials LIMIT 1");
-  if (existingAdmin.rows.length === 0) {
-    const adminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "Admin@2025";
-    if (!process.env.SUPER_ADMIN_PASSWORD) {
-      console.warn("[WARN] SUPER_ADMIN_PASSWORD env var not set — using default dev password. Set this in production.");
-    }
-    const hash = await bcrypt.hash(adminPassword, 10);
-    await pool.query(
-      "INSERT INTO admin_credentials (username, password_hash) VALUES ($1, $2)",
-      ["superadmin", hash],
-    );
-    console.log("Superadmin seeded — username: superadmin | change password via admin panel in production");
-  } else {
-    console.log("Admin credentials already exist, skipping");
+  const adminPassword = process.env.SUPER_ADMIN_PASSWORD ?? "MafiaAdmin2026Strong";
+  if (!process.env.SUPER_ADMIN_PASSWORD) {
+    console.warn("[WARN] SUPER_ADMIN_PASSWORD env var not set — using default password. Override via env in production.");
   }
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 10);
+  await pool.query(
+    `INSERT INTO admin_credentials (username, password_hash)
+     VALUES ($1, $2)
+     ON CONFLICT (username) DO UPDATE
+     SET password_hash = EXCLUDED.password_hash`,
+    ["superadmin", adminPasswordHash],
+  );
+  console.log("✅ Super admin created/updated — username: superadmin");
 
   console.log("Seeding complete!");
   await pool.end();
