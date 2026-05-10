@@ -32,8 +32,21 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     fetch("/api/super-admin/stats", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => setStats(d as Stats))
+      .then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d = await r.json();
+        setStats({
+          totalPlayers: d.totalPlayers ?? 0,
+          totalGangs: d.totalGangs ?? 0,
+          totalPrisoners: d.totalPrisoners ?? 0,
+          attacksToday: d.attacksToday ?? 0,
+          totalMoneyInCirculation: d.totalMoneyInCirculation ?? 0,
+          attacksByDay: Array.isArray(d.attacksByDay) ? d.attacksByDay : [],
+          crimesByType: Array.isArray(d.crimesByType) ? d.crimesByType : [],
+          topPlayers: Array.isArray(d.topPlayers) ? d.topPlayers : [],
+          recentActivity: Array.isArray(d.recentActivity) ? d.recentActivity : [],
+        });
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

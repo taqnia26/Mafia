@@ -9,6 +9,7 @@ import { eq, and, sql, count, ne } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
 import { createNotification } from "../lib/notifications";
 import { REACTOR, reactorIncomePerHour } from "../lib/reactor";
+import { canBuildPropertyAt, tryReserveCitySlot } from "../lib/phase1";
 
 const router = Router();
 
@@ -299,6 +300,16 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
       });
     }
 
+    // Phase 1: city-wide limits + min_rank for special properties.
+    const buildCheck = await canBuildPropertyAt(player.id, player.cityId, propType.id);
+    if (!buildCheck.canBuild) {
+      return void res.status(400).json({
+        error: buildCheck.reason,
+        errorAr: buildCheck.reasonAr,
+        currentOwners: buildCheck.currentOwners,
+      });
+    }
+
     const now = new Date();
     const constructionCompleteAt = new Date(now.getTime() + REACTOR.CONSTRUCTION_HOURS * 3600 * 1000);
     let newProp: typeof playerPropertiesTable.$inferSelect | undefined;
@@ -318,6 +329,10 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
         if (Number(ownedNow?.cnt ?? 0) >= maxProperties) {
           throw new Error("SLOT_FULL");
         }
+
+        // Atomic city-wide slot reservation — never overshoots max even under concurrency.
+        const reserved = await tryReserveCitySlot(tx as unknown as typeof db, player.cityId, propType.id);
+        if (!reserved) throw new Error("CITY_SLOT_FULL");
 
         const [inserted] = await tx.insert(playerPropertiesTable).values({
           playerId: player.id,
@@ -351,6 +366,12 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
           error: `Your rank allows a maximum of ${maxProperties} properties. Upgrade your rank to own more.`,
         });
       }
+      if (msg === "CITY_SLOT_FULL") {
+        return void res.status(409).json({
+          error: `All ${propType.nameEn} slots in this city are taken.`,
+          errorAr: `كل أماكن ${propType.nameAr} في هذه المدينة مأخوذة.`,
+        });
+      }
       throw e;
     }
 
@@ -361,6 +382,9 @@ router.post("/properties/buy", requireAuth, requireAlive, async (req, res) => {
     if (propType.isReactor) {
       await logActivity(player.id, "reactor_built",
         `Started construction on a Nuclear Reactor for $${propType.price.toLocaleString()} — completes in ${REACTOR.CONSTRUCTION_HOURS / 24} days`);
+    } else if (propType.isSupremeFortress) {
+      await logActivity(player.id, "supreme_fortress_built",
+        `Built the Supreme Fortress for $${propType.price.toLocaleString()}`);
     } else {
       await logActivity(player.id, "property_purchased", `Purchased ${propType.nameEn} for $${propType.price.toLocaleString()}`);
     }

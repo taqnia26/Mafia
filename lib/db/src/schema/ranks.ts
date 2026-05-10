@@ -1,6 +1,13 @@
 import { pgTable, serial, text, integer, bigint, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { playersTable } from "./players";
 
+export type RankSpecialRequirements = {
+  kills?: number;
+  properties?: number;
+  neighborhood_control?: boolean;
+  must_kill_rank_12?: boolean;
+};
+
 export const playerRanksTable = pgTable("player_ranks", {
   id: serial("id").primaryKey(),
   rankNumber: integer("rank_number").notNull().unique(),
@@ -14,6 +21,9 @@ export const playerRanksTable = pgTable("player_ranks", {
   requiredKills: integer("required_kills").notNull().default(0),
   atkBonus: integer("atk_bonus").notNull().default(0),
   defBonus: integer("def_bonus").notNull().default(0),
+  maxHp: integer("max_hp").notNull().default(100),
+  maxHolders: integer("max_holders"),
+  specialRequirements: jsonb("special_requirements").$type<RankSpecialRequirements>(),
   maxNpcGuards: integer("max_npc_guards").notNull().default(0),
   maxPlayerGuards: integer("max_player_guards").notNull().default(0),
   maxProperties: integer("max_properties").notNull().default(0),

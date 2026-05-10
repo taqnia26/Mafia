@@ -42,6 +42,9 @@ import Admin from "@/pages/admin";
 import Ranks from "@/pages/ranks";
 import Properties from "@/pages/properties";
 import Bank from "@/pages/bank";
+import SafeHouse from "@/pages/safe-house";
+import Blackjack from "@/pages/blackjack";
+import KillCalculator from "@/pages/kill-calculator";
 import Dead from "@/pages/dead";
 import { Layout } from "@/components/layout";
 import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
@@ -249,6 +252,9 @@ function ClerkProviderWithRoutes() {
               <Route path="/ranks"><ProtectedRoute component={Ranks} /></Route>
               <Route path="/properties"><ProtectedRoute component={Properties} /></Route>
               <Route path="/bank"><ProtectedRoute component={Bank} /></Route>
+              <Route path="/safe-house"><ProtectedRoute component={SafeHouse} /></Route>
+              <Route path="/blackjack"><ProtectedRoute component={Blackjack} /></Route>
+              <Route path="/kill-calculator"><ProtectedRoute component={KillCalculator} /></Route>
               <Route path="/dead"><ProtectedRoute component={Dead} allowDead /></Route>
 
               <Route component={NotFound} />

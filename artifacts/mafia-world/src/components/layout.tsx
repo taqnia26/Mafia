@@ -19,6 +19,9 @@ import {
   Award,
   Building2,
   Landmark,
+  Home as HomeIcon,
+  Spade,
+  Crosshair as CrosshairCalc,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +81,9 @@ export function Layout({ children }: LayoutProps) {
     { href: "/cities", label: "nav.cities", icon: Map },
     { href: "/properties", label: "nav.properties", icon: Building2 },
     { href: "/bank", label: "nav.bank", icon: Landmark },
+    { href: "/safe-house", label: "nav.safeHouse", icon: HomeIcon },
+    { href: "/blackjack", label: "nav.blackjack", icon: Spade },
+    { href: "/kill-calculator", label: "nav.killCalc", icon: CrosshairCalc },
     { href: "/ranks", label: "nav.ranks", icon: Award },
     { href: "/settings", label: "nav.settings", icon: Settings },
   ];

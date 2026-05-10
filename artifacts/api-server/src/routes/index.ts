@@ -15,6 +15,9 @@ import notificationsRouter from "./notifications";
 import ranksRouter from "./ranks";
 import propertiesRouter from "./properties";
 import bankRouter from "./bank";
+import safeHouseRouter from "./safeHouse";
+import combatRouter from "./combat";
+import casinoRouter from "./casino";
 
 
 const router: IRouter = Router();
@@ -35,5 +38,8 @@ router.use(notificationsRouter);
 router.use(ranksRouter);
 router.use(propertiesRouter);
 router.use(bankRouter);
+router.use(safeHouseRouter);
+router.use(combatRouter);
+router.use(casinoRouter);
 
 export default router;

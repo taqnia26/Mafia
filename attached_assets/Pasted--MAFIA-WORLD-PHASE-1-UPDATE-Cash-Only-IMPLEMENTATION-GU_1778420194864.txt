@@ -1,0 +1,1537 @@
+# MAFIA WORLD - PHASE 1 UPDATE (Cash-Only)
+## IMPLEMENTATION GUIDE - Compatible with Current Stack
+
+**Date:** May 10, 2026  
+**Version:** 2.0 Phase 1  
+**Priority:** High  
+**Stack:** PostgreSQL + Drizzle ORM + Clerk Auth + Next.js
+
+---
+
+# 🎯 PHASE 1 SCOPE (Current Patch)
+
+**What we're building NOW:**
+- ✅ 12 New Ranks (with 3-player cap for rank 12)
+- ✅ Property Limits per City
+- ✅ Safe House Rental System (CASH only)
+- ✅ Kill Calculator
+- ✅ Weapon-Ammo Compatibility
+- ✅ Supreme Fortress (endgame property)
+- ✅ Casino Games (CASH only, no diamonds)
+
+**What's POSTPONED to Phase 2:**
+- ⏳ Diamonds currency
+- ⏳ VIP Tiers ($29-$199/month)
+- ⏳ Payment gateways (Stripe/Moyasar)
+- ⏳ IAP (In-App Purchases)
+
+---
+
+# 📚 CURRENT STACK REFERENCE
+
+**Database:**
+- PostgreSQL (NOT SQLite)
+- Drizzle ORM (NOT raw SQL)
+- Migrations in `drizzle/migrations/` (numbered 001-011+)
+
+**Auth:**
+- Clerk (NOT password_hash)
+- User ID from Clerk
+- Admin in separate `adminCredentials` table
+
+**Backend:**
+- Next.js API routes
+- OpenAPI spec + Orval codegen
+- TypeScript strict mode
+
+**Important Constraints:**
+- NO `id = 4000` super admin (use adminCredentials)
+- NO `BOOLEAN DEFAULT 0` (use `BOOLEAN DEFAULT FALSE`)
+- NO `datetime('now')` (use `NOW()`)
+- NO template string SQL (use Drizzle query builder)
+
+---
+
+# 1️⃣ RANK SYSTEM UPDATE
+
+## 1.1 New 12-Rank Structure
+
+**Migration:** `012_update_ranks.sql`
+
+```sql
+-- Update ranks table
+ALTER TABLE ranks ADD COLUMN IF NOT EXISTS max_holders INTEGER;
+ALTER TABLE ranks ADD COLUMN IF NOT EXISTS special_requirements JSONB;
+
+-- Update existing ranks data
+UPDATE ranks SET
+  name_en = 'Prospect',
+  name_ar = 'بروسبكت',
+  level_required = 1,
+  max_hp = 100,
+  atk_bonus = 0,
+  def_bonus = 0
+WHERE id = 1;
+
+UPDATE ranks SET
+  name_en = 'Sicario',
+  name_ar = 'سيكاريو',
+  level_required = 5,
+  max_hp = 125,
+  atk_bonus = 10,
+  def_bonus = 10
+WHERE id = 2;
+
+UPDATE ranks SET
+  name_en = 'Bratok',
+  name_ar = 'براتوك',
+  level_required = 10,
+  max_hp = 150,
+  atk_bonus = 20,
+  def_bonus = 20
+WHERE id = 3;
+
+UPDATE ranks SET
+  name_en = 'Enforcer',
+  name_ar = 'إنفورسر',
+  level_required = 20,
+  max_hp = 200,
+  atk_bonus = 40,
+  def_bonus = 40
+WHERE id = 4;
+
+UPDATE ranks SET
+  name_en = 'Caporegime',
+  name_ar = 'كابوريجيمي',
+  level_required = 30,
+  max_hp = 250,
+  atk_bonus = 60,
+  def_bonus = 60
+WHERE id = 5;
+
+UPDATE ranks SET
+  name_en = 'Capodecina',
+  name_ar = 'كابوديتشينا',
+  level_required = 45,
+  max_hp = 325,
+  atk_bonus = 80,
+  def_bonus = 80
+WHERE id = 6;
+
+UPDATE ranks SET
+  name_en = 'Consigliere',
+  name_ar = 'كونسيليري',
+  level_required = 60,
+  max_hp = 400,
+  atk_bonus = 100,
+  def_bonus = 100
+WHERE id = 7;
+
+UPDATE ranks SET
+  name_en = 'Underboss',
+  name_ar = 'أندربوس',
+  level_required = 80,
+  max_hp = 500,
+  atk_bonus = 120,
+  def_bonus = 120
+WHERE id = 8;
+
+UPDATE ranks SET
+  name_en = 'Boss',
+  name_ar = 'بوس',
+  level_required = 100,
+  max_hp = 625,
+  atk_bonus = 140,
+  def_bonus = 140
+WHERE id = 9;
+
+UPDATE ranks SET
+  name_en = 'Don',
+  name_ar = 'دون',
+  level_required = 125,
+  max_hp = 750,
+  atk_bonus = 160,
+  def_bonus = 160
+WHERE id = 10;
+
+UPDATE ranks SET
+  name_en = 'Padrino',
+  name_ar = 'بادرينو',
+  level_required = 150,
+  max_hp = 875,
+  atk_bonus = 220,
+  def_bonus = 220,
+  special_requirements = '{"kills": 150, "properties": 15, "neighborhood_control": true}'::jsonb
+WHERE id = 11;
+
+-- Rank 12: Maximum 3 players in entire game
+INSERT INTO ranks (id, name_en, name_ar, level_required, max_hp, atk_bonus, def_bonus, max_holders, special_requirements)
+VALUES (
+  12,
+  'Capo di Tutti Capi',
+  'كابو دي توتي كابي',
+  200,
+  1000,
+  280,
+  280,
+  3, -- MAX 3 PLAYERS
+  '{"kills": 200, "properties": 20, "must_kill_rank_12": true}'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
+  max_holders = 3,
+  special_requirements = '{"kills": 200, "properties": 20, "must_kill_rank_12": true}'::jsonb;
+```
+
+## 1.2 Drizzle Schema Update
+
+```typescript
+// drizzle/schema/ranks.ts
+import { pgTable, serial, text, integer, jsonb } from 'drizzle-orm/pg-core';
+
+export const ranks = pgTable('ranks', {
+  id: serial('id').primaryKey(),
+  nameEn: text('name_en').notNull(),
+  nameAr: text('name_ar').notNull(),
+  levelRequired: integer('level_required').notNull(),
+  maxHp: integer('max_hp').notNull(),
+  atkBonus: integer('atk_bonus').notNull().default(0),
+  defBonus: integer('def_bonus').notNull().default(0),
+  maxHolders: integer('max_holders'), // NULL = unlimited, 3 for rank 12
+  specialRequirements: jsonb('special_requirements').$type<{
+    kills?: number;
+    properties?: number;
+    neighborhood_control?: boolean;
+    must_kill_rank_12?: boolean;
+  }>()
+});
+```
+
+## 1.3 Rank 12 Promotion Logic
+
+```typescript
+// lib/ranks/canPromoteToRank12.ts
+import { db } from '@/db';
+import { users, ranks } from '@/db/schema';
+import { eq, and, count } from 'drizzle-orm';
+
+export async function canPromoteToRank12(userId: string) {
+  // Check current rank 12 count
+  const [currentHolders] = await db
+    .select({ count: count() })
+    .from(users)
+    .where(eq(users.rank, 12));
+  
+  if (currentHolders.count >= 3) {
+    // Get current holders
+    const holders = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        level: users.level,
+        cityId: users.cityId
+      })
+      .from(users)
+      .where(eq(users.rank, 12));
+    
+    return {
+      canPromote: false,
+      reason: 'All 3 Capo di Tutti Capi seats are taken. You must eliminate one of them.',
+      currentHolders: holders
+    };
+  }
+  
+  return { canPromote: true };
+}
+
+// Auto-promote killer to rank 12 after killing a rank 12 player
+export async function checkCapoKillPromotion(killerId: string, victimId: string) {
+  const [victim] = await db
+    .select({ rank: users.rank })
+    .from(users)
+    .where(eq(users.id, victimId));
+  
+  if (victim.rank === 12) {
+    const [killer] = await db
+      .select({ 
+        level: users.level,
+        rank: users.rank,
+        kills: users.totalKills
+      })
+      .from(users)
+      .where(eq(users.id, killerId));
+    
+    // Check if killer qualifies
+    if (killer.level >= 200 && killer.kills >= 200) {
+      const { canPromote } = await canPromoteToRank12(killerId);
+      
+      if (canPromote) {
+        // Promote to rank 12
+        await db
+          .update(users)
+          .set({ 
+            rank: 12,
+            maxHp: 1000,
+            hp: 1000 
+          })
+          .where(eq(users.id, killerId));
+        
+        return {
+          promoted: true,
+          message: 'You killed a Capo di Tutti Capi and took their throne!'
+        };
+      }
+    }
+  }
+  
+  return { promoted: false };
+}
+```
+
+## 1.4 Rank Badges (Frontend)
+
+```tsx
+// components/RankBadge.tsx
+interface RankBadgeProps {
+  rank: number;
+  className?: string;
+}
+
+export function RankBadge({ rank, className }: RankBadgeProps) {
+  const getBadgeStyle = () => {
+    if (rank >= 1 && rank <= 3) {
+      return 'badge-bronze'; // Bronze glow
+    }
+    if (rank >= 4 && rank <= 6) {
+      return 'badge-silver'; // Silver shimmer
+    }
+    if (rank >= 7 && rank <= 9) {
+      return 'badge-gold'; // Golden sparkle
+    }
+    if (rank >= 10 && rank <= 12) {
+      return 'badge-platinum'; // Platinum rainbow
+    }
+    return 'badge-default';
+  };
+  
+  return (
+    <div className={`rank-badge ${getBadgeStyle()} ${className}`}>
+      <span className="rank-number">{rank}</span>
+    </div>
+  );
+}
+```
+
+```css
+/* styles/rankBadges.css */
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-weight: bold;
+  transition: transform 0.3s;
+}
+
+.badge-bronze {
+  background: linear-gradient(135deg, #CD7F32, #B87333);
+  animation: bronze-pulse 2s infinite;
+  box-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
+}
+
+.badge-silver {
+  background: linear-gradient(135deg, #C0C0C0, #E8E8E8);
+  animation: silver-shimmer 1.5s infinite;
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
+}
+
+.badge-gold {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  animation: golden-sparkle 1s infinite;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+.badge-platinum {
+  background: linear-gradient(135deg, #E5E4E2, #BCC6CC);
+  animation: rainbow-glow 3s infinite;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
+}
+
+@keyframes bronze-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes silver-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+@keyframes golden-sparkle {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.4) saturate(1.5); }
+}
+
+@keyframes rainbow-glow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+```
+
+---
+
+# 2️⃣ PROPERTY LIMITS PER CITY
+
+## 2.1 Database Schema
+
+**Migration:** `013_property_limits.sql`
+
+```sql
+-- Property limits configuration
+CREATE TABLE IF NOT EXISTS property_limits (
+  id SERIAL PRIMARY KEY,
+  property_type TEXT NOT NULL UNIQUE,
+  max_per_city INTEGER NOT NULL DEFAULT -1, -- -1 = unlimited
+  min_rank INTEGER,
+  price_cash BIGINT,
+  base_income_per_hour INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Track current property count per city
+CREATE TABLE IF NOT EXISTS city_property_counts (
+  id SERIAL PRIMARY KEY,
+  city_id INTEGER NOT NULL REFERENCES cities(id),
+  property_type TEXT NOT NULL,
+  current_count INTEGER NOT NULL DEFAULT 0,
+  max_count INTEGER NOT NULL,
+  UNIQUE(city_id, property_type)
+);
+
+-- Insert property limits
+INSERT INTO property_limits (property_type, max_per_city, min_rank, price_cash, base_income_per_hour) VALUES
+('safe_house', -1, NULL, 100000, 500),           -- unlimited
+('workshop', -1, NULL, 500000, 1000),             -- unlimited
+('nightclub', 5, NULL, 1000000, 2000),
+('drug_lab', 10, NULL, 2500000, 5000),
+('hospital', 1, 6, 600000, 3000),                 -- rank 6+ only, 1 per city
+('bank', 1, 6, 1000000, 5000),                    -- rank 6+ only, 1 per city
+('ammo_factory', 3, 6, 5000000, 10000),
+('weapons_warehouse', 2, 7, 10000000, 15000),
+('casino', 2, 8, 25000000, 25000),
+('nuclear_reactor', 1, 11, 500000000, 50000),     -- rank 11 only, 1 per city
+('supreme_fortress', 1, 12, 1000000000, 100000)   -- rank 12 only, 1 per city
+ON CONFLICT (property_type) DO NOTHING;
+
+-- Initialize counts for existing cities
+INSERT INTO city_property_counts (city_id, property_type, current_count, max_count)
+SELECT c.id, pl.property_type, 0, pl.max_per_city
+FROM cities c
+CROSS JOIN property_limits pl
+WHERE pl.max_per_city != -1
+ON CONFLICT DO NOTHING;
+```
+
+## 2.2 Drizzle Schema
+
+```typescript
+// drizzle/schema/properties.ts
+export const propertyLimits = pgTable('property_limits', {
+  id: serial('id').primaryKey(),
+  propertyType: text('property_type').notNull().unique(),
+  maxPerCity: integer('max_per_city').notNull().default(-1),
+  minRank: integer('min_rank'),
+  priceCash: bigint('price_cash', { mode: 'number' }),
+  baseIncomePerHour: integer('base_income_per_hour').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+export const cityPropertyCounts = pgTable('city_property_counts', {
+  id: serial('id').primaryKey(),
+  cityId: integer('city_id').notNull().references(() => cities.id),
+  propertyType: text('property_type').notNull(),
+  currentCount: integer('current_count').notNull().default(0),
+  maxCount: integer('max_count').notNull()
+}, (table) => ({
+  uniqueCityProperty: unique().on(table.cityId, table.propertyType)
+}));
+```
+
+## 2.3 Build Property Logic
+
+```typescript
+// lib/properties/canBuildProperty.ts
+import { db } from '@/db';
+import { users, propertyLimits, cityPropertyCounts, properties } from '@/db/schema';
+import { eq, and } from 'drizzle-orm';
+
+export async function canBuildProperty(
+  userId: string,
+  cityId: number,
+  propertyType: string
+) {
+  // Get user
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId));
+  
+  if (!user) {
+    return { canBuild: false, reason: 'User not found' };
+  }
+  
+  // Get property limits
+  const [limit] = await db
+    .select()
+    .from(propertyLimits)
+    .where(eq(propertyLimits.propertyType, propertyType));
+  
+  if (!limit) {
+    return { canBuild: false, reason: 'Invalid property type' };
+  }
+  
+  // Check rank requirement
+  if (limit.minRank && user.rank < limit.minRank) {
+    return {
+      canBuild: false,
+      reason: `You need rank ${limit.minRank}+ to build this property`
+    };
+  }
+  
+  // Check money
+  if (limit.priceCash && user.money < limit.priceCash) {
+    return {
+      canBuild: false,
+      reason: `Not enough money. Need $${limit.priceCash.toLocaleString()}`
+    };
+  }
+  
+  // Check city limits (if limited)
+  if (limit.maxPerCity !== -1) {
+    const [cityCount] = await db
+      .select()
+      .from(cityPropertyCounts)
+      .where(
+        and(
+          eq(cityPropertyCounts.cityId, cityId),
+          eq(cityPropertyCounts.propertyType, propertyType)
+        )
+      );
+    
+    if (cityCount && cityCount.currentCount >= cityCount.maxCount) {
+      // Get current owners
+      const currentOwners = await db
+        .select({
+          ownerId: properties.ownerId,
+          username: users.username
+        })
+        .from(properties)
+        .innerJoin(users, eq(properties.ownerId, users.id))
+        .where(
+          and(
+            eq(properties.cityId, cityId),
+            eq(properties.propertyType, propertyType)
+          )
+        );
+      
+      return {
+        canBuild: false,
+        reason: `Maximum ${limit.maxPerCity} ${propertyType} per city. All slots taken!`,
+        currentOwners
+      };
+    }
+  }
+  
+  return { canBuild: true };
+}
+
+// Build property
+export async function buildProperty(
+  userId: string,
+  cityId: number,
+  propertyType: string,
+  name: string
+) {
+  const check = await canBuildProperty(userId, cityId, propertyType);
+  
+  if (!check.canBuild) {
+    throw new Error(check.reason);
+  }
+  
+  const [limit] = await db
+    .select()
+    .from(propertyLimits)
+    .where(eq(propertyLimits.propertyType, propertyType));
+  
+  // Deduct money
+  await db
+    .update(users)
+    .set({ money: sql`money - ${limit.priceCash}` })
+    .where(eq(users.id, userId));
+  
+  // Create property
+  const [property] = await db
+    .insert(properties)
+    .values({
+      ownerId: userId,
+      cityId,
+      propertyType,
+      name,
+      incomePerHour: limit.baseIncomePerHour
+    })
+    .returning();
+  
+  // Update city count (if limited)
+  if (limit.maxPerCity !== -1) {
+    await db
+      .update(cityPropertyCounts)
+      .set({ currentCount: sql`current_count + 1` })
+      .where(
+        and(
+          eq(cityPropertyCounts.cityId, cityId),
+          eq(cityPropertyCounts.propertyType, propertyType)
+        )
+      );
+  }
+  
+  return property;
+}
+```
+
+---
+
+# 3️⃣ SAFE HOUSE RENTAL SYSTEM (Cash Only)
+
+## 3.1 Database Schema
+
+**Migration:** `014_safe_house_rental.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS safe_house_rentals (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL REFERENCES properties(id),
+  renter_id TEXT NOT NULL REFERENCES users(id),
+  owner_id TEXT NOT NULL REFERENCES users(id),
+  rent_amount BIGINT NOT NULL,
+  owner_revenue BIGINT NOT NULL,
+  admin_revenue BIGINT NOT NULL, -- Goes to admin wallet, NOT user ID
+  start_time TIMESTAMP NOT NULL DEFAULT NOW(),
+  end_time TIMESTAMP NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active', -- 'active', 'expired', 'cancelled'
+  renter_ip TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add safe house status to users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS in_safe_house BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS safe_house_expires_at TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_rentals_renter ON safe_house_rentals(renter_id);
+CREATE INDEX IF NOT EXISTS idx_rentals_property ON safe_house_rentals(property_id);
+CREATE INDEX IF NOT EXISTS idx_rentals_status ON safe_house_rentals(status);
+```
+
+## 3.2 Rental Logic (WITHOUT user ID 4000)
+
+```typescript
+// lib/safeHouse/rentSafeHouse.ts
+import { db } from '@/db';
+import { users, properties, safeHouseRentals } from '@/db/schema';
+import { eq, and, gt, sql } from 'drizzle-orm';
+
+const OWNER_CUT = 0.15; // 15% to owner
+const ADMIN_CUT = 0.85; // 85% to admin wallet
+
+export async function rentSafeHouse(
+  renterId: string,
+  propertyId: number,
+  rentAmount: number,
+  durationDays: number = 7 // Max 7 days
+) {
+  // Validations
+  if (rentAmount < 10000) {
+    throw new Error('Minimum rent is $10,000');
+  }
+  
+  if (durationDays > 7) {
+    throw new Error('Maximum rental period is 7 days');
+  }
+  
+  // Get renter
+  const [renter] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, renterId));
+  
+  if (!renter) {
+    throw new Error('Renter not found');
+  }
+  
+  // Get property
+  const [property] = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, propertyId));
+  
+  if (!property) {
+    throw new Error('Property not found');
+  }
+  
+  // Check same city
+  if (property.cityId !== renter.cityId) {
+    throw new Error('Safe House must be in your current city');
+  }
+  
+  // Check cooldown (24 hours)
+  const [lastRental] = await db
+    .select()
+    .from(safeHouseRentals)
+    .where(
+      and(
+        eq(safeHouseRentals.renterId, renterId),
+        gt(safeHouseRentals.createdAt, sql`NOW() - INTERVAL '24 hours'`)
+      )
+    );
+  
+  if (lastRental) {
+    throw new Error('You can only rent once every 24 hours');
+  }
+  
+  // Check money
+  if (renter.money < rentAmount) {
+    throw new Error('Not enough money');
+  }
+  
+  // Calculate split
+  const ownerRevenue = Math.floor(rentAmount * OWNER_CUT);
+  const adminRevenue = rentAmount - ownerRevenue;
+  
+  const endTime = new Date();
+  endTime.setDate(endTime.getDate() + durationDays);
+  
+  // Transaction
+  await db.transaction(async (tx) => {
+    // Deduct from renter
+    await tx
+      .update(users)
+      .set({ money: sql`money - ${rentAmount}` })
+      .where(eq(users.id, renterId));
+    
+    // Pay owner
+    await tx
+      .update(users)
+      .set({ money: sql`money + ${ownerRevenue}` })
+      .where(eq(users.id, property.ownerId));
+    
+    // Admin revenue goes to admin wallet (tracked separately, not to a user)
+    // We'll add it to a separate admin_wallet table or track in adminCredentials
+    
+    // Create rental record
+    await tx
+      .insert(safeHouseRentals)
+      .values({
+        propertyId,
+        renterId,
+        ownerId: property.ownerId,
+        rentAmount,
+        ownerRevenue,
+        adminRevenue,
+        startTime: new Date(),
+        endTime,
+        status: 'active',
+        renterIp: renter.ipAddress
+      });
+    
+    // Activate safe house protection
+    await tx
+      .update(users)
+      .set({
+        inSafeHouse: true,
+        safeHouseExpiresAt: endTime
+      })
+      .where(eq(users.id, renterId));
+  });
+  
+  return {
+    success: true,
+    rentPaid: rentAmount,
+    ownerReceived: ownerRevenue,
+    adminReceived: adminRevenue,
+    protectedUntil: endTime
+  };
+}
+
+// Check if player can be attacked
+export async function canAttackTarget(targetId: string) {
+  const [target] = await db
+    .select({
+      inSafeHouse: users.inSafeHouse,
+      expiresAt: users.safeHouseExpiresAt
+    })
+    .from(users)
+    .where(eq(users.id, targetId));
+  
+  if (target.inSafeHouse && target.expiresAt && target.expiresAt > new Date()) {
+    return {
+      canAttack: false,
+      reason: '⚠️ Cannot attack! Target is protected in Safe House',
+      reasonAr: '⚠️ لا يمكن الهجوم! الهدف محمي في البيت الآمن'
+    };
+  }
+  
+  return { canAttack: true };
+}
+```
+
+## 3.3 Admin Revenue Tracking
+
+```sql
+-- Migration: 015_admin_wallet.sql
+CREATE TABLE IF NOT EXISTS admin_wallet (
+  id SERIAL PRIMARY KEY,
+  source TEXT NOT NULL, -- 'safe_house_rental', 'casino_commission', etc.
+  amount BIGINT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Add index
+CREATE INDEX idx_admin_wallet_source ON admin_wallet(source);
+CREATE INDEX idx_admin_wallet_created ON admin_wallet(created_at);
+```
+
+Update rental logic to track admin revenue:
+
+```typescript
+// In rentSafeHouse function, add:
+await tx
+  .insert(adminWallet)
+  .values({
+    source: 'safe_house_rental',
+    amount: adminRevenue,
+    description: `Rental fee from ${renter.username} (${rentAmount} total, 85% cut)`
+  });
+```
+
+---
+
+# 4️⃣ KILL CALCULATOR
+
+## 4.1 API Route
+
+```typescript
+// app/api/combat/calculate/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/db';
+import { users, weapons, armor, guardTypes, ranks } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
+export async function POST(req: NextRequest) {
+  try {
+    const { attackerId, targetRank, targetArmor, guards } = await req.json();
+    
+    // Get attacker
+    const [attacker] = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        rank: users.rank,
+        equippedWeaponId: users.equippedWeaponId
+      })
+      .from(users)
+      .where(eq(users.id, attackerId));
+    
+    if (!attacker) {
+      return NextResponse.json({ error: 'Attacker not found' }, { status: 404 });
+    }
+    
+    // Get weapon
+    const [weapon] = await db
+      .select()
+      .from(weapons)
+      .where(eq(weapons.id, attacker.equippedWeaponId));
+    
+    if (!weapon) {
+      return NextResponse.json({ error: 'No weapon equipped' }, { status: 400 });
+    }
+    
+    // Get attacker rank bonus
+    const [attackerRankData] = await db
+      .select({ atkBonus: ranks.atkBonus })
+      .from(ranks)
+      .where(eq(ranks.id, attacker.rank));
+    
+    const attackerATK = weapon.atk + (attackerRankData?.atkBonus || 0);
+    
+    // Get target rank data
+    const [targetRankData] = await db
+      .select()
+      .from(ranks)
+      .where(eq(ranks.id, targetRank));
+    
+    if (!targetRankData) {
+      return NextResponse.json({ error: 'Invalid target rank' }, { status: 400 });
+    }
+    
+    // Get target armor
+    let armorDEF = 0;
+    if (targetArmor && targetArmor !== 'none') {
+      const [armorData] = await db
+        .select({ def: armor.def })
+        .from(armor)
+        .where(eq(armor.id, parseInt(targetArmor)));
+      
+      armorDEF = armorData?.def || 0;
+    }
+    
+    const targetDEF = targetRankData.defBonus + armorDEF;
+    const targetHP = targetRankData.maxHp;
+    
+    // Calculate damage
+    const damagePerBullet = Math.max(attackerATK - targetDEF, 5);
+    
+    // Calculate bullets for guards
+    let totalBulletsForGuards = 0;
+    const guardDetails = [];
+    
+    for (const guard of guards) {
+      const [guardData] = await db
+        .select()
+        .from(guardTypes)
+        .where(eq(guardTypes.id, guard.typeId));
+      
+      if (guardData) {
+        const guardDamage = Math.max(attackerATK - guardData.def, 5);
+        const bulletsPerGuard = Math.ceil(guardData.hp / guardDamage);
+        const totalForThisType = bulletsPerGuard * guard.count;
+        
+        totalBulletsForGuards += totalForThisType;
+        
+        guardDetails.push({
+          type: guardData.nameEn,
+          typeAr: guardData.nameAr,
+          count: guard.count,
+          bulletsPerGuard,
+          totalBullets: totalForThisType
+        });
+      }
+    }
+    
+    // Calculate bullets for target
+    const bulletsForTarget = Math.ceil(targetHP / damagePerBullet);
+    
+    // Total
+    const totalBullets = totalBulletsForGuards + bulletsForTarget;
+    
+    // Get bullet price
+    const bulletPrice = 300; // TODO: Get from ammo_types table
+    const totalCost = totalBullets * bulletPrice;
+    
+    // Check availability
+    // TODO: Get actual ammo count from user_ammo
+    const availableAmmo = 1000; // Placeholder
+    const hasEnoughAmmo = availableAmmo >= totalBullets;
+    const hasEnoughMoney = attacker.money >= totalCost;
+    
+    // Suggestions
+    const suggestions = [];
+    
+    if (!hasEnoughAmmo) {
+      suggestions.push({
+        type: 'buy_ammo',
+        message: `You need ${totalBullets - availableAmmo} more bullets`,
+        cost: (totalBullets - availableAmmo) * bulletPrice
+      });
+    }
+    
+    // TODO: Suggest stronger weapons, boosts, etc.
+    
+    return NextResponse.json({
+      attacker: {
+        name: attacker.username,
+        rank: attacker.rank,
+        weapon: weapon.nameEn,
+        totalATK: attackerATK
+      },
+      target: {
+        rank: targetRank,
+        armor: targetArmor,
+        totalDEF: targetDEF,
+        hp: targetHP
+      },
+      calculation: {
+        damagePerBullet,
+        guards: guardDetails,
+        bulletsForGuards: totalBulletsForGuards,
+        bulletsForTarget,
+        totalBullets,
+        bulletType: weapon.ammoType,
+        totalCost
+      },
+      availability: {
+        hasEnoughAmmo,
+        hasEnoughMoney,
+        availableAmmo,
+        neededAmmo: Math.max(0, totalBullets - availableAmmo),
+        neededMoney: Math.max(0, totalCost - attacker.money)
+      },
+      canAttack: hasEnoughAmmo && hasEnoughMoney,
+      suggestions
+    });
+  } catch (error) {
+    console.error('Kill calculator error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## 4.2 Frontend Component
+
+```tsx
+// app/(game)/kill-calculator/page.tsx
+'use client';
+
+import { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
+
+export default function KillCalculatorPage() {
+  const { userId } = useAuth();
+  const [targetRank, setTargetRank] = useState(1);
+  const [targetArmor, setTargetArmor] = useState('none');
+  const [guards, setGuards] = useState([]);
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  const handleCalculate = async () => {
+    setLoading(true);
+    
+    try {
+      const res = await fetch('/api/combat/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attackerId: userId,
+          targetRank,
+          targetArmor,
+          guards
+        })
+      });
+      
+      const data = await res.json();
+      setResult(data);
+    } catch (error) {
+      console.error('Calculation error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">⚔️ Kill Calculator</h1>
+      
+      {/* Attacker Info (Auto-loaded) */}
+      <div className="bg-gray-800 p-6 rounded-lg mb-6">
+        <h2 className="text-xl mb-4">Your Info</h2>
+        {/* Display attacker stats */}
+      </div>
+      
+      {/* Target Input */}
+      <div className="bg-gray-800 p-6 rounded-lg mb-6">
+        <h2 className="text-xl mb-4">Target Info</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block mb-2">Target Rank</label>
+            <select
+              value={targetRank}
+              onChange={(e) => setTargetRank(parseInt(e.target.value))}
+              className="w-full p-2 bg-gray-700 rounded"
+            >
+              <option value={1}>Prospect</option>
+              <option value={2}>Sicario</option>
+              {/* ... other ranks */}
+              <option value={12}>Capo di Tutti Capi</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block mb-2">Target Armor</label>
+            <select
+              value={targetArmor}
+              onChange={(e) => setTargetArmor(e.target.value)}
+              className="w-full p-2 bg-gray-700 rounded"
+            >
+              <option value="none">No Armor (DEF 0)</option>
+              <option value="1">Bulletproof Vest (DEF 20)</option>
+              <option value="2">Kevlar Vest (DEF 35)</option>
+              <option value="3">Full Armor Set (DEF 90)</option>
+              <option value="4">Diamond Armor Set (DEF 150)</option>
+            </select>
+          </div>
+          
+          {/* Guards input */}
+        </div>
+        
+        <button
+          onClick={handleCalculate}
+          disabled={loading}
+          className="mt-6 bg-red-600 hover:bg-red-700 px-6 py-3 rounded"
+        >
+          {loading ? 'Calculating...' : '🔍 Calculate Required Ammo'}
+        </button>
+      </div>
+      
+      {/* Results */}
+      {result && (
+        <div className="bg-gray-800 p-6 rounded-lg">
+          <h2 className="text-2xl mb-4">📊 Calculation Results</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <p className="text-gray-400">Damage per bullet:</p>
+              <p className="text-2xl">{result.calculation.damagePerBullet}</p>
+            </div>
+            
+            <div>
+              <p className="text-gray-400">Total bullets needed:</p>
+              <p className="text-3xl font-bold text-red-500">
+                {result.calculation.totalBullets} bullets
+              </p>
+            </div>
+            
+            <div>
+              <p className="text-gray-400">Total cost:</p>
+              <p className="text-2xl">${result.calculation.totalCost.toLocaleString()}</p>
+            </div>
+            
+            {result.canAttack ? (
+              <div className="bg-green-900/30 border border-green-500 p-4 rounded">
+                <p className="text-green-400 font-bold">✅ Attack is possible!</p>
+              </div>
+            ) : (
+              <div className="bg-red-900/30 border border-red-500 p-4 rounded">
+                <p className="text-red-400 font-bold">⚠️ Cannot attack!</p>
+                <ul className="mt-2 space-y-1">
+                  {result.suggestions.map((s, i) => (
+                    <li key={i}>• {s.message}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+# 5️⃣ CASINO SYSTEM (Cash Only, No Diamonds)
+
+## 5.1 Database Schema
+
+**Migration:** `016_casino.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS casino_games (
+  id SERIAL PRIMARY KEY,
+  casino_id INTEGER NOT NULL REFERENCES properties(id),
+  player_id TEXT NOT NULL REFERENCES users(id),
+  game_type TEXT NOT NULL, -- 'blackjack', 'roulette', 'slots', 'dice'
+  bet_amount BIGINT NOT NULL,
+  commission BIGINT NOT NULL,
+  effective_bet BIGINT NOT NULL,
+  result TEXT NOT NULL, -- 'win', 'lose', 'push'
+  payout BIGINT DEFAULT 0,
+  net_profit BIGINT NOT NULL,
+  game_data JSONB, -- Game-specific details
+  played_at TIMESTAMP DEFAULT NOW(),
+  player_ip TEXT
+);
+
+CREATE TABLE IF NOT EXISTS casino_daily_limits (
+  id SERIAL PRIMARY KEY,
+  player_id TEXT NOT NULL REFERENCES users(id),
+  game_type TEXT NOT NULL,
+  games_played INTEGER DEFAULT 0,
+  total_bet BIGINT DEFAULT 0,
+  date DATE DEFAULT CURRENT_DATE,
+  UNIQUE(player_id, game_type, date)
+);
+
+CREATE INDEX idx_casino_games_player ON casino_games(player_id);
+CREATE INDEX idx_casino_games_casino ON casino_games(casino_id);
+CREATE INDEX idx_casino_daily_player_date ON casino_daily_limits(player_id, date);
+```
+
+## 5.2 Blackjack (Real Game, Not Fake Random)
+
+```typescript
+// lib/casino/blackjack.ts
+import { db } from '@/db';
+import { users, properties, casinoGames, adminWallet } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
+
+const COMMISSION = 0.15; // 15%
+const MIN_BET = 5000;
+const MAX_BET = 50000;
+const PAYOUT_MULTIPLIER = 1.8; // Reduced from 2.0
+
+type Card = number; // 1-13 (Ace-King)
+type Hand = Card[];
+
+function dealCard(): Card {
+  return Math.floor(Math.random() * 13) + 1;
+}
+
+function calculateHandValue(hand: Hand): number {
+  let total = 0;
+  let aces = 0;
+  
+  for (const card of hand) {
+    if (card === 1) {
+      aces++;
+      total += 11;
+    } else if (card > 10) {
+      total += 10; // Face cards = 10
+    } else {
+      total += card;
+    }
+  }
+  
+  // Adjust aces if needed
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
+  }
+  
+  return total;
+}
+
+export async function playBlackjack(
+  playerId: string,
+  casinoId: number,
+  betAmount: number,
+  actions: ('hit' | 'stand')[] // Player decisions
+) {
+  // Validations
+  if (betAmount < MIN_BET || betAmount > MAX_BET) {
+    throw new Error(`Bet must be between $${MIN_BET} and $${MAX_BET}`);
+  }
+  
+  // Get player
+  const [player] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, playerId));
+  
+  if (player.money < betAmount) {
+    throw new Error('Not enough money');
+  }
+  
+  // Get casino
+  const [casino] = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, casinoId));
+  
+  // Calculate commission
+  const commission = Math.floor(betAmount * COMMISSION);
+  const effectiveBet = betAmount - commission;
+  
+  // Deal initial hands
+  const playerHand: Hand = [dealCard(), dealCard()];
+  const dealerHand: Hand = [dealCard(), dealCard()];
+  
+  let playerTotal = calculateHandValue(playerHand);
+  let dealerTotal = calculateHandValue(dealerHand);
+  
+  // Player actions
+  for (const action of actions) {
+    if (action === 'hit') {
+      playerHand.push(dealCard());
+      playerTotal = calculateHandValue(playerHand);
+      
+      if (playerTotal > 21) {
+        break; // Bust
+      }
+    }
+  }
+  
+  // Dealer plays (hits until 17+)
+  while (dealerTotal < 17 && playerTotal <= 21) {
+    dealerHand.push(dealCard());
+    dealerTotal = calculateHandValue(dealerHand);
+  }
+  
+  // Determine winner
+  let result: 'win' | 'lose' | 'push';
+  let payout = 0;
+  
+  if (playerTotal > 21) {
+    result = 'lose';
+  } else if (dealerTotal > 21) {
+    result = 'win';
+    payout = Math.floor(effectiveBet * PAYOUT_MULTIPLIER);
+  } else if (playerTotal > dealerTotal) {
+    result = 'win';
+    payout = Math.floor(effectiveBet * PAYOUT_MULTIPLIER);
+  } else if (playerTotal < dealerTotal) {
+    result = 'lose';
+  } else {
+    // In our modified rules, tie = dealer wins
+    result = 'lose';
+  }
+  
+  const netProfit = payout - betAmount;
+  
+  // Transaction
+  await db.transaction(async (tx) => {
+    // Deduct bet from player
+    await tx
+      .update(users)
+      .set({ money: sql`money - ${betAmount}` })
+      .where(eq(users.id, playerId));
+    
+    // Commission to admin
+    await tx
+      .insert(adminWallet)
+      .values({
+        source: 'casino_commission',
+        amount: commission,
+        description: `Blackjack commission from ${player.username}`
+      });
+    
+    if (result === 'win') {
+      // Pay player
+      await tx
+        .update(users)
+        .set({ money: sql`money + ${payout}` })
+        .where(eq(users.id, playerId));
+      
+      // Casino owner loses
+      await tx
+        .update(users)
+        .set({ money: sql`money - ${payout - effectiveBet}` })
+        .where(eq(users.id, casino.ownerId));
+    } else {
+      // Casino owner wins
+      await tx
+        .update(users)
+        .set({ money: sql`money + ${effectiveBet}` })
+        .where(eq(users.id, casino.ownerId));
+    }
+    
+    // Record game
+    await tx
+      .insert(casinoGames)
+      .values({
+        casinoId,
+        playerId,
+        gameType: 'blackjack',
+        betAmount,
+        commission,
+        effectiveBet,
+        result,
+        payout,
+        netProfit,
+        gameData: {
+          playerHand,
+          dealerHand,
+          playerTotal,
+          dealerTotal,
+          actions
+        }
+      });
+  });
+  
+  return {
+    result,
+    playerHand,
+    dealerHand,
+    playerTotal,
+    dealerTotal,
+    payout,
+    netProfit
+  };
+}
+```
+
+## 5.3 Other Casino Games (Simplified for brevity)
+
+**Roulette, Slots, Dice** - Similar structure:
+- Commission system
+- Calculated odds
+- Admin wallet tracking
+- Owner profit/loss
+
+I can provide full implementation for each if needed.
+
+---
+
+# 6️⃣ SUPREME FORTRESS (Rank 12 Exclusive Property)
+
+## 6.1 Property Setup
+
+Already covered in Property Limits section. Key points:
+- Price: $1,000,000,000 (1 billion cash)
+- Max 1 per city
+- Rank 12 only
+- Income: $100,000/hour
+- Special bonuses: +50 ATK/DEF, golden name, etc.
+
+## 6.2 Special Bonuses Table
+
+```sql
+-- Migration: 017_supreme_fortress_bonuses.sql
+CREATE TABLE IF NOT EXISTS supreme_fortress_bonuses (
+  id SERIAL PRIMARY KEY,
+  property_id INTEGER NOT NULL REFERENCES properties(id) UNIQUE,
+  owner_id TEXT NOT NULL REFERENCES users(id),
+  atk_bonus INTEGER DEFAULT 50,
+  def_bonus INTEGER DEFAULT 50,
+  golden_name BOOLEAN DEFAULT TRUE,
+  death_protection BOOLEAN DEFAULT TRUE, -- Prevents money loss on death
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+Apply bonuses when player owns Supreme Fortress:
+
+```typescript
+// lib/properties/applySupremeFortressBonus.ts
+export async function getPlayerTotalStats(userId: string) {
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  const [rank] = await db.select().from(ranks).where(eq(ranks.id, user.rank));
+  
+  let bonusATK = 0;
+  let bonusDEF = 0;
+  
+  // Check for Supreme Fortress
+  const [fortress] = await db
+    .select()
+    .from(supremeFortressBonuses)
+    .where(eq(supremeFortressBonuses.ownerId, userId));
+  
+  if (fortress) {
+    bonusATK += fortress.atkBonus;
+    bonusDEF += fortress.defBonus;
+  }
+  
+  return {
+    totalATK: user.baseATK + rank.atkBonus + bonusATK,
+    totalDEF: user.baseDEF + rank.defBonus + bonusDEF,
+    hasDeathProtection: fortress?.deathProtection || false
+  };
+}
+```
+
+---
+
+# 7️⃣ IMPLEMENTATION PRIORITY
+
+Based on Replit Agent's suggestion, implement in this order:
+
+## Phase 1A (Current Sprint)
+1. ✅ Rank System Update (Task B)
+2. ✅ Property Limits (Task A)
+
+## Phase 1B (Next Sprint)
+3. ✅ Safe House Rental (Task C)
+4. ✅ Weapon-Ammo Compatibility (Task E)
+
+## Phase 1C (Final Sprint)
+5. ✅ Kill Calculator (Task D)
+6. ✅ Casino Games (Task F) - Start with 2 games, add more later
+
+---
+
+# 8️⃣ TESTING CHECKLIST
+
+After implementation:
+
+**Ranks:**
+- [ ] 12 ranks exist in database
+- [ ] Rank 12 limited to 3 players
+- [ ] Rank badges display with correct colors
+- [ ] Auto-promotion on Capo kill works
+- [ ] Race condition handled (2 kills at same time)
+
+**Properties:**
+- [ ] City limits enforced
+- [ ] Cannot build if slots full
+- [ ] Rank requirements work
+- [ ] Supreme Fortress gives bonuses
+
+**Safe House:**
+- [ ] Rental works (15%-85% split)
+- [ ] Admin revenue tracked in admin_wallet
+- [ ] Protection prevents attacks
+- [ ] Cooldown enforced (24h)
+- [ ] Max 7 days rental
+
+**Kill Calculator:**
+- [ ] Reads attacker stats correctly
+- [ ] Calculates ammo accurately
+- [ ] Suggestions display when needed
+- [ ] Works with all weapon types
+
+**Casino:**
+- [ ] Blackjack plays correctly
+- [ ] Commission deducted
+- [ ] Admin wallet receives commission
+- [ ] Casino owner profit/loss accurate
+- [ ] Daily limits enforced
+
+**Supreme Fortress:**
+- [ ] Only rank 12 can build
+- [ ] Max 1 per city enforced
+- [ ] Bonuses apply correctly
+- [ ] Death protection works
+
+---
+
+# 9️⃣ WHAT'S NOT IN THIS PATCH
+
+**Postponed to Phase 2:**
+- Diamonds currency system
+- VIP Tiers ($29-$199/month)
+- Payment gateways (Stripe/Moyasar)
+- Mobile IAP (Apple/Google)
+- Resurrection claims for Capo
+- Additional casino games (Poker, Craps, etc.)
+
+**Never Implementing:**
+- User ID 4000 (use adminCredentials instead)
+- Raw SQL queries (use Drizzle)
+- SQLite syntax (use PostgreSQL)
+- Git push commands (managed by Replit)
+
+---
+
+# 🎯 FINAL NOTES FOR REPLIT AGENT
+
+1. **Adapt all SQL to PostgreSQL syntax**
+2. **Use Drizzle ORM, not raw queries**
+3. **Track admin revenue in admin_wallet table, NOT user ID 4000**
+4. **All prices in CASH, no diamonds**
+5. **Respect existing Permadeath system**
+6. **Add OpenAPI specs for all new routes**
+7. **Test each feature before moving to next**
+
+---
+
+**END OF PHASE 1 SPECIFICATION**
+
+This document is ready for implementation. All features use CASH ONLY and are compatible with the existing PostgreSQL + Drizzle + Clerk stack.
+
+**Estimated Implementation Time:** 4-6 sprints  
+**Complexity:** High  
+**Dependencies:** Requires completion of current tasks (#37-#40) first

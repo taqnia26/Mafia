@@ -18,7 +18,21 @@ export const propertyTypesTable = pgTable("property_types", {
   perksAr: text("perks_ar").notNull().default(""),
   isActive: boolean("is_active").notNull().default(true),
   isReactor: boolean("is_reactor").notNull().default(false),
+  maxPerCity: integer("max_per_city").notNull().default(-1),
+  minRank: integer("min_rank"),
+  slug: text("slug"),
+  isSupremeFortress: boolean("is_supreme_fortress").notNull().default(false),
 });
+
+export const cityPropertyCountsTable = pgTable("city_property_counts", {
+  id: serial("id").primaryKey(),
+  cityId: integer("city_id").notNull().references(() => citiesTable.id),
+  propertyTypeId: integer("property_type_id").notNull().references(() => propertyTypesTable.id),
+  currentCount: integer("current_count").notNull().default(0),
+  maxCount: integer("max_count").notNull(),
+});
+
+export type CityPropertyCount = typeof cityPropertyCountsTable.$inferSelect;
 
 export const playerPropertiesTable = pgTable("player_properties", {
   id: serial("id").primaryKey(),
