@@ -21,6 +21,7 @@ export const playersTable = pgTable("players", {
   gangId: integer("gang_id"),
   gangRank: text("gang_rank").$type<typeof gangRankEnum[number]>(),
   antiSpyEnabled: boolean("anti_spy_enabled").notNull().default(false),
+  antiSpyExpiresAt: timestamp("anti_spy_expires_at"),
   isInPrison: boolean("is_in_prison").notNull().default(false),
   prisonReleaseAt: timestamp("prison_release_at"),
   prisonCrime: text("prison_crime"),

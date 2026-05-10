@@ -34,6 +34,7 @@ export const GetMyProfileResponse = zod.object({
   gangName: zod.string().nullable(),
   gangRank: zod.string().nullable(),
   antiSpyEnabled: zod.boolean(),
+  antiSpyExpiresAt: zod.string().nullable(),
   isInPrison: zod.boolean(),
   prisonReleaseAt: zod.string().nullable(),
   isTraveling: zod.boolean(),
@@ -74,6 +75,7 @@ export const UpdateMyProfileResponse = zod.object({
   gangName: zod.string().nullable(),
   gangRank: zod.string().nullable(),
   antiSpyEnabled: zod.boolean(),
+  antiSpyExpiresAt: zod.string().nullable(),
   isInPrison: zod.boolean(),
   prisonReleaseAt: zod.string().nullable(),
   isTraveling: zod.boolean(),
@@ -99,13 +101,17 @@ export const RestartAfterDeathResponse = zod.object({
 });
 
 /**
- * @summary Toggle anti-spy mode
+ * @summary Purchase a time-limited Anti-Spy subscription
  */
-export const ToggleAntiSpyBody = zod.object({
-  enabled: zod.boolean(),
+export const PurchaseAntiSpyBody = zod.object({
+  durationHours: zod.union([
+    zod.literal(24),
+    zod.literal(168),
+    zod.literal(720),
+  ]),
 });
 
-export const ToggleAntiSpyResponse = zod.object({
+export const PurchaseAntiSpyResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
   username: zod.string(),
@@ -122,6 +128,7 @@ export const ToggleAntiSpyResponse = zod.object({
   gangName: zod.string().nullable(),
   gangRank: zod.string().nullable(),
   antiSpyEnabled: zod.boolean(),
+  antiSpyExpiresAt: zod.string().nullable(),
   isInPrison: zod.boolean(),
   prisonReleaseAt: zod.string().nullable(),
   isTraveling: zod.boolean(),
@@ -170,6 +177,7 @@ export const ListPlayersResponse = zod.object({
       gangName: zod.string().nullable(),
       gangRank: zod.string().nullable(),
       antiSpyEnabled: zod.boolean(),
+      antiSpyExpiresAt: zod.string().nullable(),
       isInPrison: zod.boolean(),
       prisonReleaseAt: zod.string().nullable(),
       isTraveling: zod.boolean(),
@@ -215,6 +223,7 @@ export const GetPlayerResponse = zod.object({
   gangName: zod.string().nullable(),
   gangRank: zod.string().nullable(),
   antiSpyEnabled: zod.boolean(),
+  antiSpyExpiresAt: zod.string().nullable(),
   isInPrison: zod.boolean(),
   prisonReleaseAt: zod.string().nullable(),
   isTraveling: zod.boolean(),

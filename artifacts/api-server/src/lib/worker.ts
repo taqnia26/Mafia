@@ -379,6 +379,27 @@ async function collectPropertyIncome(): Promise<void> {
   }
 }
 
+const ANTI_SPY_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // every hour
+let lastAntiSpyCleanupAt = 0;
+
+async function clearExpiredAntiSpy(): Promise<void> {
+  const now = Date.now();
+  if (now - lastAntiSpyCleanupAt < ANTI_SPY_CLEANUP_INTERVAL_MS) return;
+  lastAntiSpyCleanupAt = now;
+  try {
+    const result = await db.update(playersTable)
+      .set({ antiSpyExpiresAt: null, antiSpyEnabled: false, updatedAt: new Date(now) })
+      .where(and(
+        lte(playersTable.antiSpyExpiresAt, new Date(now)),
+      ));
+    if ((result.rowCount ?? 0) > 0) {
+      logger.info({ count: result.rowCount }, "worker: cleared expired Anti-Spy flags");
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: anti-spy cleanup error");
+  }
+}
+
 const EVENT_RETENTION_DAYS = 60;
 const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // run every 6 hours
 let lastCleanupAt = 0;
@@ -406,6 +427,7 @@ async function tick(): Promise<void> {
       processPrisonReleases(),
       processAttackArrivals(),
       collectPropertyIncome(),
+      clearExpiredAntiSpy(),
       cleanupOldEvents(),
     ]);
   } catch (err) {

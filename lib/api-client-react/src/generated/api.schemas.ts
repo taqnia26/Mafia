@@ -37,6 +37,8 @@ export interface Player {
   /** @nullable */
   gangRank: string | null;
   antiSpyEnabled: boolean;
+  /** @nullable */
+  antiSpyExpiresAt: string | null;
   isInPrison: boolean;
   /** @nullable */
   prisonReleaseAt: string | null;
@@ -68,8 +70,17 @@ export interface PlayerUpdate {
   username?: string;
 }
 
-export interface AntiSpyToggle {
-  enabled: boolean;
+export type AntiSpyPurchaseDurationHours =
+  (typeof AntiSpyPurchaseDurationHours)[keyof typeof AntiSpyPurchaseDurationHours];
+
+export const AntiSpyPurchaseDurationHours = {
+  NUMBER_24: 24,
+  NUMBER_168: 168,
+  NUMBER_720: 720,
+} as const;
+
+export interface AntiSpyPurchase {
+  durationHours: AntiSpyPurchaseDurationHours;
 }
 
 export interface PlayerListResponse {

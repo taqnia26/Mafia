@@ -26,6 +26,8 @@ export interface Player {
   /** @nullable */
   gangRank: string | null;
   antiSpyEnabled: boolean;
+  /** @nullable */
+  antiSpyExpiresAt: string | null;
   isInPrison: boolean;
   /** @nullable */
   prisonReleaseAt: string | null;

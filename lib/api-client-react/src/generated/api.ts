@@ -32,7 +32,7 @@ import type {
   AdminWeaponCreate,
   AdminWeaponUpdate,
   Ammo,
-  AntiSpyToggle,
+  AntiSpyPurchase,
   ArmorItem,
   Attack,
   AttackInput,
@@ -413,42 +413,42 @@ export const useRestartAfterDeath = <
 };
 
 /**
- * @summary Toggle anti-spy mode
+ * @summary Purchase a time-limited Anti-Spy subscription
  */
-export const getToggleAntiSpyUrl = () => {
-  return `/api/players/me/anti-spy`;
+export const getPurchaseAntiSpyUrl = () => {
+  return `/api/players/me/anti-spy/purchase`;
 };
 
-export const toggleAntiSpy = async (
-  antiSpyToggle: AntiSpyToggle,
+export const purchaseAntiSpy = async (
+  antiSpyPurchase: AntiSpyPurchase,
   options?: RequestInit,
 ): Promise<Player> => {
-  return customFetch<Player>(getToggleAntiSpyUrl(), {
+  return customFetch<Player>(getPurchaseAntiSpyUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(antiSpyToggle),
+    body: JSON.stringify(antiSpyPurchase),
   });
 };
 
-export const getToggleAntiSpyMutationOptions = <
-  TError = ErrorType<unknown>,
+export const getPurchaseAntiSpyMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof toggleAntiSpy>>,
+    Awaited<ReturnType<typeof purchaseAntiSpy>>,
     TError,
-    { data: BodyType<AntiSpyToggle> },
+    { data: BodyType<AntiSpyPurchase> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof toggleAntiSpy>>,
+  Awaited<ReturnType<typeof purchaseAntiSpy>>,
   TError,
-  { data: BodyType<AntiSpyToggle> },
+  { data: BodyType<AntiSpyPurchase> },
   TContext
 > => {
-  const mutationKey = ["toggleAntiSpy"];
+  const mutationKey = ["purchaseAntiSpy"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -458,44 +458,44 @@ export const getToggleAntiSpyMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof toggleAntiSpy>>,
-    { data: BodyType<AntiSpyToggle> }
+    Awaited<ReturnType<typeof purchaseAntiSpy>>,
+    { data: BodyType<AntiSpyPurchase> }
   > = (props) => {
     const { data } = props ?? {};
 
-    return toggleAntiSpy(data, requestOptions);
+    return purchaseAntiSpy(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type ToggleAntiSpyMutationResult = NonNullable<
-  Awaited<ReturnType<typeof toggleAntiSpy>>
+export type PurchaseAntiSpyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof purchaseAntiSpy>>
 >;
-export type ToggleAntiSpyMutationBody = BodyType<AntiSpyToggle>;
-export type ToggleAntiSpyMutationError = ErrorType<unknown>;
+export type PurchaseAntiSpyMutationBody = BodyType<AntiSpyPurchase>;
+export type PurchaseAntiSpyMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Toggle anti-spy mode
+ * @summary Purchase a time-limited Anti-Spy subscription
  */
-export const useToggleAntiSpy = <
-  TError = ErrorType<unknown>,
+export const usePurchaseAntiSpy = <
+  TError = ErrorType<ErrorResponse>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof toggleAntiSpy>>,
+    Awaited<ReturnType<typeof purchaseAntiSpy>>,
     TError,
-    { data: BodyType<AntiSpyToggle> },
+    { data: BodyType<AntiSpyPurchase> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
-  Awaited<ReturnType<typeof toggleAntiSpy>>,
+  Awaited<ReturnType<typeof purchaseAntiSpy>>,
   TError,
-  { data: BodyType<AntiSpyToggle> },
+  { data: BodyType<AntiSpyPurchase> },
   TContext
 > => {
-  return useMutation(getToggleAntiSpyMutationOptions(options));
+  return useMutation(getPurchaseAntiSpyMutationOptions(options));
 };
 
 /**

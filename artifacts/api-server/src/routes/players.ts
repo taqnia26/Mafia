@@ -8,7 +8,7 @@ import {
   attacksTable, blackMarketListingsTable, crimeRecordsTable, activityLogTable,
   notificationsTable,
 } from "@workspace/db/schema";
-import { eq, ilike, and, count, or, SQL } from "drizzle-orm";
+import { eq, ilike, and, count, or, gte, sql, SQL } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
 
 const router = Router();
@@ -52,6 +52,8 @@ router.get("/players/me", requireAuth, async (req, res) => {
     const killedByUsername = await resolveKillerUsername(player.killedByPlayerId);
     return void res.json({
       ...player,
+      antiSpyEnabled: !!(player.antiSpyExpiresAt && player.antiSpyExpiresAt > new Date()),
+      antiSpyExpiresAt: player.antiSpyExpiresAt?.toISOString() ?? null,
       cityName: city[0]?.name ?? "",
       gangName,
       gangRank: player.gangRank ?? null,
@@ -158,6 +160,8 @@ router.patch("/players/me", requireAuth, async (req, res) => {
     const killedByUsername = await resolveKillerUsername(updated.killedByPlayerId);
     return void res.json({
       ...updated,
+      antiSpyEnabled: !!(updated.antiSpyExpiresAt && updated.antiSpyExpiresAt > new Date()),
+      antiSpyExpiresAt: updated.antiSpyExpiresAt?.toISOString() ?? null,
       cityName: city[0]?.name ?? "",
       gangName,
       gangRank: updated.gangRank ?? null,
@@ -179,15 +183,51 @@ router.patch("/players/me", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
+// Anti-Spy purchase pricing — keep in sync with the frontend.
+// Duration (hours) -> price in dollars.
+const ANTI_SPY_PRICES: Record<number, number> = {
+  24: 50_000,
+  168: 250_000,
+  720: 750_000,
+};
+
+router.post("/players/me/anti-spy/purchase", requireAuth, async (req, res) => {
   try {
     const clerkId = getCurrentClerkId(req);
     const player = await getOrCreatePlayer(clerkId);
-    const { enabled } = req.body as { enabled: boolean };
-    const [updated] = await db.update(playersTable)
-      .set({ antiSpyEnabled: enabled, updatedAt: new Date() })
-      .where(eq(playersTable.id, player.id))
-      .returning();
+    const durationHours = parseInt(String((req.body as { durationHours?: unknown })?.durationHours));
+    const price = ANTI_SPY_PRICES[durationHours];
+    if (!price) {
+      return void res.status(400).json({ error: "Invalid durationHours. Allowed: 24, 168, 720." });
+    }
+
+    const updated = await db.transaction(async (tx) => {
+      const now = new Date();
+      const intervalLiteral = `${durationHours} hours`;
+      const [u] = await tx
+        .update(playersTable)
+        .set({
+          money: sql`${playersTable.money} - ${price}`,
+          antiSpyExpiresAt: sql`GREATEST(COALESCE(${playersTable.antiSpyExpiresAt}, ${now}), ${now}) + ${intervalLiteral}::interval`,
+          antiSpyEnabled: true,
+          updatedAt: now,
+        })
+        .where(and(eq(playersTable.id, player.id), gte(playersTable.money, price)))
+        .returning();
+      if (!u) {
+        const err = new Error("INSUFFICIENT_FUNDS");
+        (err as Error & { code?: string }).code = "INSUFFICIENT_FUNDS";
+        throw err;
+      }
+      return u;
+    });
+
+    await logActivity(
+      player.id,
+      "anti_spy_purchased",
+      `Purchased Anti-Spy for ${durationHours}h ($${price.toLocaleString()}) — active until ${updated.antiSpyExpiresAt?.toISOString() ?? ""}`,
+    );
+
     const city = await db.select().from(citiesTable).where(eq(citiesTable.id, updated.cityId)).limit(1);
     let gangName: string | null = null;
     if (updated.gangId) {
@@ -198,6 +238,8 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
     const killedByUsername = await resolveKillerUsername(updated.killedByPlayerId);
     return void res.json({
       ...updated,
+      antiSpyEnabled: !!(updated.antiSpyExpiresAt && updated.antiSpyExpiresAt > new Date()),
+      antiSpyExpiresAt: updated.antiSpyExpiresAt?.toISOString() ?? null,
       cityName: city[0]?.name ?? "",
       gangName,
       gangRank: updated.gangRank ?? null,
@@ -215,7 +257,11 @@ router.post("/players/me/anti-spy", requireAuth, async (req, res) => {
       deathCause: updated.deathCause ?? null,
     });
   } catch (e) {
-    return void res.status(500).json({ error: String(e) });
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === "INSUFFICIENT_FUNDS") {
+      return void res.status(400).json({ error: "Not enough money for this Anti-Spy plan.", code: "INSUFFICIENT_FUNDS" });
+    }
+    return void res.status(500).json({ error: msg });
   }
 });
 
@@ -249,7 +295,7 @@ router.get("/players", requireAuth, async (req, res) => {
         cityId: playersTable.cityId,
         gangId: playersTable.gangId,
         gangRank: playersTable.gangRank,
-        antiSpyEnabled: playersTable.antiSpyEnabled,
+        antiSpyExpiresAt: playersTable.antiSpyExpiresAt,
         isInPrison: playersTable.isInPrison,
         prisonReleaseAt: playersTable.prisonReleaseAt,
         isTraveling: playersTable.isTraveling,
@@ -282,12 +328,16 @@ router.get("/players", requireAuth, async (req, res) => {
       gangs.forEach(g => { gangMap[g.id] = g.name; });
     }
 
+    const nowDate = new Date();
     return void res.json({
       players: players.map(p => {
         const isSelf = p.id === viewer.id;
-        const redact = !isSelf && p.antiSpyEnabled;
+        const antiSpyActive = !!(p.antiSpyExpiresAt && p.antiSpyExpiresAt > nowDate);
+        const redact = !isSelf && antiSpyActive;
         return {
           ...p,
+          antiSpyEnabled: antiSpyActive,
+          antiSpyExpiresAt: p.antiSpyExpiresAt?.toISOString() ?? null,
           attackPower: redact ? null : p.attackPower,
           defensePower: redact ? null : p.defensePower,
           cityName: p.cityName ?? "",
@@ -334,7 +384,7 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       cityId: playersTable.cityId,
       gangId: playersTable.gangId,
       gangRank: playersTable.gangRank,
-      antiSpyEnabled: playersTable.antiSpyEnabled,
+      antiSpyExpiresAt: playersTable.antiSpyExpiresAt,
       isInPrison: playersTable.isInPrison,
       prisonReleaseAt: playersTable.prisonReleaseAt,
       isTraveling: playersTable.isTraveling,
@@ -361,7 +411,8 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
 
     const p = rows[0];
     const isSelf = p.id === viewer.id;
-    const redact = !isSelf && p.antiSpyEnabled;
+    const antiSpyActive = !!(p.antiSpyExpiresAt && p.antiSpyExpiresAt > new Date());
+    const redact = !isSelf && antiSpyActive;
 
     let gangName: string | null = null;
     if (p.gangId) {
@@ -372,6 +423,8 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
 
     return void res.json({
       ...p,
+      antiSpyEnabled: antiSpyActive,
+      antiSpyExpiresAt: p.antiSpyExpiresAt?.toISOString() ?? null,
       attackPower: redact ? null : p.attackPower,
       defensePower: redact ? null : p.defensePower,
       cityName: p.cityName ?? "",

@@ -29,7 +29,7 @@ router.post("/attacks/spy/:targetPlayerId", requireAuth, requireAlive, requireNo
 
     const t = target[0];
 
-    if (t.antiSpyEnabled) {
+    if (t.antiSpyExpiresAt && t.antiSpyExpiresAt > new Date()) {
       return void res.json({
         success: false,
         blocked: true,

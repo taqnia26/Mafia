@@ -101,24 +101,30 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /players/me/anti-spy:
+  /players/me/anti-spy/purchase:
     post:
-      operationId: toggleAntiSpy
+      operationId: purchaseAntiSpy
       tags: [players]
-      summary: Toggle anti-spy mode
+      summary: Purchase a time-limited Anti-Spy subscription
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/AntiSpyToggle"
+              $ref: "#/components/schemas/AntiSpyPurchase"
       responses:
         "200":
-          description: Updated player
+          description: Updated player with new Anti-Spy expiry
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Player"
+        "400":
+          description: Insufficient funds or invalid duration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /players:
     get:
@@ -1491,6 +1497,8 @@ components:
           type: ["string", "null"]
         antiSpyEnabled:
           type: boolean
+        antiSpyExpiresAt:
+          type: ["string", "null"]
         isInPrison:
           type: boolean
         prisonReleaseAt:
@@ -1536,6 +1544,7 @@ components:
         - gangName
         - gangRank
         - antiSpyEnabled
+        - antiSpyExpiresAt
         - isInPrison
         - prisonReleaseAt
         - isTraveling
@@ -1567,13 +1576,14 @@ components:
         username:
           type: string
 
-    AntiSpyToggle:
+    AntiSpyPurchase:
       type: object
       properties:
-        enabled:
-          type: boolean
+        durationHours:
+          type: integer
+          enum: [24, 168, 720]
       required:
-        - enabled
+        - durationHours
 
     PlayerListResponse:
       type: object
