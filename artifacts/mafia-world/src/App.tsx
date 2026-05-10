@@ -47,6 +47,7 @@ import Blackjack from "@/pages/blackjack";
 import KillCalculator from "@/pages/kill-calculator";
 import ChatPage from "@/pages/chat";
 import PrivateChatPage from "@/pages/chat-private";
+import Inbox from "@/pages/inbox";
 import Dead from "@/pages/dead";
 import { Layout } from "@/components/layout";
 import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
@@ -258,6 +259,8 @@ function ClerkProviderWithRoutes() {
               <Route path="/blackjack"><ProtectedRoute component={Blackjack} /></Route>
               <Route path="/kill-calculator"><ProtectedRoute component={KillCalculator} /></Route>
               <Route path="/chat"><ProtectedRoute component={ChatPage} /></Route>
+              <Route path="/inbox"><ProtectedRoute component={Inbox} /></Route>
+              <Route path="/inbox/:id"><ProtectedRoute component={Inbox} /></Route>
               <Route path="/chat/private/:playerId"><ProtectedRoute component={PrivateChatPage} /></Route>
               <Route path="/dead"><ProtectedRoute component={Dead} allowDead /></Route>
 

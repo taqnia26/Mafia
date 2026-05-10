@@ -10,6 +10,8 @@ import {
 import { eq, and, lte, lt, ne, gt, sql } from "drizzle-orm";
 import { logActivity } from "./activityLog";
 import { createNotification } from "./notifications";
+import { sendInboxMessage } from "./inbox-helper";
+import { inboxMessagesTable } from "@workspace/db/schema";
 import { logger } from "./logger";
 import { REACTOR } from "./reactor";
 import { BANK_CONFIG, applyHourlyInterest } from "./bank";
@@ -120,6 +122,19 @@ async function processAttackArrivals(): Promise<void> {
           `⚠️ Your attack on ${target[0].username} was cancelled — they are already dead.`,
           "/attack",
         );
+        await sendInboxMessage({
+          playerId: attacker[0].id,
+          category: "attack",
+          priority: "normal",
+          subjectEn: `Attack on ${target[0].username} cancelled`,
+          subjectAr: `أُلغي الهجوم على ${target[0].username}`,
+          bodyEn: `Your attack on ${target[0].username} was cancelled because they are already permanently dead. No XP, money, or losses were applied.`,
+          bodyAr: `أُلغي هجومك على ${target[0].username} لأنه ميت بشكل دائم بالفعل. لم تُطبق خبرة أو أموال أو خسائر.`,
+          metadata: { attackId: attack.id, targetId: target[0].id, targetUsername: target[0].username, reason: "target_already_dead" },
+          actionLink: "/attack",
+          actionLabelEn: "Find another target",
+          actionLabelAr: "ابحث عن هدف آخر",
+        });
         continue;
       }
 
@@ -192,6 +207,24 @@ async function processAttackArrivals(): Promise<void> {
           await Promise.all([
             createNotification(attacker[0].id, "attack_resolved", `🛡️ Your attack on ${target[0].username} was blocked by their bodyguard`, "/attack"),
             createNotification(target[0].id, "attack_resolved", `🛡️ ${attacker[0].username}'s attack was intercepted by your bodyguard`, "/attack"),
+            sendInboxMessage({
+              playerId: attacker[0].id, category: "attack", priority: "high",
+              subjectEn: `Attack blocked by ${target[0].username}'s bodyguard`,
+              subjectAr: `حارس ${target[0].username} صدّ هجومك`,
+              bodyEn: `Your attack on ${target[0].username} was intercepted by their NPC bodyguard ${firstGuard.npcName ?? "Unknown"}. No damage dealt.`,
+              bodyAr: `تم اعتراض هجومك على ${target[0].username} من قبل حارسه الشخصي ${firstGuard.npcName ?? "غير معروف"}. لم تُلحق أي ضرر.`,
+              metadata: { attackId: attack.id, targetId: target[0].id, blockedBy: "npc_guard" },
+              actionLink: "/attack",
+            }),
+            sendInboxMessage({
+              playerId: target[0].id, category: "attack", priority: "high",
+              subjectEn: `Bodyguard saved you from ${attacker[0].username}`,
+              subjectAr: `حارسك أنقذك من ${attacker[0].username}`,
+              bodyEn: `Your bodyguard ${firstGuard.npcName ?? "Unknown"} sacrificed themselves to block an attack from ${attacker[0].username}. You are unharmed.`,
+              bodyAr: `ضحّى حارسك ${firstGuard.npcName ?? "غير معروف"} بنفسه لصد هجوم من ${attacker[0].username}. لم تتعرض لأذى.`,
+              metadata: { attackId: attack.id, attackerId: attacker[0].id, savedBy: "npc_guard" },
+              actionLink: "/attack",
+            }),
           ]);
         } else if (activePlayerGuards[0]) {
           // Player guard absorbs the blow — remove them from guard duty
@@ -223,6 +256,24 @@ async function processAttackArrivals(): Promise<void> {
           await Promise.all([
             createNotification(attacker[0].id, "attack_resolved", `🛡️ Your attack on ${target[0].username} was blocked by their player bodyguard`, "/attack"),
             createNotification(target[0].id, "attack_resolved", `🛡️ ${attacker[0].username}'s attack was blocked by your guard`, "/attack"),
+            sendInboxMessage({
+              playerId: attacker[0].id, category: "attack", priority: "high",
+              subjectEn: `Attack blocked by ${target[0].username}'s player guard`,
+              subjectAr: `حارس ${target[0].username} اللاعب صدّ هجومك`,
+              bodyEn: `Your attack on ${target[0].username} was intercepted by their player bodyguard ${pg.guardUsername ?? "Unknown"}.`,
+              bodyAr: `تم اعتراض هجومك على ${target[0].username} من قبل الحارس اللاعب ${pg.guardUsername ?? "غير معروف"}.`,
+              metadata: { attackId: attack.id, targetId: target[0].id, blockedBy: "player_guard" },
+              actionLink: "/attack",
+            }),
+            sendInboxMessage({
+              playerId: target[0].id, category: "attack", priority: "high",
+              subjectEn: `Your guard blocked an attack from ${attacker[0].username}`,
+              subjectAr: `حارسك صدّ هجوماً من ${attacker[0].username}`,
+              bodyEn: `Your guard ${pg.guardUsername ?? "Unknown"} stepped in and absorbed the hit from ${attacker[0].username}. They've been dismissed from guard duty.`,
+              bodyAr: `تدخّل حارسك ${pg.guardUsername ?? "غير معروف"} وامتص الضربة من ${attacker[0].username}. تم إعفاؤه من الحراسة.`,
+              metadata: { attackId: attack.id, attackerId: attacker[0].id, savedBy: "player_guard" },
+              actionLink: "/attack",
+            }),
           ]);
         } else {
           // No guards — player takes full damage to HP
@@ -299,6 +350,34 @@ async function processAttackArrivals(): Promise<void> {
                 : `⚔️ ${attacker[0].username} attacked you — ${damage} dmg taken, -$${moneyStolen}`,
               "/attack",
             ),
+            sendInboxMessage({
+              playerId: attacker[0].id, category: "attack",
+              priority: targetDied ? "urgent" : "high",
+              subjectEn: targetDied ? `You eliminated ${target[0].username}!` : `Successful attack on ${target[0].username}`,
+              subjectAr: targetDied ? `لقد قضيت على ${target[0].username}!` : `هجوم ناجح على ${target[0].username}`,
+              bodyEn: targetDied
+                ? `You delivered the killing blow to ${target[0].username}, dealing ${damage} damage and stealing $${moneyStolen.toLocaleString()}. They are permanently dead. +${50 + Math.floor(damage / 2)} XP.`
+                : `Your attack on ${target[0].username} landed for ${damage} damage. You stole $${moneyStolen.toLocaleString()} and gained ${50 + Math.floor(damage / 2)} XP.`,
+              bodyAr: targetDied
+                ? `وجّهت الضربة القاضية إلى ${target[0].username}، وألحقت ${damage} ضرر وسرقت $${moneyStolen.toLocaleString()}. لقد ماتوا نهائياً. +${50 + Math.floor(damage / 2)} خبرة.`
+                : `أصاب هجومك ${target[0].username} بـ ${damage} ضرر. سرقت $${moneyStolen.toLocaleString()} واكتسبت ${50 + Math.floor(damage / 2)} خبرة.`,
+              metadata: { attackId: attack.id, targetId: target[0].id, damage, moneyStolen, killed: targetDied },
+              actionLink: "/attack",
+            }),
+            sendInboxMessage({
+              playerId: target[0].id, category: "attack",
+              priority: targetDied ? "urgent" : "high",
+              subjectEn: targetDied ? `You were killed by ${attacker[0].username}` : `You were attacked by ${attacker[0].username}`,
+              subjectAr: targetDied ? `قتلك ${attacker[0].username}` : `هاجمك ${attacker[0].username}`,
+              bodyEn: targetDied
+                ? `${attacker[0].username} dealt the killing blow — ${damage} damage and $${moneyStolen.toLocaleString()} stolen. Your character is permanently dead. You may restart from the dashboard.`
+                : `${attacker[0].username} attacked you for ${damage} damage and stole $${moneyStolen.toLocaleString()}. Strengthen your defense before they return.`,
+              bodyAr: targetDied
+                ? `وجّه ${attacker[0].username} الضربة القاضية — ${damage} ضرر وسرق $${moneyStolen.toLocaleString()}. شخصيتك ميتة نهائياً. يمكنك البدء من جديد من اللوحة.`
+                : `هاجمك ${attacker[0].username} وألحق بك ${damage} ضرر وسرق $${moneyStolen.toLocaleString()}. عزز دفاعك قبل عودته.`,
+              metadata: { attackId: attack.id, attackerId: attacker[0].id, damage, moneyStolen, killed: targetDied },
+              actionLink: targetDied ? "/dashboard" : "/attack",
+            }),
           ]);
         }
       } else {
@@ -320,6 +399,24 @@ async function processAttackArrivals(): Promise<void> {
         await Promise.all([
           createNotification(attacker[0].id, "attack_resolved", `🛡️ Your attack on ${target[0].username} was repelled`, "/attack"),
           createNotification(target[0].id, "attack_resolved", `🛡️ You repelled an attack from ${attacker[0].username}`, "/attack"),
+          sendInboxMessage({
+            playerId: attacker[0].id, category: "attack", priority: "normal",
+            subjectEn: `Attack repelled by ${target[0].username}`,
+            subjectAr: `صدّ ${target[0].username} هجومك`,
+            bodyEn: `Your attack on ${target[0].username} failed — their defense held. Consider stronger weapons or more ammo.`,
+            bodyAr: `فشل هجومك على ${target[0].username} — صمد دفاعهم. فكّر في أسلحة أقوى أو ذخيرة أكثر.`,
+            metadata: { attackId: attack.id, targetId: target[0].id, outcome: "repelled" },
+            actionLink: "/attack",
+          }),
+          sendInboxMessage({
+            playerId: target[0].id, category: "attack", priority: "normal",
+            subjectEn: `You repelled ${attacker[0].username}`,
+            subjectAr: `صددت هجوم ${attacker[0].username}`,
+            bodyEn: `${attacker[0].username} attempted to attack you, but your defense held. No damage taken.`,
+            bodyAr: `حاول ${attacker[0].username} مهاجمتك، لكن دفاعك صمد. لم تتعرض لأي ضرر.`,
+            metadata: { attackId: attack.id, attackerId: attacker[0].id, outcome: "repelled" },
+            actionLink: "/attack",
+          }),
         ]);
       }
     } catch (err) {
@@ -467,6 +564,44 @@ async function cleanupOldChatMessages(): Promise<void> {
   }
 }
 
+const INBOX_READ_RETENTION_DAYS = 30;
+const INBOX_DELETED_RETENTION_DAYS = 7;
+const INBOX_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+let lastInboxCleanupAt = 0;
+
+async function cleanupOldInboxMessages(): Promise<void> {
+  const now = Date.now();
+  if (now - lastInboxCleanupAt < INBOX_CLEANUP_INTERVAL_MS) return;
+  lastInboxCleanupAt = now;
+
+  const readCutoff = new Date(now - INBOX_READ_RETENTION_DAYS * 86400000);
+  const deletedCutoff = new Date(now - INBOX_DELETED_RETENTION_DAYS * 86400000);
+  try {
+    // Hard-delete messages soft-deleted >7 days ago.
+    const softRes = await db.delete(inboxMessagesTable).where(and(
+      eq(inboxMessagesTable.isDeleted, true),
+      lt(inboxMessagesTable.deletedAt, deletedCutoff),
+    ));
+    if ((softRes.rowCount ?? 0) > 0) {
+      logger.info({ count: softRes.rowCount }, "worker: pruned soft-deleted inbox messages");
+    }
+    // Hard-delete un-archived messages that have been READ for more than 30 days.
+    // Cutoff is anchored on read_at (not created_at) so users always have at least
+    // 30 days to revisit a message after first opening it.
+    const readRes = await db.delete(inboxMessagesTable).where(and(
+      eq(inboxMessagesTable.isRead, true),
+      eq(inboxMessagesTable.isArchived, false),
+      eq(inboxMessagesTable.isDeleted, false),
+      lt(inboxMessagesTable.readAt, readCutoff),
+    ));
+    if ((readRes.rowCount ?? 0) > 0) {
+      logger.info({ count: readRes.rowCount }, "worker: pruned old read inbox messages");
+    }
+  } catch (err) {
+    logger.error({ err }, "worker: inbox cleanup error");
+  }
+}
+
 async function cleanupOldEvents(): Promise<void> {
   const now = Date.now();
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
@@ -574,6 +709,17 @@ async function processReactors(): Promise<void> {
       if (pp) {
         await logActivity(pp.playerId, "reactor_constructed", `Your Nuclear Reactor is online and producing energy!`);
         await createNotification(pp.playerId, "reactor_built", `⚛️ Your Nuclear Reactor is online — energy production has begun!`, "/properties");
+        await sendInboxMessage({
+          playerId: pp.playerId, category: "property", priority: "high",
+          subjectEn: "Your Nuclear Reactor is online",
+          subjectAr: "مفاعلك النووي يعمل الآن",
+          bodyEn: "Construction is complete. Your Nuclear Reactor has begun producing energy and will auto-pay you each full hour. Defend it well — successful attacks damage its integrity, and a full meltdown costs $10M.",
+          bodyAr: "اكتمل البناء. بدأ مفاعلك النووي بإنتاج الطاقة وسيدفع لك تلقائياً كل ساعة كاملة. احمِه جيداً — تُلحق الهجمات الناجحة ضرراً بسلامته، والانصهار الكامل يكلف 10 مليون دولار.",
+          metadata: { propertyId: c.ppId, kind: "reactor_constructed" },
+          actionLink: "/properties",
+          actionLabelEn: "View Reactor",
+          actionLabelAr: "عرض المفاعل",
+        });
       }
     }
 
@@ -860,6 +1006,7 @@ async function tick(): Promise<void> {
       clearExpiredAntiSpy(),
       cleanupOldEvents(),
       cleanupOldChatMessages(),
+      cleanupOldInboxMessages(),
     ]);
   } catch (err) {
     logger.error({ err }, "worker: tick error");

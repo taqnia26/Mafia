@@ -48,4 +48,5 @@ export interface Player {
   killedByUsername?: string | null;
   /** @nullable */
   deathCause: string | null;
+  unreadInboxCount: number;
 }

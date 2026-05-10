@@ -693,6 +693,144 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # --- INBOX ---
+  /inbox:
+    get:
+      operationId: listInboxMessages
+      tags: [inbox]
+      summary: List the current player's inbox messages with filters
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [attack, property, gang, personal, financial, system]
+        - in: query
+          name: unreadOnly
+          schema:
+            type: string
+            enum: ["true", "false"]
+        - in: query
+          name: archived
+          schema:
+            type: string
+            enum: ["true", "false"]
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Inbox listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxListResponse"
+
+  /inbox/{id}:
+    get:
+      operationId: getInboxMessage
+      tags: [inbox]
+      summary: Fetch one message and auto-mark it as read
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Message detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InboxMessage"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteInboxMessage
+      tags: [inbox]
+      summary: Soft-delete a message
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /inbox/{id}/read:
+    post:
+      operationId: markInboxRead
+      tags: [inbox]
+      summary: Explicitly mark a message as read
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /inbox/{id}/archive:
+    post:
+      operationId: toggleInboxArchive
+      tags: [inbox]
+      summary: Toggle archive on a message
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /inbox/mark-all-read:
+    post:
+      operationId: markAllInboxRead
+      tags: [inbox]
+      summary: Mark all unread messages as read
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
   /bank/transactions:
     get:
       operationId: getBankTransactions
@@ -1966,10 +2104,13 @@ components:
           type: ["string", "null"]
         deathCause:
           type: ["string", "null"]
+        unreadInboxCount:
+          type: integer
       required:
         - id
         - clerkId
         - username
+        - unreadInboxCount
         - level
         - xp
         - money
@@ -3857,3 +3998,89 @@ components:
         id:
           type: integer
       required: [id]
+
+    InboxMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+          enum: [attack, property, gang, personal, financial, system]
+        priority:
+          type: string
+          enum: [urgent, high, normal, low]
+        subjectEn:
+          type: string
+        subjectAr:
+          type: string
+        bodyEn:
+          type: string
+        bodyAr:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        actionLink:
+          type: ["string", "null"]
+        actionLabelEn:
+          type: ["string", "null"]
+        actionLabelAr:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        isArchived:
+          type: boolean
+        readAt:
+          type: ["string", "null"]
+        archivedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - category
+        - priority
+        - subjectEn
+        - subjectAr
+        - bodyEn
+        - bodyAr
+        - metadata
+        - actionLink
+        - actionLabelEn
+        - actionLabelAr
+        - isRead
+        - isArchived
+        - readAt
+        - archivedAt
+        - createdAt
+
+    InboxCategoryCount:
+      type: object
+      properties:
+        total:
+          type: integer
+        unread:
+          type: integer
+      required: [total, unread]
+
+    InboxListResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/InboxMessage"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        unreadCount:
+          type: integer
+        categoryCounts:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/InboxCategoryCount"
+      required: [messages, total, page, limit, unreadCount, categoryCounts]

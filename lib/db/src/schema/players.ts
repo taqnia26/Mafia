@@ -44,6 +44,7 @@ export const playersTable = pgTable("players", {
   lastMessageAt: timestamp("last_message_at"),
   isAdmin: boolean("is_admin").notNull().default(false),
   adminRole: text("admin_role").$type<typeof adminRoleEnum[number]>(),
+  unreadInboxCount: integer("unread_inbox_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

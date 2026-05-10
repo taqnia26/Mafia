@@ -23,6 +23,7 @@ import {
   Spade,
   Crosshair as CrosshairCalc,
   MessageCircle,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +87,7 @@ export function Layout({ children }: LayoutProps) {
     { href: "/blackjack", label: "nav.blackjack", icon: Spade },
     { href: "/kill-calculator", label: "nav.killCalc", icon: CrosshairCalc },
     { href: "/chat", label: "nav.chat", icon: MessageCircle },
+    { href: "/inbox", label: "nav.inbox", icon: Mail },
     { href: "/ranks", label: "nav.ranks", icon: Award },
     { href: "/settings", label: "nav.settings", icon: Settings },
   ];

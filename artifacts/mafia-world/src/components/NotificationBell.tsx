@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell } from "lucide-react";
+import { Bell, Mail } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ar as arLocale } from "date-fns/locale";
 import { useI18n } from "@/lib/i18n";
+import { useGetMyProfile, getGetMyProfileQueryKey } from "@workspace/api-client-react";
 
 interface Notification {
   id: number;
@@ -107,7 +108,9 @@ export function NotificationBell() {
   const dateLocale = language === "ar" ? arLocale : undefined;
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="flex items-center gap-1">
+      <InboxBell />
+      <div className="relative" ref={dropdownRef}>
       <button
         onClick={handleOpen}
         className="relative p-2 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
@@ -174,6 +177,29 @@ export function NotificationBell() {
           </div>
         </div>
       )}
+      </div>
     </div>
+  );
+}
+
+function InboxBell() {
+  const { data: profile } = useGetMyProfile({
+    query: { queryKey: getGetMyProfileQueryKey(), refetchInterval: 15000, staleTime: 10000 },
+  });
+  const unread = profile?.unreadInboxCount ?? 0;
+  return (
+    <Link
+      href="/inbox"
+      className="relative p-2 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+      aria-label="Inbox"
+      data-testid="link-inbox-bell"
+    >
+      <Mail className="w-5 h-5" />
+      {unread > 0 && (
+        <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-0.5 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }

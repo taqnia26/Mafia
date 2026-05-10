@@ -7,6 +7,7 @@ import {
   playerGuardsTable, bodyguardRequestsTable, playerPropertiesTable,
   attacksTable, blackMarketListingsTable, crimeRecordsTable, activityLogTable,
   notificationsTable, bankLoansTable, bankTransactionsTable,
+  inboxMessagesTable, inboxStatsTable,
 } from "@workspace/db/schema";
 import { eq, ilike, and, count, or, gte, sql, SQL } from "drizzle-orm";
 import { logActivity } from "../lib/activityLog";
@@ -69,6 +70,7 @@ router.get("/players/me", requireAuth, async (req, res) => {
       killedByPlayerId: player.killedByPlayerId ?? null,
       killedByUsername,
       deathCause: player.deathCause ?? null,
+      unreadInboxCount: player.unreadInboxCount ?? 0,
     });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
@@ -109,6 +111,8 @@ router.post("/players/me/restart", requireAuth, async (req, res) => {
       await tx.delete(crimeRecordsTable).where(eq(crimeRecordsTable.playerId, player.id));
       await tx.delete(notificationsTable).where(eq(notificationsTable.playerId, player.id));
       await tx.delete(activityLogTable).where(eq(activityLogTable.playerId, player.id));
+      await tx.delete(inboxMessagesTable).where(eq(inboxMessagesTable.playerId, player.id));
+      await tx.delete(inboxStatsTable).where(eq(inboxStatsTable.playerId, player.id));
 
       await tx.update(playersTable).set({
         money: 5000,
@@ -134,6 +138,7 @@ router.post("/players/me/restart", requireAuth, async (req, res) => {
         diedAt: null,
         killedByPlayerId: null,
         deathCause: null,
+        unreadInboxCount: 0,
         updatedAt: new Date(),
       }).where(eq(playersTable.id, player.id));
     });
@@ -181,6 +186,7 @@ router.patch("/players/me", requireAuth, async (req, res) => {
       killedByPlayerId: updated.killedByPlayerId ?? null,
       killedByUsername,
       deathCause: updated.deathCause ?? null,
+      unreadInboxCount: updated.unreadInboxCount ?? 0,
     });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });
@@ -259,6 +265,7 @@ router.post("/players/me/anti-spy/purchase", requireAuth, async (req, res) => {
       killedByPlayerId: updated.killedByPlayerId ?? null,
       killedByUsername,
       deathCause: updated.deathCause ?? null,
+      unreadInboxCount: updated.unreadInboxCount ?? 0,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -309,6 +316,7 @@ router.get("/players", requireAuth, async (req, res) => {
         diedAt: playersTable.diedAt,
         killedByPlayerId: playersTable.killedByPlayerId,
         deathCause: playersTable.deathCause,
+        unreadInboxCount: playersTable.unreadInboxCount,
         cityName: citiesTable.name,
         currentRank: playerRankProgressTable.currentRank,
         rankNameEn: playerRanksTable.nameEn,
@@ -358,6 +366,7 @@ router.get("/players", requireAuth, async (req, res) => {
           diedAt: p.diedAt?.toISOString() ?? null,
           killedByPlayerId: p.killedByPlayerId ?? null,
           deathCause: p.deathCause ?? null,
+          unreadInboxCount: p.unreadInboxCount ?? 0,
         };
       }),
       total: totalResult[0]?.count ?? 0,
@@ -398,6 +407,7 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       diedAt: playersTable.diedAt,
       killedByPlayerId: playersTable.killedByPlayerId,
       deathCause: playersTable.deathCause,
+      unreadInboxCount: playersTable.unreadInboxCount,
       cityName: citiesTable.name,
       currentRank: playerRankProgressTable.currentRank,
       rankNameEn: playerRanksTable.nameEn,
@@ -446,6 +456,7 @@ router.get("/players/:playerId", requireAuth, async (req, res) => {
       killedByPlayerId: p.killedByPlayerId ?? null,
       killedByUsername,
       deathCause: p.deathCause ?? null,
+      unreadInboxCount: p.unreadInboxCount ?? 0,
     });
   } catch (e) {
     return void res.status(500).json({ error: String(e) });

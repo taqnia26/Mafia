@@ -70,10 +70,13 @@ import type {
   GetAdminPlayersParams,
   GetBankTransactionsParams,
   HealthStatus,
+  InboxListResponse,
+  InboxMessage,
   JailbreakInput,
   JailbreakResult,
   LeaderboardEntry,
   ListBlackMarketParams,
+  ListInboxMessagesParams,
   ListPlayersParams,
   ListingInput,
   MessageResponse,
@@ -2420,6 +2423,523 @@ export const useDeleteChatMessage = <
   TContext
 > => {
   return useMutation(getDeleteChatMessageMutationOptions(options));
+};
+
+/**
+ * @summary List the current player's inbox messages with filters
+ */
+export const getListInboxMessagesUrl = (params?: ListInboxMessagesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/inbox?${stringifiedParams}`
+    : `/api/inbox`;
+};
+
+export const listInboxMessages = async (
+  params?: ListInboxMessagesParams,
+  options?: RequestInit,
+): Promise<InboxListResponse> => {
+  return customFetch<InboxListResponse>(getListInboxMessagesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListInboxMessagesQueryKey = (
+  params?: ListInboxMessagesParams,
+) => {
+  return [`/api/inbox`, ...(params ? [params] : [])] as const;
+};
+
+export const getListInboxMessagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInboxMessages>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListInboxMessagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listInboxMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListInboxMessagesQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listInboxMessages>>
+  > = ({ signal }) => listInboxMessages(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listInboxMessages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListInboxMessagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInboxMessages>>
+>;
+export type ListInboxMessagesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the current player's inbox messages with filters
+ */
+
+export function useListInboxMessages<
+  TData = Awaited<ReturnType<typeof listInboxMessages>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListInboxMessagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listInboxMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListInboxMessagesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Fetch one message and auto-mark it as read
+ */
+export const getGetInboxMessageUrl = (id: number) => {
+  return `/api/inbox/${id}`;
+};
+
+export const getInboxMessage = async (
+  id: number,
+  options?: RequestInit,
+): Promise<InboxMessage> => {
+  return customFetch<InboxMessage>(getGetInboxMessageUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetInboxMessageQueryKey = (id: number) => {
+  return [`/api/inbox/${id}`] as const;
+};
+
+export const getGetInboxMessageQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInboxMessage>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInboxMessage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetInboxMessageQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getInboxMessage>>> = ({
+    signal,
+  }) => getInboxMessage(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInboxMessage>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetInboxMessageQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInboxMessage>>
+>;
+export type GetInboxMessageQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch one message and auto-mark it as read
+ */
+
+export function useGetInboxMessage<
+  TData = Awaited<ReturnType<typeof getInboxMessage>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getInboxMessage>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetInboxMessageQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Soft-delete a message
+ */
+export const getDeleteInboxMessageUrl = (id: number) => {
+  return `/api/inbox/${id}`;
+};
+
+export const deleteInboxMessage = async (
+  id: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteInboxMessageUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteInboxMessageMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInboxMessage>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteInboxMessage>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteInboxMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteInboxMessage>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteInboxMessage(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteInboxMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteInboxMessage>>
+>;
+
+export type DeleteInboxMessageMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Soft-delete a message
+ */
+export const useDeleteInboxMessage = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInboxMessage>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteInboxMessage>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteInboxMessageMutationOptions(options));
+};
+
+/**
+ * @summary Explicitly mark a message as read
+ */
+export const getMarkInboxReadUrl = (id: number) => {
+  return `/api/inbox/${id}/read`;
+};
+
+export const markInboxRead = async (
+  id: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getMarkInboxReadUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkInboxReadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markInboxRead>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markInboxRead>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["markInboxRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markInboxRead>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return markInboxRead(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkInboxReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markInboxRead>>
+>;
+
+export type MarkInboxReadMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Explicitly mark a message as read
+ */
+export const useMarkInboxRead = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markInboxRead>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markInboxRead>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getMarkInboxReadMutationOptions(options));
+};
+
+/**
+ * @summary Toggle archive on a message
+ */
+export const getToggleInboxArchiveUrl = (id: number) => {
+  return `/api/inbox/${id}/archive`;
+};
+
+export const toggleInboxArchive = async (
+  id: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getToggleInboxArchiveUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getToggleInboxArchiveMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleInboxArchive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleInboxArchive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["toggleInboxArchive"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleInboxArchive>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return toggleInboxArchive(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleInboxArchiveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleInboxArchive>>
+>;
+
+export type ToggleInboxArchiveMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Toggle archive on a message
+ */
+export const useToggleInboxArchive = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleInboxArchive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleInboxArchive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getToggleInboxArchiveMutationOptions(options));
+};
+
+/**
+ * @summary Mark all unread messages as read
+ */
+export const getMarkAllInboxReadUrl = () => {
+  return `/api/inbox/mark-all-read`;
+};
+
+export const markAllInboxRead = async (
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getMarkAllInboxReadUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkAllInboxReadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllInboxRead>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markAllInboxRead>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["markAllInboxRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markAllInboxRead>>,
+    void
+  > = () => {
+    return markAllInboxRead(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkAllInboxReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markAllInboxRead>>
+>;
+
+export type MarkAllInboxReadMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark all unread messages as read
+ */
+export const useMarkAllInboxRead = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllInboxRead>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markAllInboxRead>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getMarkAllInboxReadMutationOptions(options));
 };
 
 /**

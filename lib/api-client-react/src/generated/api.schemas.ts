@@ -59,6 +59,7 @@ export interface Player {
   killedByUsername?: string | null;
   /** @nullable */
   deathCause: string | null;
+  unreadInboxCount: number;
 }
 
 export interface RestartResponse {
@@ -1017,12 +1018,122 @@ export interface ChatSendResult {
   id: number;
 }
 
+export type InboxMessageCategory =
+  (typeof InboxMessageCategory)[keyof typeof InboxMessageCategory];
+
+export const InboxMessageCategory = {
+  attack: "attack",
+  property: "property",
+  gang: "gang",
+  personal: "personal",
+  financial: "financial",
+  system: "system",
+} as const;
+
+export type InboxMessagePriority =
+  (typeof InboxMessagePriority)[keyof typeof InboxMessagePriority];
+
+export const InboxMessagePriority = {
+  urgent: "urgent",
+  high: "high",
+  normal: "normal",
+  low: "low",
+} as const;
+
+export type InboxMessageMetadata = { [key: string]: unknown };
+
+export interface InboxMessage {
+  id: number;
+  category: InboxMessageCategory;
+  priority: InboxMessagePriority;
+  subjectEn: string;
+  subjectAr: string;
+  bodyEn: string;
+  bodyAr: string;
+  metadata: InboxMessageMetadata;
+  /** @nullable */
+  actionLink: string | null;
+  /** @nullable */
+  actionLabelEn: string | null;
+  /** @nullable */
+  actionLabelAr: string | null;
+  isRead: boolean;
+  isArchived: boolean;
+  /** @nullable */
+  readAt: string | null;
+  /** @nullable */
+  archivedAt: string | null;
+  createdAt: string;
+}
+
+export interface InboxCategoryCount {
+  total: number;
+  unread: number;
+}
+
+export type InboxListResponseCategoryCounts = {
+  [key: string]: InboxCategoryCount;
+};
+
+export interface InboxListResponse {
+  messages: InboxMessage[];
+  total: number;
+  page: number;
+  limit: number;
+  unreadCount: number;
+  categoryCounts: InboxListResponseCategoryCounts;
+}
+
 export type ListPlayersParams = {
   cityId?: number;
   search?: string;
   page?: number;
   limit?: number;
 };
+
+export type ListInboxMessagesParams = {
+  category?: ListInboxMessagesCategory;
+  unreadOnly?: ListInboxMessagesUnreadOnly;
+  archived?: ListInboxMessagesArchived;
+  search?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  limit?: number;
+};
+
+export type ListInboxMessagesCategory =
+  (typeof ListInboxMessagesCategory)[keyof typeof ListInboxMessagesCategory];
+
+export const ListInboxMessagesCategory = {
+  attack: "attack",
+  property: "property",
+  gang: "gang",
+  personal: "personal",
+  financial: "financial",
+  system: "system",
+} as const;
+
+export type ListInboxMessagesUnreadOnly =
+  (typeof ListInboxMessagesUnreadOnly)[keyof typeof ListInboxMessagesUnreadOnly];
+
+export const ListInboxMessagesUnreadOnly = {
+  true: "true",
+  false: "false",
+} as const;
+
+export type ListInboxMessagesArchived =
+  (typeof ListInboxMessagesArchived)[keyof typeof ListInboxMessagesArchived];
+
+export const ListInboxMessagesArchived = {
+  true: "true",
+  false: "false",
+} as const;
 
 export type GetBankTransactionsParams = {
   /**

@@ -49,6 +49,7 @@ export const GetMyProfileResponse = zod.object({
   killedByPlayerId: zod.number().nullable(),
   killedByUsername: zod.string().nullish(),
   deathCause: zod.string().nullable(),
+  unreadInboxCount: zod.number(),
 });
 
 /**
@@ -90,6 +91,7 @@ export const UpdateMyProfileResponse = zod.object({
   killedByPlayerId: zod.number().nullable(),
   killedByUsername: zod.string().nullish(),
   deathCause: zod.string().nullable(),
+  unreadInboxCount: zod.number(),
 });
 
 /**
@@ -143,6 +145,7 @@ export const PurchaseAntiSpyResponse = zod.object({
   killedByPlayerId: zod.number().nullable(),
   killedByUsername: zod.string().nullish(),
   deathCause: zod.string().nullable(),
+  unreadInboxCount: zod.number(),
 });
 
 /**
@@ -192,6 +195,7 @@ export const ListPlayersResponse = zod.object({
       killedByPlayerId: zod.number().nullable(),
       killedByUsername: zod.string().nullish(),
       deathCause: zod.string().nullable(),
+      unreadInboxCount: zod.number(),
     }),
   ),
   total: zod.number(),
@@ -238,6 +242,7 @@ export const GetPlayerResponse = zod.object({
   killedByPlayerId: zod.number().nullable(),
   killedByUsername: zod.string().nullish(),
   deathCause: zod.string().nullable(),
+  unreadInboxCount: zod.number(),
 });
 
 /**
@@ -624,6 +629,141 @@ export const DeleteChatMessageParams = zod.object({
 });
 
 export const DeleteChatMessageResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List the current player's inbox messages with filters
+ */
+
+export const listInboxMessagesQueryLimitMax = 100;
+
+export const ListInboxMessagesQueryParams = zod.object({
+  category: zod
+    .enum(["attack", "property", "gang", "personal", "financial", "system"])
+    .optional(),
+  unreadOnly: zod.enum(["true", "false"]).optional(),
+  archived: zod.enum(["true", "false"]).optional(),
+  search: zod.coerce.string().optional(),
+  page: zod.coerce.number().min(1).optional(),
+  limit: zod.coerce
+    .number()
+    .min(1)
+    .max(listInboxMessagesQueryLimitMax)
+    .optional(),
+});
+
+export const ListInboxMessagesResponse = zod.object({
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      category: zod.enum([
+        "attack",
+        "property",
+        "gang",
+        "personal",
+        "financial",
+        "system",
+      ]),
+      priority: zod.enum(["urgent", "high", "normal", "low"]),
+      subjectEn: zod.string(),
+      subjectAr: zod.string(),
+      bodyEn: zod.string(),
+      bodyAr: zod.string(),
+      metadata: zod.record(zod.string(), zod.unknown()),
+      actionLink: zod.string().nullable(),
+      actionLabelEn: zod.string().nullable(),
+      actionLabelAr: zod.string().nullable(),
+      isRead: zod.boolean(),
+      isArchived: zod.boolean(),
+      readAt: zod.string().nullable(),
+      archivedAt: zod.string().nullable(),
+      createdAt: zod.string(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+  unreadCount: zod.number(),
+  categoryCounts: zod.record(
+    zod.string(),
+    zod.object({
+      total: zod.number(),
+      unread: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Fetch one message and auto-mark it as read
+ */
+export const GetInboxMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetInboxMessageResponse = zod.object({
+  id: zod.number(),
+  category: zod.enum([
+    "attack",
+    "property",
+    "gang",
+    "personal",
+    "financial",
+    "system",
+  ]),
+  priority: zod.enum(["urgent", "high", "normal", "low"]),
+  subjectEn: zod.string(),
+  subjectAr: zod.string(),
+  bodyEn: zod.string(),
+  bodyAr: zod.string(),
+  metadata: zod.record(zod.string(), zod.unknown()),
+  actionLink: zod.string().nullable(),
+  actionLabelEn: zod.string().nullable(),
+  actionLabelAr: zod.string().nullable(),
+  isRead: zod.boolean(),
+  isArchived: zod.boolean(),
+  readAt: zod.string().nullable(),
+  archivedAt: zod.string().nullable(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Soft-delete a message
+ */
+export const DeleteInboxMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteInboxMessageResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Explicitly mark a message as read
+ */
+export const MarkInboxReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkInboxReadResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Toggle archive on a message
+ */
+export const ToggleInboxArchiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleInboxArchiveResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Mark all unread messages as read
+ */
+export const MarkAllInboxReadResponse = zod.object({
   ok: zod.boolean(),
 });
 
