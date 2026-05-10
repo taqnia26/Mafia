@@ -1,0 +1,743 @@
+═══════════════════════════════════════════════════════════════════
+              💬 نظام الشات المتكامل (Chat System)
+═══════════════════════════════════════════════════════════════════
+
+4 أنواع شات:
+├── 1. الشات العام (Global Chat) - كل اللاعبين
+├── 2. شات العصابة (Gang Chat) - أعضاء العصابة فقط
+├── 3. شات المدينة (City Chat) - لاعبين نفس المدينة
+└── 4. الرسائل الخاصة (Private Messages) - 1-to-1
+
+الميزات:
+├── Real-time updates (polling كل 3 ثواني)
+├── سجل 200 رسالة لكل نوع
+├── منع spam (حد 10 رسائل/دقيقة)
+├── Mute/Ban من الإدارة
+├── تنظيف تلقائي للرسائل القديمة (+7 أيام)
+└── دعم كامل للعربية/الإنجليزية
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    📁 الملفات المطلوبة                          │
+└─────────────────────────────────────────────────────────────────┘
+
+A) Migration: lib/db/migrations/016_chat_system.sql
+────────────────────────────────────────────────────────
+-- 1. جدول الرسائل العامة
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  message TEXT NOT NULL CHECK (LENGTH(message) > 0 AND LENGTH(message) <= 500),
+  chat_type VARCHAR(20) NOT NULL CHECK (chat_type IN ('global', 'gang', 'city', 'private')),
+  gang_id INTEGER REFERENCES gangs(id) ON DELETE CASCADE,
+  city_id INTEGER REFERENCES cities(id) ON DELETE CASCADE,
+  recipient_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX idx_chat_type ON chat_messages(chat_type, created_at DESC);
+CREATE INDEX idx_chat_gang ON chat_messages(gang_id, created_at DESC);
+CREATE INDEX idx_chat_city ON chat_messages(city_id, created_at DESC);
+CREATE INDEX idx_chat_private_sender ON chat_messages(player_id, recipient_id, created_at DESC);
+CREATE INDEX idx_chat_private_recipient ON chat_messages(recipient_id, player_id, created_at DESC);
+
+-- 2. جدول spam prevention
+CREATE TABLE IF NOT EXISTS chat_rate_limits (
+  player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+  message_count INTEGER NOT NULL DEFAULT 0,
+  window_start TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- 3. جدول Mute/Ban
+CREATE TABLE IF NOT EXISTS chat_restrictions (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  chat_type VARCHAR(20) NOT NULL CHECK (chat_type IN ('global', 'gang', 'city', 'all')),
+  restricted_by INTEGER REFERENCES players(id),
+  reason VARCHAR(200),
+  restricted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMP, -- NULL = permanent
+  UNIQUE(player_id, chat_type)
+);
+
+CREATE INDEX idx_chat_restrictions_player ON chat_restrictions(player_id);
+
+-- 4. إضافة أعمدة للاعبين
+ALTER TABLE players ADD COLUMN IF NOT EXISTS is_chat_muted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS last_message_at TIMESTAMP;
+
+COMMENT ON COLUMN players.is_chat_muted IS 'محظور من كل أنواع الشات';
+
+
+B) Schema: lib/db/src/schema/chat.ts (جديد)
+────────────────────────────────────────────────────────
+import { pgTable, serial, integer, text, varchar, timestamp, boolean, unique, check } from 'drizzle-orm/pg-core';
+import { players } from './players';
+import { gangs } from './gangs';
+import { cities } from './cities';
+
+export const chatMessages = pgTable('chat_messages', {
+  id: serial('id').primaryKey(),
+  playerId: integer('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  message: text('message').notNull(),
+  chatType: varchar('chat_type', { length: 20 }).notNull(),
+  gangId: integer('gang_id').references(() => gangs.id, { onDelete: 'cascade' }),
+  cityId: integer('city_id').references(() => cities.id, { onDelete: 'cascade' }),
+  recipientId: integer('recipient_id').references(() => players.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  isDeleted: boolean('is_deleted').notNull().default(false)
+}, (table) => ({
+  messageLength: check('message_length', sql`LENGTH(message) > 0 AND LENGTH(message) <= 500`),
+  chatTypeCheck: check('chat_type_check', sql`chat_type IN ('global', 'gang', 'city', 'private')`)
+}));
+
+export const chatRateLimits = pgTable('chat_rate_limits', {
+  playerId: integer('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  messageCount: integer('message_count').notNull().default(0),
+  windowStart: timestamp('window_start').notNull().defaultNow()
+});
+
+export const chatRestrictions = pgTable('chat_restrictions', {
+  id: serial('id').primaryKey(),
+  playerId: integer('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  chatType: varchar('chat_type', { length: 20 }).notNull(),
+  restrictedBy: integer('restricted_by').references(() => players.id),
+  reason: varchar('reason', { length: 200 }),
+  restrictedAt: timestamp('restricted_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at')
+}, (table) => ({
+  uniqueRestriction: unique().on(table.playerId, table.chatType)
+}));
+
+// تحديث players schema:
+isChatMuted: boolean('is_chat_muted').notNull().default(false),
+lastMessageAt: timestamp('last_message_at'),
+
+
+C) Backend Route: artifacts/api-server/src/routes/chat.ts (جديد)
+────────────────────────────────────────────────────────
+import { Router } from 'express';
+import { db } from '../lib/db';
+import { requireAuth, requireNotInPrison } from '../lib/auth';
+import { 
+  chatMessages, 
+  chatRateLimits, 
+  chatRestrictions,
+  players,
+  gangs,
+  cities
+} from '@workspace/db/schema';
+import { eq, and, desc, sql, or, gt } from 'drizzle-orm';
+
+const router = Router();
+
+// Middleware للتحقق من rate limit
+async function checkRateLimit(playerId: number): Promise<boolean> {
+  const limit = await db.select().from(chatRateLimits)
+    .where(eq(chatRateLimits.playerId, playerId))
+    .limit(1);
+
+  const now = new Date();
+  const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+
+  if (!limit[0]) {
+    await db.insert(chatRateLimits).values({
+      playerId,
+      messageCount: 1,
+      windowStart: now
+    });
+    return true;
+  }
+
+  const windowStart = new Date(limit[0].windowStart);
+  
+  if (windowStart < oneMinuteAgo) {
+    // نافذة جديدة
+    await db.update(chatRateLimits)
+      .set({ messageCount: 1, windowStart: now })
+      .where(eq(chatRateLimits.playerId, playerId));
+    return true;
+  }
+
+  if (limit[0].messageCount >= 10) {
+    return false; // spam!
+  }
+
+  await db.update(chatRateLimits)
+    .set({ messageCount: sql`${chatRateLimits.messageCount} + 1` })
+    .where(eq(chatRateLimits.playerId, playerId));
+
+  return true;
+}
+
+// Middleware للتحقق من restrictions
+async function checkRestriction(playerId: number, chatType: string): Promise<boolean> {
+  const restrictions = await db.select().from(chatRestrictions)
+    .where(and(
+      eq(chatRestrictions.playerId, playerId),
+      or(
+        eq(chatRestrictions.chatType, chatType),
+        eq(chatRestrictions.chatType, 'all')
+      ),
+      or(
+        sql`${chatRestrictions.expiresAt} IS NULL`,
+        gt(chatRestrictions.expiresAt, new Date())
+      )
+    ));
+
+  return restrictions.length === 0;
+}
+
+// GET /api/chat/global - جلب الشات العام
+router.get('/global', requireAuth, async (req, res) => {
+  const messages = await db.select({
+    id: chatMessages.id,
+    message: chatMessages.message,
+    createdAt: chatMessages.createdAt,
+    player: {
+      id: players.id,
+      username: players.username,
+      level: players.level,
+      currentRankNumber: players.currentRankNumber
+    }
+  })
+  .from(chatMessages)
+  .innerJoin(players, eq(chatMessages.playerId, players.id))
+  .where(and(
+    eq(chatMessages.chatType, 'global'),
+    eq(chatMessages.isDeleted, false)
+  ))
+  .orderBy(desc(chatMessages.createdAt))
+  .limit(200);
+
+  res.json(messages.reverse()); // عكس الترتيب (الأقدم أولاً)
+});
+
+// POST /api/chat/global - إرسال رسالة عامة
+router.post('/global', requireAuth, requireNotInPrison, async (req, res) => {
+  const { message } = req.body;
+
+  if (!message || message.trim().length === 0) {
+    return res.status(400).json({ error: 'Message cannot be empty' });
+  }
+
+  if (message.length > 500) {
+    return res.status(400).json({ error: 'Message too long (max 500 chars)' });
+  }
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    if (player[0].isChatMuted) {
+      throw new Error('You are muted from all chats');
+    }
+
+    // التحقق من rate limit
+    const canSend = await checkRateLimit(player[0].id);
+    if (!canSend) {
+      throw new Error('Too many messages. Please wait.');
+    }
+
+    // التحقق من restriction
+    const notRestricted = await checkRestriction(player[0].id, 'global');
+    if (!notRestricted) {
+      throw new Error('You are restricted from global chat');
+    }
+
+    // إرسال الرسالة
+    const [msg] = await tx.insert(chatMessages).values({
+      playerId: player[0].id,
+      message: message.trim(),
+      chatType: 'global'
+    }).returning();
+
+    await tx.update(players)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(players.id, player[0].id));
+
+    res.json({ success: true, message: msg });
+  });
+});
+
+// GET /api/chat/gang - جلب شات العصابة
+router.get('/gang', requireAuth, async (req, res) => {
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  if (!player[0].gangId) {
+    return res.status(400).json({ error: 'Not in a gang' });
+  }
+
+  const messages = await db.select({
+    id: chatMessages.id,
+    message: chatMessages.message,
+    createdAt: chatMessages.createdAt,
+    player: {
+      id: players.id,
+      username: players.username,
+      gangRank: players.gangRank
+    }
+  })
+  .from(chatMessages)
+  .innerJoin(players, eq(chatMessages.playerId, players.id))
+  .where(and(
+    eq(chatMessages.chatType, 'gang'),
+    eq(chatMessages.gangId, player[0].gangId),
+    eq(chatMessages.isDeleted, false)
+  ))
+  .orderBy(desc(chatMessages.createdAt))
+  .limit(200);
+
+  res.json(messages.reverse());
+});
+
+// POST /api/chat/gang - إرسال رسالة للعصابة
+router.post('/gang', requireAuth, requireNotInPrison, async (req, res) => {
+  const { message } = req.body;
+
+  if (!message || message.trim().length === 0) {
+    return res.status(400).json({ error: 'Message cannot be empty' });
+  }
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    if (!player[0].gangId) {
+      throw new Error('Not in a gang');
+    }
+
+    if (player[0].isChatMuted) {
+      throw new Error('You are muted');
+    }
+
+    const canSend = await checkRateLimit(player[0].id);
+    if (!canSend) {
+      throw new Error('Too many messages');
+    }
+
+    const [msg] = await tx.insert(chatMessages).values({
+      playerId: player[0].id,
+      message: message.trim(),
+      chatType: 'gang',
+      gangId: player[0].gangId
+    }).returning();
+
+    res.json({ success: true, message: msg });
+  });
+});
+
+// GET /api/chat/city - جلب شات المدينة
+router.get('/city', requireAuth, async (req, res) => {
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  const messages = await db.select({
+    id: chatMessages.id,
+    message: chatMessages.message,
+    createdAt: chatMessages.createdAt,
+    player: {
+      id: players.id,
+      username: players.username,
+      level: players.level
+    }
+  })
+  .from(chatMessages)
+  .innerJoin(players, eq(chatMessages.playerId, players.id))
+  .where(and(
+    eq(chatMessages.chatType, 'city'),
+    eq(chatMessages.cityId, player[0].cityId),
+    eq(chatMessages.isDeleted, false)
+  ))
+  .orderBy(desc(chatMessages.createdAt))
+  .limit(100);
+
+  res.json(messages.reverse());
+});
+
+// POST /api/chat/city - إرسال رسالة للمدينة
+router.post('/city', requireAuth, requireNotInPrison, async (req, res) => {
+  const { message } = req.body;
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const canSend = await checkRateLimit(player[0].id);
+    if (!canSend) {
+      throw new Error('Too many messages');
+    }
+
+    const [msg] = await tx.insert(chatMessages).values({
+      playerId: player[0].id,
+      message: message.trim(),
+      chatType: 'city',
+      cityId: player[0].cityId
+    }).returning();
+
+    res.json({ success: true, message: msg });
+  });
+});
+
+// GET /api/chat/private/:playerId - جلب رسائل خاصة
+router.get('/private/:playerId', requireAuth, async (req, res) => {
+  const otherPlayerId = Number(req.params.playerId);
+
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  const messages = await db.select({
+    id: chatMessages.id,
+    message: chatMessages.message,
+    createdAt: chatMessages.createdAt,
+    senderId: chatMessages.playerId,
+    recipientId: chatMessages.recipientId,
+    sender: {
+      id: players.id,
+      username: players.username
+    }
+  })
+  .from(chatMessages)
+  .innerJoin(players, eq(chatMessages.playerId, players.id))
+  .where(and(
+    eq(chatMessages.chatType, 'private'),
+    or(
+      and(
+        eq(chatMessages.playerId, player[0].id),
+        eq(chatMessages.recipientId, otherPlayerId)
+      ),
+      and(
+        eq(chatMessages.playerId, otherPlayerId),
+        eq(chatMessages.recipientId, player[0].id)
+      )
+    ),
+    eq(chatMessages.isDeleted, false)
+  ))
+  .orderBy(desc(chatMessages.createdAt))
+  .limit(100);
+
+  res.json(messages.reverse());
+});
+
+// POST /api/chat/private/:playerId - إرسال رسالة خاصة
+router.post('/private/:playerId', requireAuth, requireNotInPrison, async (req, res) => {
+  const { message } = req.body;
+  const recipientId = Number(req.params.playerId);
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const canSend = await checkRateLimit(player[0].id);
+    if (!canSend) {
+      throw new Error('Too many messages');
+    }
+
+    const [msg] = await tx.insert(chatMessages).values({
+      playerId: player[0].id,
+      message: message.trim(),
+      chatType: 'private',
+      recipientId
+    }).returning();
+
+    // إشعار للمستقبل
+    await tx.insert(notifications).values({
+      playerId: recipientId,
+      type: 'private_message',
+      message: `💬 New message from ${player[0].username}`,
+      messageAr: `💬 رسالة جديدة من ${player[0].username}`,
+      link: `/chat/private/${player[0].id}`
+    });
+
+    res.json({ success: true, message: msg });
+  });
+});
+
+// DELETE /api/chat/:messageId - حذف رسالة (المرسل أو الإدارة)
+router.delete('/:messageId', requireAuth, async (req, res) => {
+  const messageId = Number(req.params.messageId);
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const message = await tx.select().from(chatMessages)
+      .where(eq(chatMessages.id, messageId))
+      .limit(1);
+
+    if (!message[0]) {
+      throw new Error('Message not found');
+    }
+
+    // يمكن حذفها إذا هو المرسل أو admin
+    if (message[0].playerId !== player[0].id && player[0].role !== 'admin') {
+      throw new Error('Not authorized');
+    }
+
+    await tx.update(chatMessages)
+      .set({ isDeleted: true })
+      .where(eq(chatMessages.id, messageId));
+
+    res.json({ success: true });
+  });
+});
+
+export default router;
+
+
+D) Worker: تنظيف الرسائل القديمة
+────────────────────────────────────────────────────────
+// في artifacts/api-server/src/lib/worker.ts
+
+async function cleanOldChatMessages() {
+  logger.info('Cleaning old chat messages...');
+
+  await db.transaction(async (tx) => {
+    // حذف رسائل أقدم من 7 أيام
+    const deleted = await tx.delete(chatMessages)
+      .where(sql`${chatMessages.createdAt} < NOW() - INTERVAL '7 days'`)
+      .returning({ id: chatMessages.id });
+
+    logger.info({ count: deleted.length }, 'Old messages deleted');
+
+    // تنظيف expired restrictions
+    await tx.delete(chatRestrictions)
+      .where(and(
+        sql`${chatRestrictions.expiresAt} IS NOT NULL`,
+        sql`${chatRestrictions.expiresAt} < NOW()`
+      ));
+  });
+}
+
+// استدعاء كل يوم
+setInterval(cleanOldChatMessages, 24 * 60 * 60 * 1000);
+
+
+E) Frontend Component: artifacts/mafia-world/src/components/chat-window.tsx (جديد)
+────────────────────────────────────────────────────────
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Send, Trash2 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
+
+interface ChatWindowProps {
+  type: 'global' | 'gang' | 'city';
+}
+
+export default function ChatWindow({ type }: ChatWindowProps) {
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: messages } = useQuery({
+    queryKey: [`chat-${type}`],
+    queryFn: async () => {
+      const res = await fetch(`/api/chat/${type}`);
+      return res.json();
+    },
+    refetchInterval: 3000 // تحديث كل 3 ثواني
+  });
+
+  const sendMessage = useMutation({
+    mutationFn: async (msg: string) => {
+      const res = await fetch(`/api/chat/${type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`chat-${type}`] });
+      setMessage('');
+    }
+  });
+
+  const deleteMessage = useMutation({
+    mutationFn: async (messageId: number) => {
+      const res = await fetch(`/api/chat/${messageId}`, { method: 'DELETE' });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`chat-${type}`] })
+  });
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (message.trim()) {
+      sendMessage.mutate(message);
+    }
+  };
+
+  const getChatTitle = () => {
+    switch (type) {
+      case 'global': return '🌍 Global Chat';
+      case 'gang': return '🔰 Gang Chat';
+      case 'city': return '🏙️ City Chat';
+    }
+  };
+
+  return (
+    <Card className="h-[600px] flex flex-col">
+      <CardHeader>
+        <CardTitle>{getChatTitle()}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col p-0">
+        <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+          <div className="space-y-3 py-4">
+            {messages?.map((msg: any) => (
+              <div key={msg.id} className="group">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-cyan-400">
+                        {msg.player.username}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Lv.{msg.player.level}
+                      </span>
+                      <span className="text-xs text-gray-600">
+                        {new Date(msg.createdAt).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <p className="text-sm mt-1 break-words">{msg.message}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={() => deleteMessage.mutate(msg.id)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+
+        <form onSubmit={handleSend} className="p-4 border-t border-gray-800">
+          <div className="flex gap-2">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={t('chat.typeMessage')}
+              maxLength={500}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={!message.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {message.length}/500 chars
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+F) Frontend Page: artifacts/mafia-world/src/pages/chat.tsx (جديد)
+────────────────────────────────────────────────────────
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ChatWindow from '@/components/chat-window';
+import { useLanguage } from '@/lib/i18n';
+
+export default function ChatPage() {
+  const { t } = useLanguage();
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-4xl font-bold mb-6">💬 {t('chat.title')}</h1>
+
+      <Tabs defaultValue="global" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="global">🌍 Global</TabsTrigger>
+          <TabsTrigger value="gang">🔰 Gang</TabsTrigger>
+          <TabsTrigger value="city">🏙️ City</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="global">
+          <ChatWindow type="global" />
+        </TabsContent>
+
+        <TabsContent value="gang">
+          <ChatWindow type="gang" />
+        </TabsContent>
+
+        <TabsContent value="city">
+          <ChatWindow type="city" />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+
+G) تسجيل Route في app.ts:
+────────────────────────────────────────────────────────
+import chatRouter from './routes/chat';
+app.use('/api/chat', chatRouter);
+
+
+H) i18n additions:
+────────────────────────────────────────────────────────
+chat: {
+  title: { en: "Chat", ar: "الشات" },
+  typeMessage: { en: "Type a message...", ar: "اكتب رسالة..." },
+  global: { en: "Global Chat", ar: "الشات العام" },
+  gang: { en: "Gang Chat", ar: "شات العصابة" },
+  city: { en: "City Chat", ar: "شات المدينة" },
+  private: { en: "Private Messages", ar: "رسائل خاصة" }
+}
+
+
+I) إضافة للـ Navigation
+────────────────────────────────────────────────────────
+// في artifacts/mafia-world/src/components/layout.tsx
+// أضف رابط الشات في القائمة:
+
+<Link to="/chat" className="nav-link">
+  💬 Chat
+</Link>
+
+
+═══════════════════════════════════════════════════════════════════
+                    ✅ ملخص نظام الشات
+═══════════════════════════════════════════════════════════════════
+
+✅ 4 أنواع شات (Global, Gang, City, Private)
+✅ Real-time updates (كل 3 ثواني)
+✅ Rate limiting (10 رسائل/دقيقة)
+✅ Spam prevention
+✅ حذف الرسائل
+✅ تنظيف تلقائي (7 أيام)
+✅ دعم كامل العربية/الإنجليزية
+✅ UI جميل مع Tabs
+
+═══════════════════════════════════════════════════════════════════

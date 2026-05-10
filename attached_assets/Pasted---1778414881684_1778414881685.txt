@@ -1,0 +1,940 @@
+═══════════════════════════════════════════════════════════════════
+            📬 نظام صندوق البريد (Inbox/Mailbox System)
+═══════════════════════════════════════════════════════════════════
+
+نظام رسائل تفصيلي للأحداث المهمة:
+├── أنواع الرسائل:
+│   ├── 🗡️ هجمات (Attack) - نتائج الهجمات عليك/منك
+│   ├── 🏠 عقارات (Property) - بناء، دمار، إيرادات كبيرة
+│   ├── 🔰 عصابات (Gang) - انضمام، طرد، ترقية، تبرعات
+│   ├── 👤 شخصي (Personal) - level up، رتبة جديدة، إنجازات
+│   ├── 💰 مالي (Financial) - قروض، ودائع، صفقات كبيرة
+│   └── ⚙️ نظام (System) - صيانة، تحديثات، تحذيرات
+│
+├── الميزات:
+│   ├── رسائل تفصيلية مع إحصائيات
+│   ├── مقروء/غير مقروء
+│   ├── أرشفة
+│   ├── حذف (soft delete)
+│   ├── تصفية حسب النوع
+│   ├── بحث في الرسائل
+│   └── إشعار في الواجهة (badge)
+│
+└── التنظيف التلقائي:
+    ├── رسائل مقروءة بعد 30 يوم
+    └── رسائل محذوفة بعد 7 أيام
+
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    📁 الملفات المطلوبة                          │
+└─────────────────────────────────────────────────────────────────┘
+
+A) Migration: lib/db/migrations/017_inbox_system.sql
+────────────────────────────────────────────────────────
+-- جدول صندوق البريد
+CREATE TABLE IF NOT EXISTS inbox_messages (
+  id SERIAL PRIMARY KEY,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  
+  -- التصنيف والأولوية
+  category VARCHAR(20) NOT NULL CHECK (category IN ('attack', 'property', 'gang', 'personal', 'financial', 'system')),
+  priority VARCHAR(10) NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  
+  -- المحتوى
+  subject VARCHAR(200) NOT NULL,
+  subject_ar VARCHAR(200) NOT NULL,
+  message TEXT NOT NULL,
+  message_ar TEXT NOT NULL,
+  
+  -- البيانات المرفقة (JSON)
+  metadata JSONB,
+  
+  -- الحالة
+  is_read BOOLEAN NOT NULL DEFAULT FALSE,
+  is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  
+  -- الروابط
+  action_link VARCHAR(200),
+  related_player_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
+  related_gang_id INTEGER REFERENCES gangs(id) ON DELETE SET NULL,
+  related_property_id INTEGER REFERENCES player_properties(id) ON DELETE SET NULL,
+  
+  -- التواريخ
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  read_at TIMESTAMP,
+  deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_inbox_player ON inbox_messages(player_id, created_at DESC);
+CREATE INDEX idx_inbox_unread ON inbox_messages(player_id, is_read, created_at DESC) WHERE is_read = FALSE;
+CREATE INDEX idx_inbox_category ON inbox_messages(player_id, category, created_at DESC);
+CREATE INDEX idx_inbox_deleted ON inbox_messages(is_deleted, deleted_at) WHERE is_deleted = TRUE;
+
+-- إحصائيات صندوق البريد لكل لاعب
+CREATE TABLE IF NOT EXISTS inbox_stats (
+  player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+  total_messages INTEGER NOT NULL DEFAULT 0,
+  unread_count INTEGER NOT NULL DEFAULT 0,
+  last_checked_at TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- إضافة أعمدة للاعبين
+ALTER TABLE players ADD COLUMN IF NOT EXISTS unread_inbox_count INTEGER NOT NULL DEFAULT 0;
+
+COMMENT ON COLUMN players.unread_inbox_count IS 'عدد الرسائل غير المقروءة في صندوق البريد';
+
+
+B) Schema: lib/db/src/schema/inbox.ts (جديد)
+────────────────────────────────────────────────────────
+import { pgTable, serial, integer, varchar, text, boolean, timestamp, jsonb, check } from 'drizzle-orm/pg-core';
+import { players } from './players';
+import { gangs } from './gangs';
+import { playerProperties } from './properties';
+
+export const inboxMessages = pgTable('inbox_messages', {
+  id: serial('id').primaryKey(),
+  playerId: integer('player_id').notNull().references(() => players.id, { onDelete: 'cascade' }),
+  
+  category: varchar('category', { length: 20 }).notNull(),
+  priority: varchar('priority', { length: 10 }).notNull().default('normal'),
+  
+  subject: varchar('subject', { length: 200 }).notNull(),
+  subjectAr: varchar('subject_ar', { length: 200 }).notNull(),
+  message: text('message').notNull(),
+  messageAr: text('message_ar').notNull(),
+  
+  metadata: jsonb('metadata'),
+  
+  isRead: boolean('is_read').notNull().default(false),
+  isArchived: boolean('is_archived').notNull().default(false),
+  isDeleted: boolean('is_deleted').notNull().default(false),
+  
+  actionLink: varchar('action_link', { length: 200 }),
+  relatedPlayerId: integer('related_player_id').references(() => players.id, { onDelete: 'set null' }),
+  relatedGangId: integer('related_gang_id').references(() => gangs.id, { onDelete: 'set null' }),
+  relatedPropertyId: integer('related_property_id').references(() => playerProperties.id, { onDelete: 'set null' }),
+  
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  readAt: timestamp('read_at'),
+  deletedAt: timestamp('deleted_at')
+}, (table) => ({
+  categoryCheck: check('category_check', sql`category IN ('attack', 'property', 'gang', 'personal', 'financial', 'system')`),
+  priorityCheck: check('priority_check', sql`priority IN ('low', 'normal', 'high', 'urgent')`)
+}));
+
+export const inboxStats = pgTable('inbox_stats', {
+  playerId: integer('player_id').primaryKey().references(() => players.id, { onDelete: 'cascade' }),
+  totalMessages: integer('total_messages').notNull().default(0),
+  unreadCount: integer('unread_count').notNull().default(0),
+  lastCheckedAt: timestamp('last_checked_at'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow()
+});
+
+// تحديث players schema:
+unreadInboxCount: integer('unread_inbox_count').notNull().default(0),
+
+
+C) Backend Route: artifacts/api-server/src/routes/inbox.ts (جديد)
+────────────────────────────────────────────────────────
+import { Router } from 'express';
+import { db } from '../lib/db';
+import { requireAuth } from '../lib/auth';
+import { inboxMessages, inboxStats, players } from '@workspace/db/schema';
+import { eq, and, desc, sql, ilike, or } from 'drizzle-orm';
+
+const router = Router();
+
+// GET /api/inbox - جلب الرسائل
+router.get('/', requireAuth, async (req, res) => {
+  const { category, unreadOnly, search, page = 1 } = req.query;
+  const limit = 50;
+  const offset = (Number(page) - 1) * limit;
+
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  let conditions = [
+    eq(inboxMessages.playerId, player[0].id),
+    eq(inboxMessages.isDeleted, false)
+  ];
+
+  if (category) {
+    conditions.push(eq(inboxMessages.category, category as string));
+  }
+
+  if (unreadOnly === 'true') {
+    conditions.push(eq(inboxMessages.isRead, false));
+  }
+
+  if (search) {
+    conditions.push(
+      or(
+        ilike(inboxMessages.subject, `%${search}%`),
+        ilike(inboxMessages.subjectAr, `%${search}%`),
+        ilike(inboxMessages.message, `%${search}%`)
+      )!
+    );
+  }
+
+  const messages = await db.select()
+    .from(inboxMessages)
+    .where(and(...conditions))
+    .orderBy(desc(inboxMessages.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [stats] = await db.select().from(inboxStats)
+    .where(eq(inboxStats.playerId, player[0].id))
+    .limit(1);
+
+  res.json({
+    messages,
+    stats: stats || { totalMessages: 0, unreadCount: 0 },
+    pagination: {
+      page: Number(page),
+      limit,
+      hasMore: messages.length === limit
+    }
+  });
+});
+
+// GET /api/inbox/:id - جلب رسالة واحدة
+router.get('/:id', requireAuth, async (req, res) => {
+  const messageId = Number(req.params.id);
+
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  const [message] = await db.select()
+    .from(inboxMessages)
+    .where(and(
+      eq(inboxMessages.id, messageId),
+      eq(inboxMessages.playerId, player[0].id)
+    ))
+    .limit(1);
+
+  if (!message) {
+    return res.status(404).json({ error: 'Message not found' });
+  }
+
+  res.json(message);
+});
+
+// POST /api/inbox/:id/read - تعليم كمقروء
+router.post('/:id/read', requireAuth, async (req, res) => {
+  const messageId = Number(req.params.id);
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const message = await tx.select().from(inboxMessages)
+      .where(and(
+        eq(inboxMessages.id, messageId),
+        eq(inboxMessages.playerId, player[0].id),
+        eq(inboxMessages.isRead, false)
+      ))
+      .limit(1);
+
+    if (!message[0]) {
+      throw new Error('Message not found or already read');
+    }
+
+    // تحديث الرسالة
+    await tx.update(inboxMessages)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(inboxMessages.id, messageId));
+
+    // تحديث العداد
+    await tx.update(players)
+      .set({ unreadInboxCount: sql`${players.unreadInboxCount} - 1` })
+      .where(eq(players.id, player[0].id));
+
+    await tx.update(inboxStats)
+      .set({ 
+        unreadCount: sql`${inboxStats.unreadCount} - 1`,
+        updatedAt: new Date()
+      })
+      .where(eq(inboxStats.playerId, player[0].id));
+
+    res.json({ success: true });
+  });
+});
+
+// POST /api/inbox/mark-all-read - تعليم الكل كمقروء
+router.post('/mark-all-read', requireAuth, async (req, res) => {
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    await tx.update(inboxMessages)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(
+        eq(inboxMessages.playerId, player[0].id),
+        eq(inboxMessages.isRead, false),
+        eq(inboxMessages.isDeleted, false)
+      ));
+
+    await tx.update(players)
+      .set({ unreadInboxCount: 0 })
+      .where(eq(players.id, player[0].id));
+
+    await tx.update(inboxStats)
+      .set({ 
+        unreadCount: 0,
+        lastCheckedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(inboxStats.playerId, player[0].id));
+
+    res.json({ success: true });
+  });
+});
+
+// DELETE /api/inbox/:id - حذف رسالة
+router.delete('/:id', requireAuth, async (req, res) => {
+  const messageId = Number(req.params.id);
+
+  await db.transaction(async (tx) => {
+    const player = await tx.select().from(players)
+      .where(eq(players.clerkId, req.auth.userId))
+      .limit(1);
+
+    const message = await tx.select().from(inboxMessages)
+      .where(and(
+        eq(inboxMessages.id, messageId),
+        eq(inboxMessages.playerId, player[0].id)
+      ))
+      .limit(1);
+
+    if (!message[0]) {
+      throw new Error('Message not found');
+    }
+
+    await tx.update(inboxMessages)
+      .set({ isDeleted: true, deletedAt: new Date() })
+      .where(eq(inboxMessages.id, messageId));
+
+    // إذا كانت غير مقروءة، نقص العداد
+    if (!message[0].isRead) {
+      await tx.update(players)
+        .set({ unreadInboxCount: sql`${players.unreadInboxCount} - 1` })
+        .where(eq(players.id, player[0].id));
+    }
+
+    res.json({ success: true });
+  });
+});
+
+// POST /api/inbox/:id/archive - أرشفة
+router.post('/:id/archive', requireAuth, async (req, res) => {
+  const messageId = Number(req.params.id);
+
+  const player = await db.select().from(players)
+    .where(eq(players.clerkId, req.auth.userId))
+    .limit(1);
+
+  await db.update(inboxMessages)
+    .set({ isArchived: true })
+    .where(and(
+      eq(inboxMessages.id, messageId),
+      eq(inboxMessages.playerId, player[0].id)
+    ));
+
+  res.json({ success: true });
+});
+
+export default router;
+
+
+D) Helper Function: إرسال رسالة للصندوق
+────────────────────────────────────────────────────────
+// في artifacts/api-server/src/lib/inbox-helper.ts (ملف جديد)
+
+import { db } from './db';
+import { inboxMessages, inboxStats, players } from '@workspace/db/schema';
+import { eq, sql } from 'drizzle-orm';
+
+interface InboxMessageParams {
+  playerId: number;
+  category: 'attack' | 'property' | 'gang' | 'personal' | 'financial' | 'system';
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  subject: string;
+  subjectAr: string;
+  message: string;
+  messageAr: string;
+  metadata?: any;
+  actionLink?: string;
+  relatedPlayerId?: number;
+  relatedGangId?: number;
+  relatedPropertyId?: number;
+}
+
+export async function sendInboxMessage(params: InboxMessageParams) {
+  await db.transaction(async (tx) => {
+    // إنشاء الرسالة
+    await tx.insert(inboxMessages).values({
+      playerId: params.playerId,
+      category: params.category,
+      priority: params.priority || 'normal',
+      subject: params.subject,
+      subjectAr: params.subjectAr,
+      message: params.message,
+      messageAr: params.messageAr,
+      metadata: params.metadata ? JSON.stringify(params.metadata) : null,
+      actionLink: params.actionLink,
+      relatedPlayerId: params.relatedPlayerId,
+      relatedGangId: params.relatedGangId,
+      relatedPropertyId: params.relatedPropertyId
+    });
+
+    // تحديث العداد
+    await tx.update(players)
+      .set({ unreadInboxCount: sql`${players.unreadInboxCount} + 1` })
+      .where(eq(players.id, params.playerId));
+
+    // تحديث الإحصائيات
+    await tx.insert(inboxStats).values({
+      playerId: params.playerId,
+      totalMessages: 1,
+      unreadCount: 1
+    }).onConflictDoUpdate({
+      target: inboxStats.playerId,
+      set: {
+        totalMessages: sql`${inboxStats.totalMessages} + 1`,
+        unreadCount: sql`${inboxStats.unreadCount} + 1`,
+        updatedAt: new Date()
+      }
+    });
+  });
+}
+
+
+E) تطبيق في Worker - مثال للهجمات
+────────────────────────────────────────────────────────
+// في artifacts/api-server/src/lib/worker.ts
+// في دالة processArrivedAttacks:
+
+import { sendInboxMessage } from './inbox-helper';
+
+// بعد معالجة الهجوم:
+if (attackSucceeded) {
+  // رسالة للمهاجم
+  await sendInboxMessage({
+    playerId: attack.attackerId,
+    category: 'attack',
+    priority: 'high',
+    subject: `✓ Attack Success on ${targetPlayer.username}`,
+    subjectAr: `✓ هجوم ناجح على ${targetPlayer.username}`,
+    message: `Your attack was successful! 
+    
+Details:
+- Target: ${targetPlayer.username}
+- Money Stolen: $${moneyStolenFormatted}
+- Guards Killed: ${guardsKilled}
+- Damage Dealt: ${damageDone} HP
+- XP Gained: +${xpGained}
+
+Total Casualties: ${targetGuards.length} guards eliminated.`,
+    messageAr: `هجومك نجح! 
+    
+التفاصيل:
+- الهدف: ${targetPlayer.username}
+- المال المسروق: $${moneyStolenFormatted}
+- الحراس المقتولون: ${guardsKilled}
+- الضرر: ${damageDone} HP
+- الخبرة: +${xpGained}
+
+إجمالي الخسائر: ${targetGuards.length} حارس تم القضاء عليهم.`,
+    metadata: {
+      attackId: attack.id,
+      moneyStolen,
+      guardsKilled,
+      damageDone,
+      xpGained
+    },
+    actionLink: `/attack-report/${attack.id}`,
+    relatedPlayerId: attack.targetId
+  });
+
+  // رسالة للضحية
+  await sendInboxMessage({
+    playerId: attack.targetId,
+    category: 'attack',
+    priority: 'urgent',
+    subject: `⚠️ You Were Attacked by ${attacker.username}!`,
+    subjectAr: `⚠️ تم الهجوم عليك من ${attacker.username}!`,
+    message: `You were attacked while you were away!
+
+Attack Report:
+- Attacker: ${attacker.username} (Lv.${attacker.level})
+- Money Lost: -$${moneyStolenFormatted}
+- Guards Lost: ${guardsKilled} guards killed
+- Health: ${targetPlayer.health - damageDone} HP (${damageDone > 0 ? `-${damageDone}` : 'No damage'})
+${newHealth < 50 ? '\n⚕️ You have been admitted to hospital for treatment.' : ''}
+
+Defend yourself! Upgrade your guards and defenses.`,
+    messageAr: `تم الهجوم عليك أثناء غيابك!
+
+تقرير الهجوم:
+- المهاجم: ${attacker.username} (المستوى ${attacker.level})
+- المال المفقود: -$${moneyStolenFormatted}
+- الحراس المقتولون: ${guardsKilled} حارس
+- الصحة: ${targetPlayer.health - damageDone} HP (${damageDone > 0 ? `-${damageDone}` : 'لا ضرر'})
+${newHealth < 50 ? '\n⚕️ تم إدخالك المستشفى للعلاج.' : ''}
+
+دافع عن نفسك! طوّر حراسك ودفاعاتك.`,
+    metadata: {
+      attackId: attack.id,
+      moneyLost: moneyStolen,
+      guardsKilled,
+      damageTaken: damageDone,
+      attackerLevel: attacker.level
+    },
+    actionLink: `/defense`,
+    relatedPlayerId: attack.attackerId
+  });
+}
+
+
+F) تطبيق في Worker - إتمام بناء العقار
+────────────────────────────────────────────────────────
+// في دالة generateNuclearEnergy (أو دالة جديدة checkConstructionCompletion):
+
+async function checkConstructionCompletion() {
+  const completedProperties = await db.select()
+    .from(playerProperties)
+    .where(and(
+      eq(playerProperties.isUnderConstruction, true),
+      sql`${playerProperties.constructionCompleteAt} <= NOW()`
+    ));
+
+  for (const property of completedProperties) {
+    await db.update(playerProperties)
+      .set({ isUnderConstruction: false })
+      .where(eq(playerProperties.id, property.id));
+
+    // جلب نوع العقار
+    const propertyType = await db.select().from(propertyTypes)
+      .where(eq(propertyTypes.id, property.propertyTypeId))
+      .limit(1);
+
+    // رسالة في صندوق البريد
+    await sendInboxMessage({
+      playerId: property.playerId,
+      category: 'property',
+      priority: 'normal',
+      subject: `✓ Construction Complete: ${propertyType[0].nameEn}`,
+      subjectAr: `✓ اكتمل البناء: ${propertyType[0].nameAr}`,
+      message: `Your ${propertyType[0].nameEn} construction is now complete!
+
+Property Details:
+- Type: ${propertyType[0].nameEn}
+- Income: $${propertyType[0].baseIncomePerHour.toLocaleString()}/hour
+- Construction Time: 7 days
+- Status: Active and generating income
+
+The property is now operational and will start generating revenue.`,
+      messageAr: `اكتمل بناء ${propertyType[0].nameAr}!
+
+تفاصيل العقار:
+- النوع: ${propertyType[0].nameAr}
+- الدخل: $${propertyType[0].baseIncomePerHour.toLocaleString()}/ساعة
+- وقت البناء: 7 أيام
+- الحالة: نشط ويُنتج الدخل
+
+العقار الآن يعمل وسيبدأ بتوليد الإيرادات.`,
+      metadata: {
+        propertyId: property.id,
+        propertyType: propertyType[0].nameEn,
+        income: propertyType[0].baseIncomePerHour
+      },
+      actionLink: '/properties',
+      relatedPropertyId: property.id
+    });
+  }
+}
+
+
+G) Frontend Page: artifacts/mafia-world/src/pages/inbox.tsx (جديد)
+────────────────────────────────────────────────────────
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Mail, 
+  MailOpen, 
+  Trash2, 
+  Archive, 
+  Search,
+  Sword,
+  Home,
+  Users,
+  User,
+  DollarSign,
+  Settings
+} from 'lucide-react';
+import { useLanguage } from '@/lib/i18n';
+
+export default function InboxPage() {
+  const { t, language } = useLanguage();
+  const queryClient = useQueryClient();
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMessage, setSelectedMessage] = useState<any>(null);
+
+  const { data: inboxData } = useQuery({
+    queryKey: ['inbox', selectedCategory, searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedCategory !== 'all') params.set('category', selectedCategory);
+      if (searchQuery) params.set('search', searchQuery);
+      
+      const res = await fetch(`/api/inbox?${params}`);
+      return res.json();
+    }
+  });
+
+  const markAsRead = useMutation({
+    mutationFn: async (messageId: number) => {
+      const res = await fetch(`/api/inbox/${messageId}/read`, { method: 'POST' });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inbox'] })
+  });
+
+  const markAllRead = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/inbox/mark-all-read', { method: 'POST' });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inbox'] })
+  });
+
+  const deleteMessage = useMutation({
+    mutationFn: async (messageId: number) => {
+      const res = await fetch(`/api/inbox/${messageId}`, { method: 'DELETE' });
+      if (!res.ok) throw await res.json();
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbox'] });
+      setSelectedMessage(null);
+    }
+  });
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'attack': return <Sword className="w-4 h-4" />;
+      case 'property': return <Home className="w-4 h-4" />;
+      case 'gang': return <Users className="w-4 h-4" />;
+      case 'personal': return <User className="w-4 h-4" />;
+      case 'financial': return <DollarSign className="w-4 h-4" />;
+      case 'system': return <Settings className="w-4 h-4" />;
+      default: return <Mail className="w-4 h-4" />;
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-500';
+      case 'high': return 'bg-orange-500';
+      case 'normal': return 'bg-blue-500';
+      case 'low': return 'bg-gray-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  const handleMessageClick = (message: any) => {
+    setSelectedMessage(message);
+    if (!message.isRead) {
+      markAsRead.mutate(message.id);
+    }
+  };
+
+  return (
+    <div className="container mx-auto p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-4xl font-bold flex items-center gap-3">
+            📬 {t('inbox.title')}
+          </h1>
+          {inboxData?.stats && (
+            <p className="text-gray-400 mt-2">
+              {inboxData.stats.unreadCount} unread • {inboxData.stats.totalMessages} total
+            </p>
+          )}
+        </div>
+        
+        <Button onClick={() => markAllRead.mutate()} variant="outline">
+          <MailOpen className="w-4 h-4 mr-2" />
+          Mark All Read
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Sidebar - Categories */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-lg">Categories</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button
+              variant={selectedCategory === 'all' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('all')}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              All Messages
+            </Button>
+            
+            <Button
+              variant={selectedCategory === 'attack' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('attack')}
+            >
+              <Sword className="w-4 h-4 mr-2" />
+              Attacks
+            </Button>
+            
+            <Button
+              variant={selectedCategory === 'property' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('property')}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Properties
+            </Button>
+            
+            <Button
+              variant={selectedCategory === 'gang' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('gang')}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Gang
+            </Button>
+            
+            <Button
+              variant={selectedCategory === 'personal' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('personal')}
+            >
+              <User className="w-4 h-4 mr-2" />
+              Personal
+            </Button>
+            
+            <Button
+              variant={selectedCategory === 'financial' ? 'default' : 'ghost'}
+              className="w-full justify-start"
+              onClick={() => setSelectedCategory('financial')}
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Financial
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Messages List */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search messages..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!selectedMessage ? (
+              <div className="space-y-2">
+                {inboxData?.messages?.map((msg: any) => (
+                  <div
+                    key={msg.id}
+                    onClick={() => handleMessageClick(msg)}
+                    className={`p-4 rounded-lg cursor-pointer transition-all ${
+                      msg.isRead 
+                        ? 'bg-gray-800/50 hover:bg-gray-800' 
+                        : 'bg-cyan-900/20 border border-cyan-700 hover:bg-cyan-900/30'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded ${msg.isRead ? 'bg-gray-700' : 'bg-cyan-700'}`}>
+                        {getCategoryIcon(msg.category)}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {!msg.isRead && (
+                            <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                          )}
+                          <span className={`font-bold truncate ${msg.isRead ? 'text-gray-300' : 'text-white'}`}>
+                            {language === 'ar' ? msg.subjectAr : msg.subject}
+                          </span>
+                          <Badge className={`${getPriorityColor(msg.priority)} ml-auto`}>
+                            {msg.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-400 truncate">
+                          {language === 'ar' ? msg.messageAr : msg.message}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(msg.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSelectedMessage(null)}
+                  className="mb-4"
+                >
+                  ← Back to Inbox
+                </Button>
+                
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        {getCategoryIcon(selectedMessage.category)}
+                        <h2 className="text-2xl font-bold">
+                          {language === 'ar' ? selectedMessage.subjectAr : selectedMessage.subject}
+                        </h2>
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {new Date(selectedMessage.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteMessage.mutate(selectedMessage.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="prose prose-invert max-w-none">
+                    <pre className="whitespace-pre-wrap font-sans">
+                      {language === 'ar' ? selectedMessage.messageAr : selectedMessage.message}
+                    </pre>
+                  </div>
+                  
+                  {selectedMessage.metadata && (
+                    <div className="mt-6 p-4 bg-gray-900 rounded">
+                      <h3 className="font-bold mb-2">Additional Details:</h3>
+                      <pre className="text-sm text-gray-400">
+                        {JSON.stringify(selectedMessage.metadata, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  
+                  {selectedMessage.actionLink && (
+                    <Button
+                      className="mt-4 w-full"
+                      onClick={() => window.location.href = selectedMessage.actionLink}
+                    >
+                      View Details →
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+
+H) Worker: تنظيف الرسائل القديمة
+────────────────────────────────────────────────────────
+// في worker.ts
+
+async function cleanOldInboxMessages() {
+  logger.info('Cleaning old inbox messages...');
+
+  await db.transaction(async (tx) => {
+    // حذف الرسائل المحذوفة بعد 7 أيام
+    await tx.delete(inboxMessages)
+      .where(and(
+        eq(inboxMessages.isDeleted, true),
+        sql`${inboxMessages.deletedAt} < NOW() - INTERVAL '7 days'`
+      ));
+
+    // حذف الرسائل المقروءة بعد 30 يوم
+    await tx.delete(inboxMessages)
+      .where(and(
+        eq(inboxMessages.isRead, true),
+        eq(inboxMessages.isArchived, false),
+        sql`${inboxMessages.readAt} < NOW() - INTERVAL '30 days'`
+      ));
+
+    logger.info('Old inbox messages cleaned');
+  });
+}
+
+// استدعاء كل يوم
+setInterval(cleanOldInboxMessages, 24 * 60 * 60 * 1000);
+
+
+I) تسجيل Route:
+────────────────────────────────────────────────────────
+import inboxRouter from './routes/inbox';
+app.use('/api/inbox', inboxRouter);
+
+
+J) Badge في Layout/Header:
+────────────────────────────────────────────────────────
+// في artifacts/mafia-world/src/components/layout.tsx
+
+<Link to="/inbox" className="relative">
+  <Mail className="w-5 h-5" />
+  {player?.unreadInboxCount > 0 && (
+    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+      {player.unreadInboxCount > 9 ? '9+' : player.unreadInboxCount}
+    </span>
+  )}
+</Link>
+
+
+═══════════════════════════════════════════════════════════════════
+                    ✅ ملخص نظام صندوق البريد
+═══════════════════════════════════════════════════════════════════
+
+✅ 6 تصنيفات (Attack, Property, Gang, Personal, Financial, System)
+✅ 4 مستويات أولوية (Low, Normal, High, Urgent)
+✅ رسائل تفصيلية مع metadata
+✅ مقروء/غير مقروء + أرشفة + حذف
+✅ بحث وتصفية
+✅ Helper function للإرسال السهل
+✅ تطبيق في Worker (هجمات + بناء عقارات)
+✅ UI جميل مع Badge في الـ header
+✅ تنظيف تلقائي للرسائل القديمة
+
+الحين كل لاعب يوصله رسائل مفصلة عن كل حدث مهم! 📬🎯
