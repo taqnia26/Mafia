@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Eye, Swords, Crosshair, Shield, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
+import { Search, Eye, Swords, Crosshair, Shield, CheckCircle2, AlertCircle, KeyRound, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -154,6 +154,13 @@ export default function Players() {
                     >
                       <Eye className="w-4 h-4 mr-2" /> {t("attack.spy")}
                     </Button>
+                    {player.id !== myProfile?.id && (
+                      <Link href={`/chat/private/${player.id}`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full font-heading uppercase tracking-wider">
+                          <MessageCircle className="w-4 h-4 mr-2" /> {t("chat.message")}
+                        </Button>
+                      </Link>
+                    )}
                     {canJailbreak ? (
                       <Button
                         variant="outline"

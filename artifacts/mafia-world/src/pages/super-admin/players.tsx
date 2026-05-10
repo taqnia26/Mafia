@@ -8,6 +8,7 @@ interface Player {
   adminRole: string | null; gangId: number | null; createdAt: string;
   cityName: string; isBanned: boolean; banReason: string | null;
   isPermanentlyDead?: boolean; diedAt?: string | null; deathCause?: string | null;
+  isChatMuted?: boolean;
 }
 
 type Dialog =
@@ -18,6 +19,7 @@ type Dialog =
   | { type: "delete"; player: Player }
   | { type: "reset"; player: Player }
   | { type: "revive"; player: Player }
+  | { type: "chat-mute"; player: Player }
   | null;
 
 function api(path: string, opts?: RequestInit) {
@@ -94,6 +96,21 @@ export default function SuperAdminPlayers() {
   async function resetPlayer(p: Player) {
     await api(`/super-admin/players/${p.id}/reset`, { method: "POST" });
     notify("Reset"); setDialog(null); load();
+  }
+
+  async function muteChat(p: Player, channel: string, durationHours: number | null, reason: string) {
+    const r = await api(`/super-admin/players/${p.id}/chat-mute`, {
+      method: "POST",
+      body: JSON.stringify({ channel, durationHours: durationHours ?? undefined, reason: reason || undefined }),
+    });
+    if (r.ok) { notify("Chat muted"); setDialog(null); load(); }
+    else { const d = await r.json() as { error: string }; notify("Error: " + d.error); }
+  }
+
+  async function unmuteChat(p: Player) {
+    const r = await api(`/super-admin/players/${p.id}/chat-mute`, { method: "DELETE" });
+    if (r.ok) { notify("Chat unmuted"); load(); }
+    else { const d = await r.json() as { error: string }; notify("Error: " + d.error); }
   }
 
   async function revivePlayer(p: Player) {
@@ -177,6 +194,10 @@ export default function SuperAdminPlayers() {
                         ? <button onClick={() => unbanPlayer(p)} className="text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded">Unban</button>
                         : <button onClick={() => setDialog({ type: "ban", player: p })} className="text-xs bg-red-900/40 hover:bg-red-800 text-red-400 px-2 py-1 rounded">Ban</button>
                       }
+                      {p.isChatMuted
+                        ? <button onClick={() => unmuteChat(p)} className="text-xs bg-green-800/50 hover:bg-green-700 text-green-300 px-2 py-1 rounded">Unmute</button>
+                        : <button onClick={() => setDialog({ type: "chat-mute", player: p })} className="text-xs bg-purple-900/40 hover:bg-purple-800 text-purple-300 px-2 py-1 rounded">Mute</button>
+                      }
                       {p.isPermanentlyDead && (
                         <button onClick={() => setDialog({ type: "revive", player: p })} className="text-xs bg-emerald-800/50 hover:bg-emerald-700 text-emerald-200 px-2 py-1 rounded">Revive</button>
                       )}
@@ -203,6 +224,7 @@ export default function SuperAdminPlayers() {
       {dialog?.type === "ban" && <BanDialog player={dialog.player} onBan={(r) => banPlayer(dialog.player, r)} onClose={() => setDialog(null)} />}
       {dialog?.type === "delete" && <ConfirmDialog title={`Delete ${dialog.player.username}?`} message="This permanently deletes the player and all their data." confirmLabel="Delete Player" danger onConfirm={() => deletePlayer(dialog.player)} onClose={() => setDialog(null)} />}
       {dialog?.type === "reset" && <ConfirmDialog title={`Reset ${dialog.player.username}?`} message="Resets money, level, stats to defaults. Cannot be undone." confirmLabel="Reset Stats" onConfirm={() => resetPlayer(dialog.player)} onClose={() => setDialog(null)} />}
+      {dialog?.type === "chat-mute" && <ChatMuteDialog player={dialog.player} onMute={(c, h, r) => muteChat(dialog.player, c, h, r)} onClose={() => setDialog(null)} />}
       {dialog?.type === "revive" && <ConfirmDialog title={`Revive ${dialog.player.username}?`} message={`Restores HP and clears the permadeath flag. ${dialog.player.deathCause ? `Death cause: ${dialog.player.deathCause}.` : ""}`} confirmLabel="Revive Player" onConfirm={() => revivePlayer(dialog.player)} onClose={() => setDialog(null)} />}
     </AdminLayout>
   );
@@ -287,6 +309,47 @@ function BanDialog({ player, onBan, onClose }: { player: Player; onBan: (reason:
           <input value={reason} onChange={e => setReason(e.target.value)} placeholder="Cheating, harassment, etc." className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm" />
         </div>
         <button onClick={() => onBan(reason || "Admin ban")} className="w-full bg-red-700 hover:bg-red-600 text-white rounded-lg py-2 text-sm font-medium">Ban Player</button>
+      </div>
+    </Modal>
+  );
+}
+
+function ChatMuteDialog({ player, onMute, onClose }: { player: Player; onMute: (channel: string, durationHours: number | null, reason: string) => void; onClose: () => void }) {
+  const [channel, setChannel] = useState("all");
+  const [durationHours, setDurationHours] = useState<number | "">(24);
+  const [reason, setReason] = useState("");
+  const [permanent, setPermanent] = useState(false);
+  return (
+    <Modal title={`Mute Chat — ${player.username}`} onClose={onClose}>
+      <div className="space-y-3">
+        <div>
+          <label className="text-xs text-slate-400">Channel</label>
+          <select value={channel} onChange={e => setChannel(e.target.value)} className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm">
+            <option value="all">All channels</option>
+            <option value="global">Global</option>
+            <option value="gang">Gang</option>
+            <option value="city">City</option>
+            <option value="private">Private</option>
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-slate-400">
+          <input type="checkbox" checked={permanent} onChange={e => setPermanent(e.target.checked)} className="accent-purple-500" />
+          Permanent mute
+        </label>
+        {!permanent && (
+          <div>
+            <label className="text-xs text-slate-400">Duration (hours)</label>
+            <input type="number" min={1} value={durationHours} onChange={e => setDurationHours(e.target.value === "" ? "" : Number(e.target.value))} className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm" />
+          </div>
+        )}
+        <div>
+          <label className="text-xs text-slate-400">Reason (optional)</label>
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="Spam, harassment, etc." className="w-full mt-1 bg-[#0f172a] border border-slate-600 rounded px-3 py-2 text-white text-sm" />
+        </div>
+        <button
+          onClick={() => onMute(channel, permanent ? null : (typeof durationHours === "number" && durationHours > 0 ? durationHours : 24), reason)}
+          className="w-full bg-purple-700 hover:bg-purple-600 text-white rounded-lg py-2 text-sm font-medium"
+        >Mute Player</button>
       </div>
     </Modal>
   );

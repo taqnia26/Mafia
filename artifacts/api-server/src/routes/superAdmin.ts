@@ -9,6 +9,7 @@ import {
   crimeTypesTable, crimeRecordsTable,
   playerWeaponsTable, playerAmmoTable, playerArmorTable,
   playerNpcGuardsTable, bodyguardRequestsTable, playerGuardsTable,
+  chatMessagesTable, chatRestrictionsTable, type ChatRestrictionScope,
 } from "@workspace/db/schema";
 import { eq, desc, count, sql, and, ilike, gte, or } from "drizzle-orm";
 
@@ -153,12 +154,14 @@ router.get("/super-admin/players", requireSuperAdminSession, async (req, res) =>
         admin_role: string | null; gang_id: number | null; created_at: string;
         city_name: string; is_banned: boolean; ban_reason: string | null;
         is_permanently_dead: boolean; died_at: string | null; death_cause: string | null;
+        is_chat_muted: boolean;
       }>(
         `SELECT p.id, p.username, p.level, p.xp, p.money, p.attack_power, p.defense_power,
           p.kill_count, p.death_count, p.is_in_prison, p.prison_release_at, p.is_admin,
           p.admin_role, p.gang_id, p.created_at, c.name AS city_name,
           COALESCE(p.is_banned, FALSE) AS is_banned, p.ban_reason,
-          COALESCE(p.is_permanently_dead, FALSE) AS is_permanently_dead, p.died_at, p.death_cause
+          COALESCE(p.is_permanently_dead, FALSE) AS is_permanently_dead, p.died_at, p.death_cause,
+          COALESCE(p.is_chat_muted, FALSE) AS is_chat_muted
          FROM players p
          LEFT JOIN cities c ON c.id = p.city_id
          ${whereClause}
@@ -182,6 +185,7 @@ router.get("/super-admin/players", requireSuperAdminSession, async (req, res) =>
         createdAt: p.created_at, cityName: p.city_name,
         isBanned: p.is_banned, banReason: p.ban_reason,
         isPermanentlyDead: p.is_permanently_dead, diedAt: p.died_at, deathCause: p.death_cause,
+        isChatMuted: p.is_chat_muted,
       })),
       total: Number(totalRows.rows[0]?.cnt ?? 0),
       page: pageNum,
@@ -784,6 +788,85 @@ router.patch("/super-admin/settings", requireSuperAdminSession, (req, res) => {
   if (typeof moneyMultiplier === "number") gameSettings.moneyMultiplier = Math.max(0.1, Math.min(10, moneyMultiplier));
   if (typeof crimeSuccessBonus === "number") gameSettings.crimeSuccessBonus = Math.max(-0.5, Math.min(0.5, crimeSuccessBonus));
   res.json(gameSettings);
+});
+
+// ── Chat moderation ───────────────────────────────────────────────────────────
+
+const ALLOWED_CHAT_SCOPES: ChatRestrictionScope[] = ["global", "gang", "city", "private", "all"];
+
+router.post("/super-admin/players/:id/chat-mute", requireSuperAdminSession, async (req, res) => {
+  try {
+    const playerId = parseInt(String(req.params.id));
+    const { channel = "all", reason, durationHours } = req.body as { channel?: ChatRestrictionScope; reason?: string; durationHours?: number };
+    if (!ALLOWED_CHAT_SCOPES.includes(channel)) {
+      return void res.status(400).json({ error: "Invalid channel. Allowed: global, gang, city, private, all." });
+    }
+    const player = await db.select().from(playersTable).where(eq(playersTable.id, playerId)).limit(1);
+    if (!player[0]) return void res.status(404).json({ error: "Player not found" });
+
+    const expiresAt = (typeof durationHours === "number" && durationHours > 0)
+      ? new Date(Date.now() + durationHours * 3600000)
+      : null;
+
+    if (channel === "all") {
+      await db.update(playersTable).set({ isChatMuted: true, updatedAt: new Date() }).where(eq(playersTable.id, playerId));
+    }
+
+    // Replace any existing restriction for this scope with the new one.
+    await db.delete(chatRestrictionsTable).where(and(
+      eq(chatRestrictionsTable.playerId, playerId),
+      eq(chatRestrictionsTable.channel, channel),
+    ));
+    await db.insert(chatRestrictionsTable).values({
+      playerId, channel, reason: reason ?? null, expiresAt,
+    });
+    pushAdminLog("ADMIN", `Chat-muted player ${playerId} on channel ${channel}` + (expiresAt ? ` until ${expiresAt.toISOString()}` : " (permanent)"));
+    return void res.json({ ok: true, expiresAt: expiresAt?.toISOString() ?? null });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.delete("/super-admin/players/:id/chat-mute", requireSuperAdminSession, async (req, res) => {
+  try {
+    const playerId = parseInt(String(req.params.id));
+    const channel = (req.query.channel as ChatRestrictionScope | undefined);
+    if (channel && !ALLOWED_CHAT_SCOPES.includes(channel)) {
+      return void res.status(400).json({ error: "Invalid channel." });
+    }
+    if (channel) {
+      await db.delete(chatRestrictionsTable).where(and(
+        eq(chatRestrictionsTable.playerId, playerId),
+        eq(chatRestrictionsTable.channel, channel),
+      ));
+      if (channel === "all") {
+        await db.update(playersTable).set({ isChatMuted: false, updatedAt: new Date() }).where(eq(playersTable.id, playerId));
+      }
+    } else {
+      await db.delete(chatRestrictionsTable).where(eq(chatRestrictionsTable.playerId, playerId));
+      await db.update(playersTable).set({ isChatMuted: false, updatedAt: new Date() }).where(eq(playersTable.id, playerId));
+    }
+    pushAdminLog("ADMIN", `Chat-unmuted player ${playerId}` + (channel ? ` on ${channel}` : " (all channels)"));
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
+});
+
+router.delete("/super-admin/chat/:messageId", requireSuperAdminSession, async (req, res) => {
+  try {
+    const messageId = parseInt(String(req.params.messageId));
+    if (!Number.isFinite(messageId)) return void res.status(400).json({ error: "Invalid message id" });
+    const result = await db.update(chatMessagesTable)
+      .set({ deleted: true })
+      .where(eq(chatMessagesTable.id, messageId))
+      .returning({ id: chatMessagesTable.id, senderId: chatMessagesTable.senderId });
+    if (result.length === 0) return void res.status(404).json({ error: "Message not found" });
+    pushAdminLog("ADMIN", `Deleted chat message ${messageId} (sender ${result[0].senderId})`);
+    return void res.json({ ok: true });
+  } catch (e) {
+    return void res.status(500).json({ error: String(e) });
+  }
 });
 
 export default router;

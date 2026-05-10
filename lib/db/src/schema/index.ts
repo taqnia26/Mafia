@@ -13,3 +13,4 @@ export * from "./bank";
 export * from "./safeHouse";
 export * from "./adminWallet";
 export * from "./casino";
+export * from "./chat";

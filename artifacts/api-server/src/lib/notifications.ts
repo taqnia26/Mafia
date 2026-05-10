@@ -8,7 +8,8 @@ export type NotificationType =
   | "bodyguard_request"
   | "reactor_built"
   | "reactor_meltdown"
-  | "reactor_damaged";
+  | "reactor_damaged"
+  | "private_message";
 
 export async function createNotification(
   playerId: number,

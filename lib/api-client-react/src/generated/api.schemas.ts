@@ -957,6 +957,66 @@ export interface RankUpgradeResponse {
   defIncrease: number;
 }
 
+export interface OkResponse {
+  ok: boolean;
+}
+
+export type ChatMessageChannel =
+  (typeof ChatMessageChannel)[keyof typeof ChatMessageChannel];
+
+export const ChatMessageChannel = {
+  global: "global",
+  gang: "gang",
+  city: "city",
+  private: "private",
+} as const;
+
+export interface ChatMessage {
+  id: number;
+  channel: ChatMessageChannel;
+  body: string;
+  senderId: number;
+  senderUsername: string;
+  senderLevel: number;
+  /** @nullable */
+  senderGangId: number | null;
+  /** @nullable */
+  senderGangName: string | null;
+  /** @nullable */
+  senderGangRank: string | null;
+  /** @nullable */
+  recipientId: number | null;
+  /** @nullable */
+  recipientUsername: string | null;
+  createdAt: string;
+}
+
+export interface ChatListResponse {
+  messages: ChatMessage[];
+}
+
+export interface ChatPrivatePartner {
+  id: number;
+  username: string;
+}
+
+export interface ChatPrivateResponse {
+  messages: ChatMessage[];
+  partner: ChatPrivatePartner | null;
+}
+
+export interface ChatSendInput {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  body: string;
+}
+
+export interface ChatSendResult {
+  id: number;
+}
+
 export type ListPlayersParams = {
   cityId?: number;
   search?: string;

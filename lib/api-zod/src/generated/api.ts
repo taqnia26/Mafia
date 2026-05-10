@@ -478,6 +478,156 @@ export const RepayBankLoanResponse = zod.object({
 });
 
 /**
+ * @summary Last 200 global chat messages
+ */
+export const GetGlobalChatResponse = zod.object({
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      channel: zod.enum(["global", "gang", "city", "private"]),
+      body: zod.string(),
+      senderId: zod.number(),
+      senderUsername: zod.string(),
+      senderLevel: zod.number(),
+      senderGangId: zod.number().nullable(),
+      senderGangName: zod.string().nullable(),
+      senderGangRank: zod.string().nullable(),
+      recipientId: zod.number().nullable(),
+      recipientUsername: zod.string().nullable(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Post a global chat message
+ */
+export const sendGlobalChatBodyBodyMax = 500;
+
+export const SendGlobalChatBody = zod.object({
+  body: zod.string().min(1).max(sendGlobalChatBodyBodyMax),
+});
+
+/**
+ * @summary Last 200 gang chat messages (empty list when not in a gang)
+ */
+export const GetGangChatResponse = zod.object({
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      channel: zod.enum(["global", "gang", "city", "private"]),
+      body: zod.string(),
+      senderId: zod.number(),
+      senderUsername: zod.string(),
+      senderLevel: zod.number(),
+      senderGangId: zod.number().nullable(),
+      senderGangName: zod.string().nullable(),
+      senderGangRank: zod.string().nullable(),
+      recipientId: zod.number().nullable(),
+      recipientUsername: zod.string().nullable(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Post a gang chat message (must be in a gang)
+ */
+export const sendGangChatBodyBodyMax = 500;
+
+export const SendGangChatBody = zod.object({
+  body: zod.string().min(1).max(sendGangChatBodyBodyMax),
+});
+
+/**
+ * @summary Last 100 messages from the player's current city
+ */
+export const GetCityChatResponse = zod.object({
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      channel: zod.enum(["global", "gang", "city", "private"]),
+      body: zod.string(),
+      senderId: zod.number(),
+      senderUsername: zod.string(),
+      senderLevel: zod.number(),
+      senderGangId: zod.number().nullable(),
+      senderGangName: zod.string().nullable(),
+      senderGangRank: zod.string().nullable(),
+      recipientId: zod.number().nullable(),
+      recipientUsername: zod.string().nullable(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Post a city chat message
+ */
+export const sendCityChatBodyBodyMax = 500;
+
+export const SendCityChatBody = zod.object({
+  body: zod.string().min(1).max(sendCityChatBodyBodyMax),
+});
+
+/**
+ * @summary Last 100 private messages between current player and target
+ */
+export const GetPrivateChatParams = zod.object({
+  playerId: zod.coerce.number(),
+});
+
+export const GetPrivateChatResponse = zod.object({
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      channel: zod.enum(["global", "gang", "city", "private"]),
+      body: zod.string(),
+      senderId: zod.number(),
+      senderUsername: zod.string(),
+      senderLevel: zod.number(),
+      senderGangId: zod.number().nullable(),
+      senderGangName: zod.string().nullable(),
+      senderGangRank: zod.string().nullable(),
+      recipientId: zod.number().nullable(),
+      recipientUsername: zod.string().nullable(),
+      createdAt: zod.string(),
+    }),
+  ),
+  partner: zod.union([
+    zod.object({
+      id: zod.number(),
+      username: zod.string(),
+    }),
+    zod.null(),
+  ]),
+});
+
+/**
+ * @summary Send a private message (notifies recipient)
+ */
+export const SendPrivateChatParams = zod.object({
+  playerId: zod.coerce.number(),
+});
+
+export const sendPrivateChatBodyBodyMax = 500;
+
+export const SendPrivateChatBody = zod.object({
+  body: zod.string().min(1).max(sendPrivateChatBodyBodyMax),
+});
+
+/**
+ * @summary Soft-delete one of your own messages
+ */
+export const DeleteChatMessageParams = zod.object({
+  messageId: zod.coerce.number(),
+});
+
+export const DeleteChatMessageResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
  * @summary List recent bank transactions for the current player
  */
 export const getBankTransactionsQueryLimitMax = 100;

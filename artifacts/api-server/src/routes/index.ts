@@ -18,6 +18,7 @@ import bankRouter from "./bank";
 import safeHouseRouter from "./safeHouse";
 import combatRouter from "./combat";
 import casinoRouter from "./casino";
+import chatRouter from "./chat";
 
 
 const router: IRouter = Router();
@@ -41,5 +42,6 @@ router.use(bankRouter);
 router.use(safeHouseRouter);
 router.use(combatRouter);
 router.use(casinoRouter);
+router.use(chatRouter);
 
 export default router;

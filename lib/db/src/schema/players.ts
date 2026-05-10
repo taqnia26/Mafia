@@ -40,6 +40,8 @@ export const playersTable = pgTable("players", {
   safeHouseExpiresAt: timestamp("safe_house_expires_at"),
   ipAddress: text("ip_address"),
   equippedWeaponId: integer("equipped_weapon_id"),
+  isChatMuted: boolean("is_chat_muted").notNull().default(false),
+  lastMessageAt: timestamp("last_message_at"),
   isAdmin: boolean("is_admin").notNull().default(false),
   adminRole: text("admin_role").$type<typeof adminRoleEnum[number]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),

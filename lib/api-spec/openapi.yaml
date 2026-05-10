@@ -38,6 +38,8 @@ tags:
     description: Real estate properties with passive income
   - name: bank
     description: Bank deposits, loans and transactions
+  - name: chat
+    description: In-game chat (global, gang, city, private)
 
 paths:
   /healthz:
@@ -450,6 +452,242 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Loan not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # --- CHAT ---
+  /chat/global:
+    get:
+      operationId: getGlobalChat
+      tags: [chat]
+      summary: Last 200 global chat messages
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatListResponse"
+    post:
+      operationId: sendGlobalChat
+      tags: [chat]
+      summary: Post a global chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSendInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSendResult"
+        "400":
+          description: Bad input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Muted or restricted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/gang:
+    get:
+      operationId: getGangChat
+      tags: [chat]
+      summary: Last 200 gang chat messages (empty list when not in a gang)
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatListResponse"
+    post:
+      operationId: sendGangChat
+      tags: [chat]
+      summary: Post a gang chat message (must be in a gang)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSendInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSendResult"
+        "400":
+          description: Bad input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Not in a gang, muted, or restricted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/city:
+    get:
+      operationId: getCityChat
+      tags: [chat]
+      summary: Last 100 messages from the player's current city
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatListResponse"
+    post:
+      operationId: sendCityChat
+      tags: [chat]
+      summary: Post a city chat message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSendInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSendResult"
+        "400":
+          description: Bad input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Muted or restricted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/private/{playerId}:
+    get:
+      operationId: getPrivateChat
+      tags: [chat]
+      summary: Last 100 private messages between current player and target
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Private conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatPrivateResponse"
+    post:
+      operationId: sendPrivateChat
+      tags: [chat]
+      summary: Send a private message (notifies recipient)
+      parameters:
+        - in: path
+          name: playerId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatSendInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatSendResult"
+        "400":
+          description: Bad input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Muted or restricted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Recipient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/{messageId}:
+    delete:
+      operationId: deleteChatMessage
+      tags: [chat]
+      summary: Soft-delete one of your own messages
+      parameters:
+        - in: path
+          name: messageId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "403":
+          description: Cannot delete other players' messages
           content:
             application/json:
               schema:
@@ -3523,3 +3761,99 @@ components:
         defIncrease:
           type: integer
       required: [success, newRank, newRankName, newRankNameAr, atkIncrease, defIncrease]
+
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        channel:
+          type: string
+          enum: [global, gang, city, private]
+        body:
+          type: string
+        senderId:
+          type: integer
+        senderUsername:
+          type: string
+        senderLevel:
+          type: integer
+        senderGangId:
+          type: ["integer", "null"]
+        senderGangName:
+          type: ["string", "null"]
+        senderGangRank:
+          type: ["string", "null"]
+        recipientId:
+          type: ["integer", "null"]
+        recipientUsername:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - channel
+        - body
+        - senderId
+        - senderUsername
+        - senderLevel
+        - senderGangId
+        - senderGangName
+        - senderGangRank
+        - recipientId
+        - recipientUsername
+        - createdAt
+
+    ChatListResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+      required: [messages]
+
+    ChatPrivatePartner:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+      required: [id, username]
+
+    ChatPrivateResponse:
+      type: object
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+        partner:
+          oneOf:
+            - $ref: "#/components/schemas/ChatPrivatePartner"
+            - type: "null"
+      required: [messages, partner]
+
+    ChatSendInput:
+      type: object
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required: [body]
+
+    ChatSendResult:
+      type: object
+      properties:
+        id:
+          type: integer
+      required: [id]

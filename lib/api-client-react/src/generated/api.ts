@@ -51,6 +51,10 @@ import type {
   BuyArmorInput,
   BuyPropertyInput,
   BuyWeaponInput,
+  ChatListResponse,
+  ChatPrivateResponse,
+  ChatSendInput,
+  ChatSendResult,
   City,
   CollectIncomeResult,
   CollectReactorResult,
@@ -75,6 +79,7 @@ import type {
   MessageResponse,
   MyBodyguards,
   NpcBodyguard,
+  OkResponse,
   Player,
   PlayerAmmo,
   PlayerArmor,
@@ -1673,6 +1678,748 @@ export const useRepayBankLoan = <
   TContext
 > => {
   return useMutation(getRepayBankLoanMutationOptions(options));
+};
+
+/**
+ * @summary Last 200 global chat messages
+ */
+export const getGetGlobalChatUrl = () => {
+  return `/api/chat/global`;
+};
+
+export const getGlobalChat = async (
+  options?: RequestInit,
+): Promise<ChatListResponse> => {
+  return customFetch<ChatListResponse>(getGetGlobalChatUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGlobalChatQueryKey = () => {
+  return [`/api/chat/global`] as const;
+};
+
+export const getGetGlobalChatQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGlobalChat>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getGlobalChat>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGlobalChatQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGlobalChat>>> = ({
+    signal,
+  }) => getGlobalChat({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGlobalChat>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGlobalChatQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGlobalChat>>
+>;
+export type GetGlobalChatQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Last 200 global chat messages
+ */
+
+export function useGetGlobalChat<
+  TData = Awaited<ReturnType<typeof getGlobalChat>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getGlobalChat>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGlobalChatQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Post a global chat message
+ */
+export const getSendGlobalChatUrl = () => {
+  return `/api/chat/global`;
+};
+
+export const sendGlobalChat = async (
+  chatSendInput: ChatSendInput,
+  options?: RequestInit,
+): Promise<ChatSendResult> => {
+  return customFetch<ChatSendResult>(getSendGlobalChatUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatSendInput),
+  });
+};
+
+export const getSendGlobalChatMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGlobalChat>>,
+    TError,
+    { data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendGlobalChat>>,
+  TError,
+  { data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  const mutationKey = ["sendGlobalChat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendGlobalChat>>,
+    { data: BodyType<ChatSendInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendGlobalChat(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendGlobalChatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendGlobalChat>>
+>;
+export type SendGlobalChatMutationBody = BodyType<ChatSendInput>;
+export type SendGlobalChatMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Post a global chat message
+ */
+export const useSendGlobalChat = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGlobalChat>>,
+    TError,
+    { data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendGlobalChat>>,
+  TError,
+  { data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  return useMutation(getSendGlobalChatMutationOptions(options));
+};
+
+/**
+ * @summary Last 200 gang chat messages (empty list when not in a gang)
+ */
+export const getGetGangChatUrl = () => {
+  return `/api/chat/gang`;
+};
+
+export const getGangChat = async (
+  options?: RequestInit,
+): Promise<ChatListResponse> => {
+  return customFetch<ChatListResponse>(getGetGangChatUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetGangChatQueryKey = () => {
+  return [`/api/chat/gang`] as const;
+};
+
+export const getGetGangChatQueryOptions = <
+  TData = Awaited<ReturnType<typeof getGangChat>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getGangChat>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetGangChatQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getGangChat>>> = ({
+    signal,
+  }) => getGangChat({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getGangChat>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetGangChatQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getGangChat>>
+>;
+export type GetGangChatQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Last 200 gang chat messages (empty list when not in a gang)
+ */
+
+export function useGetGangChat<
+  TData = Awaited<ReturnType<typeof getGangChat>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getGangChat>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetGangChatQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Post a gang chat message (must be in a gang)
+ */
+export const getSendGangChatUrl = () => {
+  return `/api/chat/gang`;
+};
+
+export const sendGangChat = async (
+  chatSendInput: ChatSendInput,
+  options?: RequestInit,
+): Promise<ChatSendResult> => {
+  return customFetch<ChatSendResult>(getSendGangChatUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatSendInput),
+  });
+};
+
+export const getSendGangChatMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGangChat>>,
+    TError,
+    { data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendGangChat>>,
+  TError,
+  { data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  const mutationKey = ["sendGangChat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendGangChat>>,
+    { data: BodyType<ChatSendInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendGangChat(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendGangChatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendGangChat>>
+>;
+export type SendGangChatMutationBody = BodyType<ChatSendInput>;
+export type SendGangChatMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Post a gang chat message (must be in a gang)
+ */
+export const useSendGangChat = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendGangChat>>,
+    TError,
+    { data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendGangChat>>,
+  TError,
+  { data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  return useMutation(getSendGangChatMutationOptions(options));
+};
+
+/**
+ * @summary Last 100 messages from the player's current city
+ */
+export const getGetCityChatUrl = () => {
+  return `/api/chat/city`;
+};
+
+export const getCityChat = async (
+  options?: RequestInit,
+): Promise<ChatListResponse> => {
+  return customFetch<ChatListResponse>(getGetCityChatUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCityChatQueryKey = () => {
+  return [`/api/chat/city`] as const;
+};
+
+export const getGetCityChatQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCityChat>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCityChat>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCityChatQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCityChat>>> = ({
+    signal,
+  }) => getCityChat({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCityChat>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCityChatQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCityChat>>
+>;
+export type GetCityChatQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Last 100 messages from the player's current city
+ */
+
+export function useGetCityChat<
+  TData = Awaited<ReturnType<typeof getCityChat>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCityChat>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCityChatQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Post a city chat message
+ */
+export const getSendCityChatUrl = () => {
+  return `/api/chat/city`;
+};
+
+export const sendCityChat = async (
+  chatSendInput: ChatSendInput,
+  options?: RequestInit,
+): Promise<ChatSendResult> => {
+  return customFetch<ChatSendResult>(getSendCityChatUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatSendInput),
+  });
+};
+
+export const getSendCityChatMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendCityChat>>,
+    TError,
+    { data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendCityChat>>,
+  TError,
+  { data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  const mutationKey = ["sendCityChat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendCityChat>>,
+    { data: BodyType<ChatSendInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendCityChat(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendCityChatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendCityChat>>
+>;
+export type SendCityChatMutationBody = BodyType<ChatSendInput>;
+export type SendCityChatMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Post a city chat message
+ */
+export const useSendCityChat = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendCityChat>>,
+    TError,
+    { data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendCityChat>>,
+  TError,
+  { data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  return useMutation(getSendCityChatMutationOptions(options));
+};
+
+/**
+ * @summary Last 100 private messages between current player and target
+ */
+export const getGetPrivateChatUrl = (playerId: number) => {
+  return `/api/chat/private/${playerId}`;
+};
+
+export const getPrivateChat = async (
+  playerId: number,
+  options?: RequestInit,
+): Promise<ChatPrivateResponse> => {
+  return customFetch<ChatPrivateResponse>(getGetPrivateChatUrl(playerId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPrivateChatQueryKey = (playerId: number) => {
+  return [`/api/chat/private/${playerId}`] as const;
+};
+
+export const getGetPrivateChatQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPrivateChat>>,
+  TError = ErrorType<unknown>,
+>(
+  playerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateChat>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPrivateChatQueryKey(playerId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPrivateChat>>> = ({
+    signal,
+  }) => getPrivateChat(playerId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!playerId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPrivateChat>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPrivateChatQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPrivateChat>>
+>;
+export type GetPrivateChatQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Last 100 private messages between current player and target
+ */
+
+export function useGetPrivateChat<
+  TData = Awaited<ReturnType<typeof getPrivateChat>>,
+  TError = ErrorType<unknown>,
+>(
+  playerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPrivateChat>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPrivateChatQueryOptions(playerId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Send a private message (notifies recipient)
+ */
+export const getSendPrivateChatUrl = (playerId: number) => {
+  return `/api/chat/private/${playerId}`;
+};
+
+export const sendPrivateChat = async (
+  playerId: number,
+  chatSendInput: ChatSendInput,
+  options?: RequestInit,
+): Promise<ChatSendResult> => {
+  return customFetch<ChatSendResult>(getSendPrivateChatUrl(playerId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatSendInput),
+  });
+};
+
+export const getSendPrivateChatMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendPrivateChat>>,
+    TError,
+    { playerId: number; data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendPrivateChat>>,
+  TError,
+  { playerId: number; data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  const mutationKey = ["sendPrivateChat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendPrivateChat>>,
+    { playerId: number; data: BodyType<ChatSendInput> }
+  > = (props) => {
+    const { playerId, data } = props ?? {};
+
+    return sendPrivateChat(playerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendPrivateChatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendPrivateChat>>
+>;
+export type SendPrivateChatMutationBody = BodyType<ChatSendInput>;
+export type SendPrivateChatMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Send a private message (notifies recipient)
+ */
+export const useSendPrivateChat = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendPrivateChat>>,
+    TError,
+    { playerId: number; data: BodyType<ChatSendInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendPrivateChat>>,
+  TError,
+  { playerId: number; data: BodyType<ChatSendInput> },
+  TContext
+> => {
+  return useMutation(getSendPrivateChatMutationOptions(options));
+};
+
+/**
+ * @summary Soft-delete one of your own messages
+ */
+export const getDeleteChatMessageUrl = (messageId: number) => {
+  return `/api/chat/${messageId}`;
+};
+
+export const deleteChatMessage = async (
+  messageId: number,
+  options?: RequestInit,
+): Promise<OkResponse> => {
+  return customFetch<OkResponse>(getDeleteChatMessageUrl(messageId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteChatMessageMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChatMessage>>,
+    TError,
+    { messageId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteChatMessage>>,
+  TError,
+  { messageId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteChatMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteChatMessage>>,
+    { messageId: number }
+  > = (props) => {
+    const { messageId } = props ?? {};
+
+    return deleteChatMessage(messageId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteChatMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteChatMessage>>
+>;
+
+export type DeleteChatMessageMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Soft-delete one of your own messages
+ */
+export const useDeleteChatMessage = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChatMessage>>,
+    TError,
+    { messageId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteChatMessage>>,
+  TError,
+  { messageId: number },
+  TContext
+> => {
+  return useMutation(getDeleteChatMessageMutationOptions(options));
 };
 
 /**

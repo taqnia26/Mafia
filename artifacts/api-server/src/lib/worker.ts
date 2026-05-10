@@ -5,6 +5,7 @@ import {
   activityLogTable, playerPropertiesTable, propertyTypesTable,
   nuclearReactorStateTable, notificationsTable,
   bankLoansTable, bankTransactionsTable,
+  chatMessagesTable, chatRateLimitsTable, chatRestrictionsTable,
 } from "@workspace/db/schema";
 import { eq, and, lte, lt, ne, gt, sql } from "drizzle-orm";
 import { logActivity } from "./activityLog";
@@ -417,6 +418,55 @@ const EVENT_RETENTION_DAYS = 60;
 const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // run every 6 hours
 let lastCleanupAt = 0;
 
+const CHAT_RETENTION_DAYS = 7;
+const CHAT_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // run once per day
+let lastChatCleanupAt = 0;
+
+async function cleanupOldChatMessages(): Promise<void> {
+  const now = Date.now();
+  if (now - lastChatCleanupAt < CHAT_CLEANUP_INTERVAL_MS) return;
+  lastChatCleanupAt = now;
+
+  const cutoff = new Date(now - CHAT_RETENTION_DAYS * 86400000);
+  const rateLimitCutoff = new Date(now - 3600000); // rate-limit log only needs ~1h
+  try {
+    const msgRes = await db.delete(chatMessagesTable).where(lt(chatMessagesTable.createdAt, cutoff));
+    if ((msgRes.rowCount ?? 0) > 0) {
+      logger.info({ count: msgRes.rowCount, cutoff }, "worker: pruned old chat messages");
+    }
+    const expiredAll = await db.delete(chatRestrictionsTable).where(and(
+      sql`${chatRestrictionsTable.expiresAt} IS NOT NULL`,
+      lt(chatRestrictionsTable.expiresAt, new Date()),
+    )).returning({ playerId: chatRestrictionsTable.playerId, channel: chatRestrictionsTable.channel });
+    if (expiredAll.length > 0) {
+      logger.info({ count: expiredAll.length }, "worker: pruned expired chat restrictions");
+      // For each player whose 'all'-channel restriction expired, clear the
+      // mirrored isChatMuted flag (only if no other active 'all' restriction
+      // remains for them).
+      const allChannelPlayerIds = Array.from(new Set(
+        expiredAll.filter(r => r.channel === "all").map(r => r.playerId),
+      ));
+      for (const pid of allChannelPlayerIds) {
+        const stillMuted = await db.select({ id: chatRestrictionsTable.id })
+          .from(chatRestrictionsTable)
+          .where(and(
+            eq(chatRestrictionsTable.playerId, pid),
+            eq(chatRestrictionsTable.channel, "all"),
+          ))
+          .limit(1);
+        if (stillMuted.length === 0) {
+          await db.update(playersTable)
+            .set({ isChatMuted: false, updatedAt: new Date() })
+            .where(eq(playersTable.id, pid));
+        }
+      }
+    }
+    await db.delete(chatRateLimitsTable).where(lt(chatRateLimitsTable.sentAt, rateLimitCutoff));
+  } catch (err) {
+    logger.error({ err }, "worker: chat cleanup error");
+  }
+}
+
 async function cleanupOldEvents(): Promise<void> {
   const now = Date.now();
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
@@ -809,6 +859,7 @@ async function tick(): Promise<void> {
       processOverdueLoans(),
       clearExpiredAntiSpy(),
       cleanupOldEvents(),
+      cleanupOldChatMessages(),
     ]);
   } catch (err) {
     logger.error({ err }, "worker: tick error");
