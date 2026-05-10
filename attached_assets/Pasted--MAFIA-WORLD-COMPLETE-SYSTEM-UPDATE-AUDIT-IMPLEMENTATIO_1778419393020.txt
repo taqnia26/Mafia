@@ -1,0 +1,1682 @@
+# MAFIA WORLD - COMPLETE SYSTEM UPDATE
+## AUDIT & IMPLEMENTATION INSTRUCTIONS FOR REPLIT AGENT
+
+**تاريخ:** 10 مايو 2026  
+**الهدف:** تحديث كامل للعبة Mafia World  
+**الأولوية:** عاجلة - تنفيذ فوري
+
+---
+
+# 🚨 تعليمات عامة لـ Replit Agent
+
+**READ THIS FIRST:**
+- نفذ كل التحديثات بالترتيب المذكور
+- لا تتوقف حتى تكمل كل شيء
+- اختبر كل feature بعد التنفيذ
+- استخدم SQLite للقاعدة
+- كل النصوص بالعربية + الإنجليزية
+- RTL support كامل للعربي
+- **🚨 في النهاية: لازم تسوي Git push على GitHub (إجباري!)**
+
+---
+
+# 1️⃣ SUPER ADMIN SYSTEM (أولوية قصوى)
+
+## 1.1 إنشاء حساب السوبر أدمن
+
+```sql
+-- إنشاء حساب السوبر أدمن
+INSERT INTO users (
+  id, 
+  username, 
+  email, 
+  password_hash,
+  level,
+  rank,
+  money,
+  diamonds,
+  hp,
+  status,
+  is_super_admin,
+  is_hidden,
+  created_at
+) VALUES (
+  4000,
+  'SUPER_ADMIN_4000',
+  'admin@mafiaworld.internal',
+  '[HASHED_PASSWORD]',
+  1,
+  0,
+  0,
+  0,
+  100,
+  'الإدارة',
+  1,
+  1,
+  CURRENT_TIMESTAMP
+);
+```
+
+## 1.2 إخفاء السوبر أدمن
+
+**متطلبات:**
+- ID 4000 مخفي من:
+  - قوائم اللاعبين
+  - البحث
+  - الملفات الشخصية
+  - Leaderboards
+  - أي استعلام عام
+- يظهر فقط Status = "الإدارة" بدون تفاصيل
+- لا يمكن الهجوم عليه
+- لا يمكن التجسس عليه
+
+```javascript
+// في كل استعلام للاعبين
+WHERE users.id != 4000 AND users.is_hidden = 0
+```
+
+---
+
+# 2️⃣ RANK SYSTEM UPDATE (نظام الرتب الجديد)
+
+## 2.1 الرتب الجديدة (12 رتبة)
+
+```sql
+-- جدول الرتب الجديد
+CREATE TABLE ranks (
+  id INTEGER PRIMARY KEY,
+  name_en TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  level_required INTEGER NOT NULL,
+  max_hp INTEGER NOT NULL,
+  atk_bonus INTEGER NOT NULL,
+  def_bonus INTEGER NOT NULL,
+  max_properties INTEGER NOT NULL,
+  max_rank_holders INTEGER DEFAULT NULL,
+  special_requirements TEXT
+);
+
+-- إدخال الرتب
+INSERT INTO ranks VALUES
+(1, 'Prospect', 'بروسبكت', 1, 100, 0, 0, 3, NULL, NULL),
+(2, 'Sicario', 'سيكاريو', 5, 125, 10, 10, 5, NULL, NULL),
+(3, 'Bratok', 'براتوك', 10, 150, 20, 20, 7, NULL, NULL),
+(4, 'Enforcer', 'إنفورسر', 20, 200, 40, 40, 10, NULL, NULL),
+(5, 'Caporegime', 'كابوريجيمي', 30, 250, 60, 60, 15, NULL, NULL),
+(6, 'Capodecina', 'كابوديتشينا', 45, 325, 80, 80, 20, NULL, NULL),
+(7, 'Consigliere', 'كونسيليري', 60, 400, 100, 100, 25, NULL, NULL),
+(8, 'Underboss', 'أندربوس', 80, 500, 120, 120, 30, NULL, NULL),
+(9, 'Boss', 'بوس', 100, 625, 140, 140, 40, NULL, NULL),
+(10, 'Don', 'دون', 125, 750, 160, 160, 50, NULL, NULL),
+(11, 'Padrino', 'بادرينو', 150, 875, 220, 220, 75, NULL, '{"kills":150,"properties":15,"neighborhood_control":true}'),
+(12, 'Capo di Tutti Capi', 'كابو دي توتي كابي', 200, 1000, 280, 280, 100, 3, '{"kills":200,"properties":20,"rank_11_kill_required":true}');
+```
+
+## 2.2 نظام الـ 3 لاعبين للرتبة 12
+
+**متطلبات:**
+- حد أقصى 3 لاعبين فقط في رتبة 12
+- لا يمكن الترقية إذا كان العدد 3
+- يجب قتل أحد الـ 3 الموجودين للترقية
+- صفحة خاصة تعرض الـ 3 الأقوياء
+
+```javascript
+// دالة التحقق من الترقية
+async function canPromoteToRank12(userId) {
+  const currentRank12Count = await db.query(
+    "SELECT COUNT(*) as count FROM users WHERE rank = 12"
+  );
+  
+  if (currentRank12Count.count >= 3) {
+    return {
+      canPromote: false,
+      reason: "All 3 Capo di Tutti Capi seats are taken. You must eliminate one of them.",
+      currentHolders: await db.query("SELECT username, level, city FROM users WHERE rank = 12")
+    };
+  }
+  
+  return { canPromote: true };
+}
+```
+
+## 2.3 Rank Badges (شارات الرتب المتحركة)
+
+**التصميم:**
+- رتبة 1-3: نحاسي متوهج (bronze glow, slow pulse)
+- رتبة 4-6: فضي لامع (silver shine, shimmer effect)
+- رتبة 7-9: ذهبي براق (golden gleam, sparkles)
+- رتبة 10-12: بلاتيني + قوس قزح (platinum + rainbow, rotating glow)
+
+```css
+/* CSS للـ badges */
+.rank-badge-1, .rank-badge-2, .rank-badge-3 {
+  background: linear-gradient(135deg, #CD7F32, #B87333);
+  animation: bronze-pulse 2s infinite;
+  box-shadow: 0 0 10px rgba(205, 127, 50, 0.5);
+}
+
+.rank-badge-4, .rank-badge-5, .rank-badge-6 {
+  background: linear-gradient(135deg, #C0C0C0, #E8E8E8);
+  animation: silver-shimmer 1.5s infinite;
+  box-shadow: 0 0 15px rgba(192, 192, 192, 0.6);
+}
+
+.rank-badge-7, .rank-badge-8, .rank-badge-9 {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  animation: golden-sparkle 1s infinite;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+}
+
+.rank-badge-10, .rank-badge-11, .rank-badge-12 {
+  background: linear-gradient(135deg, #E5E4E2, #BCC6CC);
+  animation: rainbow-glow 3s infinite;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
+}
+
+@keyframes bronze-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes silver-shimmer {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+@keyframes golden-sparkle {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  50% { filter: brightness(1.4) saturate(1.5); }
+}
+
+@keyframes rainbow-glow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+```
+
+---
+
+# 3️⃣ SAFE HOUSE RENTAL SYSTEM (نظام البيت الآمن)
+
+## 3.1 جدول الإيجارات
+
+```sql
+CREATE TABLE safe_house_rentals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  property_id INTEGER NOT NULL,
+  renter_id INTEGER NOT NULL,
+  owner_id INTEGER NOT NULL,
+  rent_amount INTEGER NOT NULL,
+  owner_revenue INTEGER NOT NULL,
+  game_revenue INTEGER NOT NULL,
+  start_time DATETIME NOT NULL,
+  end_time DATETIME NOT NULL,
+  status TEXT DEFAULT 'active',
+  renter_ip TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (property_id) REFERENCES properties(id),
+  FOREIGN KEY (renter_id) REFERENCES users(id),
+  FOREIGN KEY (owner_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_rentals_renter ON safe_house_rentals(renter_id);
+CREATE INDEX idx_rentals_property ON safe_house_rentals(property_id);
+CREATE INDEX idx_rentals_status ON safe_house_rentals(status);
+```
+
+## 3.2 نظام الإيجار
+
+**القواعد:**
+- الحد الأدنى: $10,000
+- الحد الأقصى: لا يوجد (كل ما زاد، اللعبة تكسب أكثر)
+- المدة: أسبوع واحد كحد أقصى
+- التجديد: أسبوعياً (يجبر اللاعب على الدخول)
+- نفس المدينة فقط
+- Cooldown: 24 ساعة بين كل إيجار
+
+**توزيع المال:**
+- صاحب العقار: 15%
+- السوبر أدمن (#4000): 85%
+
+```javascript
+async function rentSafeHouse(renterId, propertyId, rentAmount, duration = 7) {
+  // التحققات
+  const property = await getProperty(propertyId);
+  const renter = await getUser(renterId);
+  
+  // نفس المدينة
+  if (property.city_id !== renter.city_id) {
+    throw new Error("Safe House must be in your current city");
+  }
+  
+  // الحد الأدنى
+  if (rentAmount < 10000) {
+    throw new Error("Minimum rent is $10,000");
+  }
+  
+  // Cooldown
+  const lastRental = await db.query(
+    "SELECT * FROM safe_house_rentals WHERE renter_id = ? AND created_at > datetime('now', '-24 hours')",
+    [renterId]
+  );
+  if (lastRental.length > 0) {
+    throw new Error("You can only rent once every 24 hours");
+  }
+  
+  // حساب التوزيع
+  const ownerRevenue = Math.floor(rentAmount * 0.15);
+  const gameRevenue = rentAmount - ownerRevenue;
+  
+  // تحديث المال
+  await db.run("UPDATE users SET money = money - ? WHERE id = ?", [rentAmount, renterId]);
+  await db.run("UPDATE users SET money = money + ? WHERE id = ?", [ownerRevenue, property.owner_id]);
+  await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [gameRevenue]); // للسوبر أدمن
+  
+  // تسجيل الإيجار
+  const endTime = new Date(Date.now() + (duration * 24 * 60 * 60 * 1000));
+  await db.run(`
+    INSERT INTO safe_house_rentals 
+    (property_id, renter_id, owner_id, rent_amount, owner_revenue, game_revenue, start_time, end_time, renter_ip)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?, ?)
+  `, [propertyId, renterId, property.owner_id, rentAmount, ownerRevenue, gameRevenue, endTime, renter.ip_address]);
+  
+  // تفعيل الحماية
+  await db.run("UPDATE users SET in_safe_house = 1, safe_house_expires_at = ? WHERE id = ?", [endTime, renterId]);
+  
+  return {
+    success: true,
+    rentPaid: rentAmount,
+    ownerReceived: ownerRevenue,
+    gameReceived: gameRevenue,
+    protectedUntil: endTime
+  };
+}
+```
+
+## 3.3 الحماية في البيت الآمن
+
+```javascript
+// منع الهجوم على من في البيت الآمن
+async function canAttack(attackerId, targetId) {
+  const target = await getUser(targetId);
+  
+  if (target.in_safe_house && new Date(target.safe_house_expires_at) > new Date()) {
+    return {
+      canAttack: false,
+      reason: "⚠️ Cannot attack! Target is protected in Safe House",
+      reasonAr: "⚠️ لا يمكن الهجوم! الهدف محمي في البيت الآمن"
+    };
+  }
+  
+  return { canAttack: true };
+}
+
+// منع الأنشطة أثناء التواجد في البيت الآمن
+async function checkSafeHouseRestrictions(userId) {
+  const user = await getUser(userId);
+  
+  if (user.in_safe_house && new Date(user.safe_house_expires_at) > new Date()) {
+    return {
+      canAttack: false,
+      canCommitCrime: false,
+      canTravel: false,
+      canShop: true,
+      canTrade: true,
+      propertiesGenerateIncome: true
+    };
+  }
+  
+  return {
+    canAttack: true,
+    canCommitCrime: true,
+    canTravel: true,
+    canShop: true,
+    canTrade: true,
+    propertiesGenerateIncome: true
+  };
+}
+```
+
+---
+
+# 4️⃣ PROPERTY SYSTEM UPDATE (نظام العقارات)
+
+## 4.1 عدد محدود لكل مدينة
+
+```sql
+-- جدول حدود العقارات لكل مدينة
+CREATE TABLE property_limits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  property_type TEXT NOT NULL,
+  max_per_city INTEGER NOT NULL,
+  min_rank INTEGER DEFAULT NULL,
+  is_vip BOOLEAN DEFAULT 0,
+  price_cash INTEGER DEFAULT NULL,
+  price_diamonds INTEGER DEFAULT NULL
+);
+
+-- إدخال الحدود
+INSERT INTO property_limits VALUES
+(1, 'safe_house', -1, NULL, 0, 100000, NULL),  -- unlimited
+(2, 'workshop', -1, NULL, 0, 500000, NULL),     -- unlimited
+(3, 'nightclub', 5, NULL, 0, 1000000, NULL),
+(4, 'drug_lab', 10, NULL, 0, 2500000, NULL),
+(5, 'hospital', 1, 6, 0, 600000, NULL),         -- rank 6+ only
+(6, 'bank', 1, 6, 0, 1000000, NULL),            -- rank 6+ only
+(7, 'ammo_factory', 3, 6, 0, 5000000, NULL),
+(8, 'weapons_warehouse', 2, 7, 0, 10000000, NULL),
+(9, 'casino', 2, 8, 0, 25000000, NULL),
+(10, 'luxury_casino', 1, 8, 1, NULL, 2000),
+(11, 'private_airport', 1, 9, 1, NULL, 5000),
+(12, 'offshore_bank', 1, 10, 1, NULL, 10000),
+(13, 'diamond_mine', 1, 11, 1, NULL, 20000),
+(14, 'nuclear_reactor', 1, 11, 0, 500000000, NULL),
+(15, 'supreme_fortress', 1, 12, 0, 1000000000, NULL); -- عقار Capo di Tutti Capi
+
+-- جدول تتبع العقارات المبنية
+CREATE TABLE city_properties_count (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  city_id INTEGER NOT NULL,
+  property_type TEXT NOT NULL,
+  current_count INTEGER DEFAULT 0,
+  max_count INTEGER NOT NULL,
+  UNIQUE(city_id, property_type)
+);
+```
+
+## 4.2 التحقق من إمكانية البناء
+
+```javascript
+async function canBuildProperty(userId, cityId, propertyType) {
+  const user = await getUser(userId);
+  const limit = await db.query("SELECT * FROM property_limits WHERE property_type = ?", [propertyType]);
+  
+  // التحقق من الرتبة
+  if (limit.min_rank && user.rank < limit.min_rank) {
+    return {
+      canBuild: false,
+      reason: `You need rank ${limit.min_rank}+ to build this property`
+    };
+  }
+  
+  // التحقق من العدد المتاح
+  if (limit.max_per_city !== -1) {
+    const currentCount = await db.query(
+      "SELECT COUNT(*) as count FROM properties WHERE city_id = ? AND property_type = ?",
+      [cityId, propertyType]
+    );
+    
+    if (currentCount.count >= limit.max_per_city) {
+      return {
+        canBuild: false,
+        reason: `Maximum ${limit.max_per_city} ${propertyType} per city. All slots taken!`,
+        currentOwners: await db.query(
+          "SELECT owner_id, username FROM properties p JOIN users u ON p.owner_id = u.id WHERE p.city_id = ? AND p.property_type = ?",
+          [cityId, propertyType]
+        )
+      };
+    }
+  }
+  
+  // التحقق من المال/الماسات
+  if (limit.price_cash && user.money < limit.price_cash) {
+    return { canBuild: false, reason: `Not enough money. Need $${limit.price_cash}` };
+  }
+  
+  if (limit.price_diamonds && user.diamonds < limit.price_diamonds) {
+    return { canBuild: false, reason: `Not enough diamonds. Need ${limit.price_diamonds}💎` };
+  }
+  
+  return { canBuild: true };
+}
+```
+
+## 4.3 عقار Capo di Tutti Capi الحصري
+
+**الاسم المقترح:** القلعة العليا (Supreme Fortress)
+
+**المواصفات:**
+- السعر: $1,000,000,000
+- العدد: 1 لكل مدينة
+- الرتبة: 12 فقط
+- الدخل: $100,000/ساعة
+- المزايا الخاصة:
+  - +50 ATK/DEF دائم
+  - اسم اللاعب ذهبي في كل الموقع
+  - حماية من خسارة المال عند الموت
+  - يعين 5 مستشارين (مزايا خاصة)
+  - Badge تاج ذهبي متحرك
+
+```sql
+CREATE TABLE supreme_fortress_bonuses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  property_id INTEGER NOT NULL,
+  owner_id INTEGER NOT NULL,
+  atk_bonus INTEGER DEFAULT 50,
+  def_bonus INTEGER DEFAULT 50,
+  golden_name BOOLEAN DEFAULT 1,
+  death_protection BOOLEAN DEFAULT 1,
+  max_advisors INTEGER DEFAULT 5,
+  FOREIGN KEY (property_id) REFERENCES properties(id),
+  FOREIGN KEY (owner_id) REFERENCES users(id)
+);
+```
+
+## 4.4 عقارات الإدارة الأولية
+
+```javascript
+// بناء عقارات الإدارة في كل مدينة عند إنشاء المدينة
+async function initializeCityProperties(cityId) {
+  const adminProperties = [
+    { type: 'hospital', name: 'المستشفى العام', name_en: 'Public Hospital' },
+    { type: 'bank', name: 'البنك المركزي', name_en: 'Central Bank' },
+    { type: 'casino', name: 'كازينو الإدارة', name_en: 'Admin Casino' }
+  ];
+  
+  for (const prop of adminProperties) {
+    await db.run(`
+      INSERT INTO properties (owner_id, city_id, property_type, name, name_ar, income_per_hour, is_admin_property)
+      VALUES (4000, ?, ?, ?, ?, ?, 1)
+    `, [cityId, prop.type, prop.name_en, prop.name, getPropertyIncome(prop.type)]);
+  }
+}
+```
+
+---
+
+# 5️⃣ CASINO GAMBLING SYSTEM (نظام القمار)
+
+## 5.1 جدول ألعاب الكازينو
+
+```sql
+CREATE TABLE casino_games (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  casino_id INTEGER NOT NULL,
+  player_id INTEGER NOT NULL,
+  game_type TEXT NOT NULL, -- 'blackjack', 'roulette', 'slot', 'dice'
+  bet_amount INTEGER NOT NULL,
+  commission INTEGER NOT NULL,
+  effective_bet INTEGER NOT NULL,
+  result TEXT NOT NULL, -- 'win', 'lose'
+  payout INTEGER DEFAULT 0,
+  net_profit INTEGER NOT NULL,
+  game_data TEXT, -- JSON للتفاصيل
+  played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  player_ip TEXT,
+  FOREIGN KEY (casino_id) REFERENCES properties(id),
+  FOREIGN KEY (player_id) REFERENCES users(id)
+);
+
+CREATE TABLE casino_daily_limits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  game_type TEXT NOT NULL,
+  games_played INTEGER DEFAULT 0,
+  total_bet INTEGER DEFAULT 0,
+  date DATE DEFAULT (date('now')),
+  UNIQUE(player_id, game_type, date)
+);
+```
+
+## 5.2 Blackjack
+
+**القواعد:**
+- Commission: 15%
+- حد أدنى: $5,000
+- حد أقصى: $50,000
+- المكافأة: 1.8× (بدلاً من 2×)
+- فرصة الفوز: 42% (بدلاً من 49%)
+- حد يومي: 20 لعبة
+
+```javascript
+async function playBlackjack(playerId, casinoId, betAmount) {
+  // التحققات
+  if (betAmount < 5000 || betAmount > 50000) {
+    throw new Error("Bet must be between $5,000 and $50,000");
+  }
+  
+  // التحقق من الحد اليومي
+  const todayGames = await db.query(
+    "SELECT games_played FROM casino_daily_limits WHERE player_id = ? AND game_type = 'blackjack' AND date = date('now')",
+    [playerId]
+  );
+  if (todayGames.length > 0 && todayGames[0].games_played >= 20) {
+    throw new Error("Daily limit reached (20 games). Come back tomorrow!");
+  }
+  
+  // حساب Commission
+  const commission = Math.floor(betAmount * 0.15);
+  const effectiveBet = betAmount - commission;
+  
+  // لعب اللعبة
+  const playerHand = dealCards(2);
+  const dealerHand = dealCards(2);
+  
+  let gameResult = 'playing';
+  let playerTotal = calculateHandValue(playerHand);
+  let dealerTotal = calculateHandValue(dealerHand);
+  
+  // منطق اللعبة (مبسط - نحتاج تفصيل أكثر)
+  // احتمالية 42% للفوز
+  const winChance = Math.random();
+  
+  if (winChance < 0.42) {
+    // اللاعب يربح
+    gameResult = 'win';
+    const payout = Math.floor(effectiveBet * 1.8);
+    const netProfit = payout - betAmount;
+    
+    // تحديث المال
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [payout, playerId]);
+    await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [commission]); // Commission للإدارة
+    
+    // صاحب الكازينو يخسر
+    const casino = await getProperty(casinoId);
+    await db.run("UPDATE users SET money = money - ? WHERE id = ?", [effectiveBet, casino.owner_id]);
+    
+    return { result: 'win', payout, netProfit, commission };
+  } else {
+    // اللاعب يخسر
+    gameResult = 'lose';
+    
+    // تحديث المال
+    await db.run("UPDATE users SET money = money - ? WHERE id = ?", [betAmount, playerId]);
+    await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [commission]); // Commission
+    
+    // صاحب الكازينو يكسب
+    const casino = await getProperty(casinoId);
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [effectiveBet, casino.owner_id]);
+    
+    return { result: 'lose', payout: 0, netProfit: -betAmount, commission };
+  }
+  
+  // تسجيل اللعبة
+  await recordCasinoGame(casinoId, playerId, 'blackjack', betAmount, commission, effectiveBet, gameResult, payout, netProfit);
+  
+  // تحديث الحد اليومي
+  await updateDailyLimit(playerId, 'blackjack', betAmount);
+}
+
+function dealCards(count) {
+  const cards = [];
+  for (let i = 0; i < count; i++) {
+    cards.push(Math.floor(Math.random() * 13) + 1); // 1-13
+  }
+  return cards;
+}
+
+function calculateHandValue(cards) {
+  let total = 0;
+  let aces = 0;
+  
+  for (const card of cards) {
+    if (card === 1) {
+      aces++;
+      total += 11;
+    } else if (card > 10) {
+      total += 10;
+    } else {
+      total += card;
+    }
+  }
+  
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
+  }
+  
+  return total;
+}
+```
+
+## 5.3 Roulette
+
+**القواعد:**
+- Commission: 10%
+- حد أدنى: $1,000
+- حد أقصى: $100,000
+- المكافأة: 30× (بدلاً من 35×)
+- فرصة الفوز: 1/37 = 2.7%
+- حد يومي: 10 لعبات
+
+```javascript
+async function playRoulette(playerId, casinoId, betAmount, number) {
+  // التحققات
+  if (betAmount < 1000 || betAmount > 100000) {
+    throw new Error("Bet must be between $1,000 and $100,000");
+  }
+  
+  if (number < 0 || number > 36) {
+    throw new Error("Number must be between 0 and 36");
+  }
+  
+  // Commission
+  const commission = Math.floor(betAmount * 0.10);
+  const effectiveBet = betAmount - commission;
+  
+  // الدوران
+  const winningNumber = Math.floor(Math.random() * 37); // 0-36
+  
+  if (winningNumber === number) {
+    // اللاعب يربح
+    const payout = effectiveBet * 30;
+    const netProfit = payout - betAmount;
+    
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [payout, playerId]);
+    await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [commission]);
+    
+    const casino = await getProperty(casinoId);
+    await db.run("UPDATE users SET money = money - ? WHERE id = ?", [effectiveBet * 30, casino.owner_id]);
+    
+    await recordCasinoGame(casinoId, playerId, 'roulette', betAmount, commission, effectiveBet, 'win', payout, netProfit, { number, winningNumber });
+    
+    return { result: 'win', winningNumber, payout, netProfit };
+  } else {
+    // اللاعب يخسر
+    await db.run("UPDATE users SET money = money - ? WHERE id = ?", [betAmount, playerId]);
+    await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [commission]);
+    
+    const casino = await getProperty(casinoId);
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [effectiveBet, casino.owner_id]);
+    
+    await recordCasinoGame(casinoId, playerId, 'roulette', betAmount, commission, effectiveBet, 'lose', 0, -betAmount, { number, winningNumber });
+    
+    return { result: 'lose', winningNumber, payout: 0, netProfit: -betAmount };
+  }
+}
+```
+
+## 5.4 Slot Machine
+
+**القواعد:**
+- Commission: 20% (مدمجة)
+- سعر اللعبة: $1,000
+- 3 متطابقة: $80,000 (1% فرصة)
+- 2 متطابقة: $4,000 (8% فرصة)
+- خسران: 91% فرصة
+- حد يومي: 50 لعبة
+
+```javascript
+async function playSlotMachine(playerId, casinoId) {
+  const betAmount = 1000;
+  const commission = 200;
+  const effectiveBet = 800;
+  
+  // الدوران
+  const symbols = ['🍒', '🍋', '🍊', '🍉', '⭐', '💎', '7️⃣'];
+  const reel1 = symbols[Math.floor(Math.random() * symbols.length)];
+  const reel2 = symbols[Math.floor(Math.random() * symbols.length)];
+  const reel3 = symbols[Math.floor(Math.random() * symbols.length)];
+  
+  let payout = 0;
+  let result = 'lose';
+  
+  // 3 متطابقة
+  if (reel1 === reel2 && reel2 === reel3) {
+    payout = 80000;
+    result = 'win_jackpot';
+  }
+  // 2 متطابقة
+  else if (reel1 === reel2 || reel2 === reel3 || reel1 === reel3) {
+    payout = 4000;
+    result = 'win_small';
+  }
+  
+  // تحديث المال
+  await db.run("UPDATE users SET money = money - ? WHERE id = ?", [betAmount, playerId]);
+  await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [commission]);
+  
+  const casino = await getProperty(casinoId);
+  
+  if (payout > 0) {
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [payout, playerId]);
+    await db.run("UPDATE users SET money = money - ? WHERE id = ?", [payout - effectiveBet, casino.owner_id]);
+  } else {
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [effectiveBet, casino.owner_id]);
+  }
+  
+  const netProfit = payout - betAmount;
+  await recordCasinoGame(casinoId, playerId, 'slot', betAmount, commission, effectiveBet, result, payout, netProfit, { reel1, reel2, reel3 });
+  
+  return { result, reels: [reel1, reel2, reel3], payout, netProfit };
+}
+```
+
+## 5.5 Dice
+
+**القواعد:**
+- Commission: 10%
+- حد أدنى: $2,000
+- حد أقصى: $50,000
+- المكافأة: 1.8× (بدلاً من 2×)
+- فرصة High: 42%, Low: 42%, Seven: 10%
+- حد يومي: 30 لعبة
+
+```javascript
+async function playDice(playerId, casinoId, betAmount, choice) {
+  // التحققات
+  if (betAmount < 2000 || betAmount > 50000) {
+    throw new Error("Bet must be between $2,000 and $50,000");
+  }
+  
+  if (!['high', 'low'].includes(choice)) {
+    throw new Error("Choice must be 'high' or 'low'");
+  }
+  
+  // Commission
+  const commission = Math.floor(betAmount * 0.10);
+  const effectiveBet = betAmount - commission;
+  
+  // رمي النرد
+  const dice1 = Math.floor(Math.random() * 6) + 1;
+  const dice2 = Math.floor(Math.random() * 6) + 1;
+  const total = dice1 + dice2;
+  
+  let result = 'lose';
+  let payout = 0;
+  
+  // Seven = الكازينو يربح
+  if (total === 7) {
+    result = 'lose_seven';
+  }
+  // High (8-12)
+  else if (choice === 'high' && total >= 8) {
+    result = 'win';
+    payout = Math.floor(effectiveBet * 1.8);
+  }
+  // Low (2-6)
+  else if (choice === 'low' && total <= 6) {
+    result = 'win';
+    payout = Math.floor(effectiveBet * 1.8);
+  }
+  
+  // تحديث المال
+  await db.run("UPDATE users SET money = money - ? WHERE id = ?", [betAmount, playerId]);
+  await db.run("UPDATE users SET money = money + ? WHERE id = 4000", [commission]);
+  
+  const casino = await getProperty(casinoId);
+  
+  if (payout > 0) {
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [payout, playerId]);
+    await db.run("UPDATE users SET money = money - ? WHERE id = ?", [payout - effectiveBet, casino.owner_id]);
+  } else {
+    await db.run("UPDATE users SET money = money + ? WHERE id = ?", [effectiveBet, casino.owner_id]);
+  }
+  
+  const netProfit = payout - betAmount;
+  await recordCasinoGame(casinoId, playerId, 'dice', betAmount, commission, effectiveBet, result, payout, netProfit, { dice1, dice2, total, choice });
+  
+  return { result, dice: [dice1, dice2], total, payout, netProfit };
+}
+```
+
+---
+
+# 6️⃣ KILL CALCULATOR (حاسبة القتل)
+
+## 6.1 صفحة حاسبة القتل
+
+**الموقع:** `/kill-calculator` أو `/attack`
+
+**المتطلبات:**
+- قراءة معلومات المهاجم تلقائياً
+- المهاجم يدخل: رتبة الهدف، درع الهدف، عدد الحراس
+- حساب الذخيرة المطلوبة
+- عرض التكلفة
+- اقتراحات إذا الهجوم صعب
+
+```javascript
+async function calculateKillRequirements(attackerId, targetRank, targetArmor, guards) {
+  const attacker = await getUser(attackerId);
+  const weapon = await getWeapon(attacker.equipped_weapon_id);
+  
+  // معلومات المهاجم
+  const attackerATK = weapon.atk + attacker.rank_atk_bonus;
+  
+  // معلومات الهدف
+  const targetRankData = await getRankData(targetRank);
+  const armorData = await getArmorData(targetArmor);
+  const targetDEF = targetRankData.def_bonus + (armorData ? armorData.def : 0);
+  const targetHP = targetRankData.max_hp;
+  
+  // حساب الضرر
+  const damagePerBullet = Math.max(attackerATK - targetDEF, 5); // حد أدنى 5
+  
+  // حساب الذخيرة للحراس
+  let totalBulletsForGuards = 0;
+  const guardDetails = [];
+  
+  for (const guard of guards) {
+    const guardData = await getGuardData(guard.type);
+    const guardDamage = Math.max(attackerATK - guardData.def, 5);
+    const bulletsNeeded = Math.ceil(guardData.hp / guardDamage);
+    totalBulletsForGuards += bulletsNeeded * guard.count;
+    
+    guardDetails.push({
+      type: guard.type,
+      count: guard.count,
+      bulletsPerGuard: bulletsNeeded,
+      totalBullets: bulletsNeeded * guard.count
+    });
+  }
+  
+  // حساب الذخيرة للهدف
+  const bulletsForTarget = Math.ceil(targetHP / damagePerBullet);
+  
+  // المجموع
+  const totalBullets = totalBulletsForGuards + bulletsForTarget;
+  
+  // التكلفة
+  const bulletPrice = await getBulletPrice(weapon.ammo_type);
+  const totalCost = totalBullets * bulletPrice;
+  
+  // التحقق من الذخيرة المتوفرة
+  const availableAmmo = await getUserAmmo(attackerId, weapon.ammo_type);
+  const hasEnoughAmmo = availableAmmo >= totalBullets;
+  const hasEnoughMoney = attacker.money >= totalCost;
+  
+  // اقتراحات إذا ما يقدر
+  const suggestions = [];
+  
+  if (!hasEnoughAmmo) {
+    const neededAmmo = totalBullets - availableAmmo;
+    suggestions.push({
+      type: 'buy_ammo',
+      message: `You need ${neededAmmo} more bullets`,
+      cost: neededAmmo * bulletPrice,
+      action: 'buy_ammo'
+    });
+  }
+  
+  // اقتراح سلاح أقوى
+  const strongerWeapons = await getStrongerWeapons(weapon.id);
+  if (strongerWeapons.length > 0) {
+    const bestWeapon = strongerWeapons[0];
+    const newATK = bestWeapon.atk + attacker.rank_atk_bonus;
+    const newDamage = Math.max(newATK - targetDEF, 5);
+    const newTotalBullets = Math.ceil((totalBulletsForGuards / damagePerBullet * newDamage) + (targetHP / newDamage));
+    
+    if (newTotalBullets < totalBullets) {
+      suggestions.push({
+        type: 'upgrade_weapon',
+        message: `${bestWeapon.name} would reduce ammo needed to ${newTotalBullets} bullets`,
+        weapon: bestWeapon,
+        savings: totalBullets - newTotalBullets
+      });
+    }
+  }
+  
+  // اقتراح Boost
+  suggestions.push({
+    type: 'use_boost',
+    message: '+50% Damage Boost would reduce ammo needed',
+    cost: 150, // diamonds
+    reduction: Math.floor(totalBullets * 0.33)
+  });
+  
+  return {
+    attacker: {
+      name: attacker.username,
+      rank: attacker.rank,
+      weapon: weapon.name,
+      totalATK: attackerATK
+    },
+    target: {
+      rank: targetRank,
+      armor: targetArmor,
+      totalDEF: targetDEF,
+      hp: targetHP
+    },
+    calculation: {
+      damagePerBullet,
+      guards: guardDetails,
+      bulletsForGuards: totalBulletsForGuards,
+      bulletsForTarget,
+      totalBullets,
+      bulletType: weapon.ammo_type,
+      totalCost
+    },
+    availability: {
+      hasEnoughAmmo,
+      hasEnoughMoney,
+      availableAmmo,
+      availableMoney: attacker.money,
+      neededAmmo: Math.max(0, totalBullets - availableAmmo),
+      neededMoney: Math.max(0, totalCost - attacker.money)
+    },
+    canAttack: hasEnoughAmmo && hasEnoughMoney,
+    suggestions
+  };
+}
+```
+
+## 6.2 واجهة المستخدم
+
+```html
+<!-- صفحة حاسبة القتل -->
+<div class="kill-calculator">
+  <h1>⚔️ حاسبة القتل (Kill Calculator)</h1>
+  
+  <!-- معلومات المهاجم (تلقائية) -->
+  <div class="attacker-info">
+    <h2>معلومات المهاجم</h2>
+    <p>الرتبة: <span id="attacker-rank"></span></p>
+    <p>Level: <span id="attacker-level"></span></p>
+    <p>السلاح: <span id="attacker-weapon"></span></p>
+    <p>Total ATK: <span id="attacker-atk"></span></p>
+  </div>
+  
+  <!-- معلومات الهدف (يدخلها المهاجم) -->
+  <div class="target-info">
+    <h2>معلومات الهدف</h2>
+    
+    <label>رتبة الهدف:</label>
+    <select id="target-rank">
+      <option value="1">Prospect</option>
+      <option value="2">Sicario</option>
+      <!-- ... باقي الرتب -->
+      <option value="12">Capo di Tutti Capi</option>
+    </select>
+    
+    <label>دفاع الهدف (الدرع):</label>
+    <select id="target-armor">
+      <option value="none">بدون درع (DEF 0)</option>
+      <option value="bulletproof_vest">Bulletproof Vest (DEF 20)</option>
+      <option value="kevlar_vest">Kevlar Vest (DEF 35)</option>
+      <option value="full_armor">Full Armor Set (DEF 90)</option>
+      <option value="diamond_armor">Diamond Armor Set (DEF 150)</option>
+    </select>
+    
+    <label>الحراس:</label>
+    <div class="guards-input">
+      <input type="number" id="elite-soldier" min="0" placeholder="Elite Soldier">
+      <input type="number" id="hitman" min="0" placeholder="Hitman">
+      <input type="number" id="enforcer" min="0" placeholder="Enforcer">
+      <input type="number" id="bodyguard" min="0" placeholder="Bodyguard">
+    </div>
+    
+    <label>
+      <input type="checkbox" id="in-safe-house">
+      الهدف في Safe House؟
+    </label>
+  </div>
+  
+  <button id="calculate-btn">🔍 احسب الذخيرة المطلوبة</button>
+  
+  <!-- النتيجة -->
+  <div id="result" style="display: none;">
+    <!-- تظهر بعد الحساب -->
+  </div>
+</div>
+```
+
+---
+
+# 7️⃣ CAPO DI TUTTI CAPI PROTECTION (حماية الرتبة 12)
+
+## 7.1 نظام الحماية بعد الموت
+
+```sql
+CREATE TABLE capo_resurrection_claims (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  old_user_id INTEGER NOT NULL,
+  new_user_id INTEGER NOT NULL,
+  old_username TEXT NOT NULL,
+  new_username TEXT NOT NULL,
+  verification_token TEXT NOT NULL,
+  status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+  proof_submitted TEXT,
+  claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  processed_at DATETIME,
+  processed_by INTEGER,
+  FOREIGN KEY (old_user_id) REFERENCES users(id),
+  FOREIGN KEY (new_user_id) REFERENCES users(id)
+);
+```
+
+```javascript
+async function claimCapoResurrection(oldUserId, newUserId, proof) {
+  // التحقق من أن الحساب القديم كان Capo di Tutti Capi
+  const oldUser = await db.query("SELECT * FROM users WHERE id = ? AND rank = 12", [oldUserId]);
+  if (oldUser.length === 0) {
+    throw new Error("Old account was not Capo di Tutti Capi");
+  }
+  
+  // التحقق من أن الحساب القديم مات خلال 48 ساعة
+  const deathTime = await db.query("SELECT death_timestamp FROM user_deaths WHERE user_id = ? ORDER BY death_timestamp DESC LIMIT 1", [oldUserId]);
+  const hoursSinceDeath = (Date.now() - new Date(deathTime[0].death_timestamp)) / (1000 * 60 * 60);
+  
+  if (hoursSinceDeath > 48) {
+    throw new Error("Claim must be made within 48 hours of death");
+  }
+  
+  // التحقق من أنه لم يستخدم هذه الميزة في السنة الماضية
+  const lastClaim = await db.query(
+    "SELECT * FROM capo_resurrection_claims WHERE old_user_id = ? AND claimed_at > datetime('now', '-1 year')",
+    [oldUserId]
+  );
+  if (lastClaim.length > 0) {
+    throw new Error("This protection can only be used once per year");
+  }
+  
+  // إنشاء طلب
+  const token = generateVerificationToken();
+  await db.run(`
+    INSERT INTO capo_resurrection_claims (old_user_id, new_user_id, old_username, new_username, verification_token, proof_submitted)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [oldUserId, newUserId, oldUser[0].username, (await getUser(newUserId)).username, token, JSON.stringify(proof)]);
+  
+  return {
+    success: true,
+    message: "Claim submitted. Admin will review within 24 hours.",
+    token
+  };
+}
+
+// الإدارة توافق على الطلب
+async function approveCapoResurrection(claimId, adminId) {
+  const claim = await db.query("SELECT * FROM capo_resurrection_claims WHERE id = ?", [claimId]);
+  
+  if (claim[0].status !== 'pending') {
+    throw new Error("Claim already processed");
+  }
+  
+  // رفع الحساب الجديد إلى Don (رتبة 10)
+  await db.run(`
+    UPDATE users 
+    SET level = 125, 
+        rank = 10, 
+        money = 10000000,
+        hp = 750,
+        max_hp = 750
+    WHERE id = ?
+  `, [claim[0].new_user_id]);
+  
+  // تحديث الطلب
+  await db.run(`
+    UPDATE capo_resurrection_claims 
+    SET status = 'approved', 
+        processed_at = datetime('now'),
+        processed_by = ?
+    WHERE id = ?
+  `, [adminId, claimId]);
+  
+  return {
+    success: true,
+    message: `User ${claim[0].new_username} promoted to Don (Level 125) with $10M starting money`
+  };
+}
+```
+
+---
+
+# 8️⃣ WEAPON-AMMO COMPATIBILITY (توافق السلاح والذخيرة)
+
+## 8.1 جدول التوافق
+
+```sql
+CREATE TABLE weapon_ammo_types (
+  weapon_id INTEGER PRIMARY KEY,
+  ammo_type TEXT NOT NULL,
+  FOREIGN KEY (weapon_id) REFERENCES weapons(id)
+);
+
+-- إدخال التوافقات
+INSERT INTO weapon_ammo_types VALUES
+(1, NULL),              -- Knife (لا ذخيرة)
+(2, '9mm'),            -- Beretta 92
+(3, '9mm'),            -- Glock 17
+(4, '.50_cal'),        -- Desert Eagle
+(5, '9mm'),            -- Uzi
+(6, '9mm'),            -- MP5
+(7, '7.62mm'),         -- AK-47
+(8, '5.56mm'),         -- M4A1
+(9, '12_gauge'),       -- Shotgun
+(10, '7.62mm'),        -- Sniper Rifle
+(11, 'rocket'),        -- RPG-7
+(12, '7.62mm'),        -- Golden AK-47
+(13, '7.62mm'),        -- Diamond Sniper
+(14, '12_gauge'),      -- Royal Shotgun
+(15, '5.56mm'),        -- Platinum M4
+(16, '.50_cal'),       -- Godfather's Revolver
+(17, 'nuclear_energy');-- Dirty Bomb
+```
+
+## 8.2 التحقق من التوافق
+
+```javascript
+async function canUseWeaponWithAmmo(weaponId, ammoType) {
+  const weaponAmmo = await db.query("SELECT ammo_type FROM weapon_ammo_types WHERE weapon_id = ?", [weaponId]);
+  
+  if (weaponAmmo.length === 0 || weaponAmmo[0].ammo_type === null) {
+    return { compatible: true, requiresAmmo: false };
+  }
+  
+  if (weaponAmmo[0].ammo_type !== ammoType) {
+    return {
+      compatible: false,
+      requiresAmmo: true,
+      requiredType: weaponAmmo[0].ammo_type,
+      providedType: ammoType,
+      message: `This weapon requires ${weaponAmmo[0].ammo_type} ammo, not ${ammoType}`
+    };
+  }
+  
+  return { compatible: true, requiresAmmo: true };
+}
+
+// عند الهجوم
+async function attack(attackerId, targetId, weaponId) {
+  const weapon = await getWeapon(weaponId);
+  const weaponAmmo = await db.query("SELECT ammo_type FROM weapon_ammo_types WHERE weapon_id = ?", [weaponId]);
+  
+  if (weaponAmmo[0].ammo_type) {
+    // التحقق من الذخيرة
+    const userAmmo = await getUserAmmo(attackerId, weaponAmmo[0].ammo_type);
+    const requiredAmmo = await calculateRequiredAmmo(attackerId, targetId, weaponId);
+    
+    if (userAmmo < requiredAmmo) {
+      throw new Error(`Not enough ${weaponAmmo[0].ammo_type} ammo. Need ${requiredAmmo}, have ${userAmmo}`);
+    }
+    
+    // خصم الذخيرة
+    await db.run("UPDATE user_ammo SET quantity = quantity - ? WHERE user_id = ? AND ammo_type = ?", 
+      [requiredAmmo, attackerId, weaponAmmo[0].ammo_type]);
+  }
+  
+  // تنفيذ الهجوم...
+}
+```
+
+---
+
+# 9️⃣ COMBAT SYSTEM (نظام القتال)
+
+## 9.1 معادلة الهجوم الكاملة
+
+```javascript
+async function executeCombat(attackerId, targetId) {
+  const attacker = await getUser(attackerId);
+  const target = await getUser(targetId);
+  
+  // التحقق من Safe House
+  if (target.in_safe_house && new Date(target.safe_house_expires_at) > new Date()) {
+    throw new Error("Cannot attack! Target is protected in Safe House");
+  }
+  
+  // السلاح والدرع
+  const weapon = await getWeapon(attacker.equipped_weapon_id);
+  const armor = target.equipped_armor_id ? await getArmor(target.equipped_armor_id) : { def: 0 };
+  
+  // الحساب
+  const attackerATK = weapon.atk + attacker.rank_atk_bonus;
+  const targetDEF = armor.def + target.rank_def_bonus;
+  const damagePerBullet = Math.max(attackerATK - targetDEF, 5);
+  
+  // قتل الحراس أولاً
+  const guards = await getTargetGuards(targetId);
+  let totalBulletsUsed = 0;
+  const guardsKilled = [];
+  
+  for (const guard of guards) {
+    const guardData = await getGuardData(guard.guard_type);
+    const guardDamage = Math.max(attackerATK - guardData.def, 5);
+    const bulletsNeeded = Math.ceil(guardData.hp / guardDamage);
+    
+    totalBulletsUsed += bulletsNeeded;
+    guardsKilled.push({
+      type: guard.guard_type,
+      hp: guardData.hp,
+      bulletsUsed: bulletsNeeded
+    });
+    
+    // حذف الحارس
+    await db.run("DELETE FROM user_guards WHERE id = ?", [guard.id]);
+  }
+  
+  // قتل الهدف
+  const bulletsForTarget = Math.ceil(target.hp / damagePerBullet);
+  totalBulletsUsed += bulletsForTarget;
+  
+  // خصم الذخيرة
+  const ammoType = await db.query("SELECT ammo_type FROM weapon_ammo_types WHERE weapon_id = ?", [weapon.id]);
+  await db.run("UPDATE user_ammo SET quantity = quantity - ? WHERE user_id = ? AND ammo_type = ?",
+    [totalBulletsUsed, attackerId, ammoType[0].ammo_type]);
+  
+  // سرقة المال (10%)
+  const stolenMoney = Math.floor(target.money * 0.10);
+  await db.run("UPDATE users SET money = money + ? WHERE id = ?", [stolenMoney, attackerId]);
+  await db.run("UPDATE users SET money = money - ? WHERE id = ?", [stolenMoney, targetId]);
+  
+  // الهدف يموت (PERMADEATH)
+  await db.run("UPDATE users SET status = 'dead', death_timestamp = datetime('now') WHERE id = ?", [targetId]);
+  
+  // تسجيل القتل
+  await db.run("INSERT INTO kills (killer_id, victim_id, weapon_id, bullets_used, money_stolen) VALUES (?, ?, ?, ?, ?)",
+    [attackerId, targetId, weapon.id, totalBulletsUsed, stolenMoney]);
+  
+  // التحقق من ترقية Capo di Tutti Capi
+  if (target.rank === 12) {
+    // اللاعب قتل Capo di Tutti Capi
+    const canPromote = await canPromoteToRank12(attackerId);
+    if (canPromote.canPromote && attacker.level >= 200) {
+      await db.run("UPDATE users SET rank = 12 WHERE id = ?", [attackerId]);
+      return {
+        success: true,
+        guardsKilled,
+        targetKilled: true,
+        bulletsUsed: totalBulletsUsed,
+        moneyStolen: stolenMoney,
+        specialEvent: {
+          type: 'capo_promotion',
+          message: 'You killed a Capo di Tutti Capi and took their throne!'
+        }
+      };
+    }
+  }
+  
+  return {
+    success: true,
+    guardsKilled,
+    targetKilled: true,
+    bulletsUsed: totalBulletsUsed,
+    moneyStolen: stolenMoney
+  };
+}
+```
+
+---
+
+# 🔟 DATABASE SCHEMA UPDATES
+
+## Complete Schema
+
+```sql
+-- المستخدمين
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  level INTEGER DEFAULT 1,
+  rank INTEGER DEFAULT 1,
+  xp INTEGER DEFAULT 0,
+  money INTEGER DEFAULT 5000,
+  diamonds INTEGER DEFAULT 0,
+  hp INTEGER DEFAULT 100,
+  max_hp INTEGER DEFAULT 100,
+  energy INTEGER DEFAULT 100,
+  max_energy INTEGER DEFAULT 100,
+  status TEXT DEFAULT 'active',
+  city_id INTEGER DEFAULT 1,
+  in_safe_house BOOLEAN DEFAULT 0,
+  safe_house_expires_at DATETIME,
+  equipped_weapon_id INTEGER,
+  equipped_armor_id INTEGER,
+  is_super_admin BOOLEAN DEFAULT 0,
+  is_hidden BOOLEAN DEFAULT 0,
+  vip_tier INTEGER DEFAULT 0,
+  vip_expires_at DATETIME,
+  death_timestamp DATETIME,
+  ip_address TEXT,
+  last_login DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (city_id) REFERENCES cities(id),
+  FOREIGN KEY (equipped_weapon_id) REFERENCES weapons(id),
+  FOREIGN KEY (equipped_armor_id) REFERENCES armor(id)
+);
+
+-- المدن
+CREATE TABLE cities (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  country TEXT NOT NULL
+);
+
+INSERT INTO cities VALUES
+(1, 'New York', 'نيويورك', 'USA'),
+(2, 'Los Angeles', 'لوس أنجلوس', 'USA'),
+(3, 'Chicago', 'شيكاغو', 'USA'),
+(4, 'Miami', 'ميامي', 'USA'),
+(5, 'Las Vegas', 'لاس فيغاس', 'USA');
+
+-- الأسلحة
+CREATE TABLE weapons (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  atk INTEGER NOT NULL,
+  price_cash INTEGER,
+  price_diamonds INTEGER,
+  level_required INTEGER DEFAULT 1,
+  is_premium BOOLEAN DEFAULT 0
+);
+
+-- الدروع
+CREATE TABLE armor (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  def INTEGER NOT NULL,
+  price_cash INTEGER,
+  price_diamonds INTEGER,
+  level_required INTEGER DEFAULT 1
+);
+
+-- الذخيرة
+CREATE TABLE ammo_types (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  price_per_100 INTEGER NOT NULL
+);
+
+INSERT INTO ammo_types VALUES
+(1, '9mm', 'رصاص 9 ملم', 10000),
+(2, '.50 Cal', 'رصاص 50 كال', 25000),
+(3, '7.62mm', 'رصاص 7.62 ملم', 30000),
+(4, '5.56mm', 'رصاص 5.56 ملم', 20000),
+(5, '12 Gauge', 'خراطيش 12 جيج', 40000),
+(6, 'Rocket', 'صاروخ', 100000),
+(7, 'Nuclear Energy', 'وحدة طاقة نووية', NULL); -- بالماسات فقط
+
+-- ذخيرة المستخدم
+CREATE TABLE user_ammo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  ammo_type TEXT NOT NULL,
+  quantity INTEGER DEFAULT 0,
+  UNIQUE(user_id, ammo_type),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- العقارات
+CREATE TABLE properties (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL,
+  city_id INTEGER NOT NULL,
+  property_type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  income_per_hour INTEGER NOT NULL,
+  is_admin_property BOOLEAN DEFAULT 0,
+  built_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_id) REFERENCES users(id),
+  FOREIGN KEY (city_id) REFERENCES cities(id)
+);
+
+-- الحراس
+CREATE TABLE guard_types (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  hp INTEGER NOT NULL,
+  def INTEGER NOT NULL,
+  price INTEGER NOT NULL
+);
+
+INSERT INTO guard_types VALUES
+(1, 'Street Thug', 'بلطجي الشارع', 50, 10, 5000),
+(2, 'Gang Member', 'عضو عصابة', 80, 20, 15000),
+(3, 'Bodyguard', 'حارس شخصي', 120, 35, 50000),
+(4, 'Enforcer', 'منفذ', 150, 50, 100000),
+(5, 'Hitman', 'قاتل محترف', 200, 70, 250000),
+(6, 'Elite Soldier', 'جندي نخبة', 250, 90, 500000);
+
+-- حراس المستخدم
+CREATE TABLE user_guards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  guard_type INTEGER NOT NULL,
+  hired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (guard_type) REFERENCES guard_types(id)
+);
+
+-- VIP
+CREATE TABLE vip_tiers (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  price_monthly INTEGER NOT NULL,
+  daily_diamonds INTEGER NOT NULL,
+  property_income_bonus REAL NOT NULL,
+  crime_success_bonus REAL NOT NULL,
+  attack_damage_bonus REAL DEFAULT 0,
+  shop_discount REAL DEFAULT 0
+);
+
+INSERT INTO vip_tiers VALUES
+(1, 'Bronze VIP', 'برونز VIP', 29, 50, 0.10, 0.05, 0, 0),
+(2, 'Silver VIP', 'سيلفر VIP', 59, 100, 0.20, 0.10, 0.10, 0.20),
+(3, 'Gold VIP', 'جولد VIP', 99, 200, 0.30, 0.15, 0.20, 0.30),
+(4, 'Platinum VIP', 'بلاتينيوم VIP', 199, 500, 0.50, 0.25, 0.30, 0.50);
+
+-- الماسات
+CREATE TABLE diamond_transactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  price_sar INTEGER NOT NULL,
+  transaction_type TEXT NOT NULL, -- 'purchase', 'spend', 'earn'
+  description TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
+
+---
+
+# 1️⃣1️⃣ FRONTEND UPDATES
+
+## Page Structure
+
+```
+/
+├── index.html (الصفحة الرئيسية)
+├── login.html
+├── register.html
+├── dashboard.html (لوحة التحكم)
+├── profile.html (الملف الشخصي + Badge)
+├── kill-calculator.html (حاسبة القتل) ⭐ جديد
+├── attack.html (صفحة الهجوم - تستخدم الحاسبة)
+├── properties.html (العقارات)
+├── casino.html (الكازينو + الألعاب) ⭐ جديد
+│   ├── blackjack.html
+│   ├── roulette.html
+│   ├── slots.html
+│   └── dice.html
+├── shop.html (المتجر)
+├── leaderboard.html (قائمة المتصدرين)
+├── capo-throne.html (قائمة الـ 3 الأقوياء) ⭐ جديد
+└── safe-house.html (البيت الآمن + الإيجار) ⭐ جديد
+```
+
+## RTL Support
+
+```css
+/* RTL للعربي */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .sidebar {
+  right: 0;
+  left: auto;
+}
+
+[dir="rtl"] .navbar {
+  flex-direction: row-reverse;
+}
+```
+
+---
+
+# 1️⃣2️⃣ TESTING CHECKLIST
+
+بعد التنفيذ، اختبر:
+
+## السوبر أدمن
+- [ ] ID 4000 موجود
+- [ ] مخفي من كل القوائم
+- [ ] يستلم الفلوس من البيت الآمن
+- [ ] يستلم Commission من الكازينو
+
+## الرتب
+- [ ] 12 رتبة موجودة
+- [ ] Badges تظهر بألوان صحيحة
+- [ ] رتبة 12 محدودة بـ 3 لاعبين
+- [ ] منع الترقية إذا العدد 3
+
+## البيت الآمن
+- [ ] الإيجار يشتغل
+- [ ] 15% للمالك، 85% للسوبر أدمن
+- [ ] الحماية تشتغل (منع الهجوم)
+- [ ] Cooldown 24 ساعة
+
+## العقارات
+- [ ] عدد محدود لكل مدينة
+- [ ] منع البناء إذا خلص العدد
+- [ ] حصرية الرتب تشتغل
+- [ ] الإدارة بنت عقارات في البداية
+
+## الكازينو
+- [ ] Blackjack يشتغل
+- [ ] Roulette يشتغل
+- [ ] Slots تشتغل
+- [ ] Dice يشتغل
+- [ ] Commission يتحصل صح
+- [ ] الحدود اليومية تشتغل
+
+## حاسبة القتل
+- [ ] تقرأ معلومات المهاجم
+- [ ] تحسب الذخيرة صح
+- [ ] الاقتراحات تظهر
+- [ ] التكلفة صحيحة
+
+## القتال
+- [ ] السلاح والذخيرة متوافقين
+- [ ] الحراس يموتون أولاً
+- [ ] الهدف يموت بعدين
+- [ ] الذخيرة تنخصم
+- [ ] المال ينسرق (10%)
+
+## حماية Capo
+- [ ] الطلب يرسل
+- [ ] الإدارة توافق
+- [ ] الحساب الجديد يصير Don
+- [ ] مرة واحدة بالسنة فقط
+
+---
+
+# 1️⃣3️⃣ DEPLOYMENT INSTRUCTIONS
+
+1. **تحديث قاعدة البيانات:**
+   ```bash
+   sqlite3 mafia_world.db < schema.sql
+   ```
+
+2. **إنشاء السوبر أدمن:**
+   ```bash
+   node scripts/create-super-admin.js
+   ```
+
+3. **بناء العقارات الأولية:**
+   ```bash
+   node scripts/initialize-cities.js
+   ```
+
+4. **اختبار النظام:**
+   ```bash
+   npm test
+   ```
+
+5. **Git Deployment (إجباري!):**
+   
+   **IMPORTANT:** بعد تنفيذ كل التحديثات، لازم تسوي push على GitHub!
+   
+   ```bash
+   # إضافة كل الملفات
+   git add .
+   
+   # Commit مع رسالة واضحة
+   git commit -m "🚀 Major Update v2.0: New Rank System, Safe House Rental, Casino Gambling, Kill Calculator, Property Limits, Capo Protection"
+   
+   # Push على GitHub
+   git push origin main
+   ```
+   
+   **إذا فيه مشاكل في Git:**
+   ```bash
+   # تحديث من GitHub أولاً
+   git pull origin main
+   
+   # حل أي conflicts يدوياً
+   # ثم push
+   git add .
+   git commit -m "🚀 Major Update v2.0"
+   git push origin main
+   ```
+   
+   **Verification (التحقق):**
+   بعد الـ push، تحقق:
+   - [ ] كل الملفات الجديدة موجودة على GitHub
+   - [ ] الـ commit ظاهر في history
+   - [ ] لا يوجد errors في الـ push
+
+---
+
+# 🎯 PRIORITY ORDER (ترتيب الأولويات)
+
+تنفذ بهذا الترتيب:
+
+1. ✅ **السوبر أدمن** (أساسي لكل شي)
+2. ✅ **الرتب الجديدة** (أساس اللعبة)
+3. ✅ **نظام البيت الآمن** (دخل + حماية)
+4. ✅ **نظام العقارات** (عدد محدود)
+5. ✅ **حاسبة القتل** (مهم للهجوم)
+6. ✅ **نظام القتال** (السلاح + الذخيرة)
+7. ✅ **الكازينو** (Gambling + Commission)
+8. ✅ **حماية Capo** (آخر شي)
+
+---
+
+# 📞 SUPPORT
+
+إذا واجهت مشاكل:
+1. راجع error logs
+2. تحقق من قاعدة البيانات
+3. اختبر كل feature منفصل
+
+---
+
+**END OF AUDIT**
+
+تاريخ الإنشاء: 10 مايو 2026
+الإصدار: 2.0
+الحالة: جاهز للتنفيذ
+
+---
+
+## 🚨🚨🚨 تنبيه نهائي لـ Replit Agent
+
+**بعد ما تخلص كل التحديثات:**
+
+1. ✅ راجع كل الـ features تشتغل
+2. ✅ اختبر قاعدة البيانات
+3. ✅ تأكد من السوبر أدمن موجود
+4. 🚨 **لازم تسوي Git push على GitHub!**
+
+```bash
+git add .
+git commit -m "🚀 Major Update v2.0: Complete system overhaul"
+git push origin main
+```
+
+**لا تنسى الـ push! هذا إجباري! 🚨**
+
+---
+
+**REPLIT AGENT: ابدأ التنفيذ الآن ولا تتوقف حتى تنتهي من كل شي + Git Push! 🚀**
