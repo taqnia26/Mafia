@@ -85,12 +85,28 @@ router.post("/combat/calculate", requireAuth, async (req, res) => {
 
     const targetDEF = (targetRankRow.defBonus ?? 0) + armorDef;
     const targetHP = targetRankRow.maxHp;
-    const damagePerBullet = Math.max(attackerATK - targetDEF, 5);
-    const bulletsForTarget = Math.ceil(targetHP / damagePerBullet);
 
-    // Guards: simple model — each bodyguard has GUARD_HP and takes
-    // ceil(GUARD_HP / damagePerBullet) bullets to neutralize before reaching target.
-    const bulletsPerGuard = guardCount > 0 ? Math.ceil(GUARD_HP / damagePerBullet) : 0;
+    // Base damage (no rank scaling) — used for guards & display
+    const baseDamage = Math.max(attackerATK - targetDEF, 1);
+
+    // Rank-based scaling: each rank diff doubles bullets needed (or halves them)
+    const attackerRankNum = attackerRankRow?.rankNumber ?? 1;
+    const rankDifference = targetRankNum - attackerRankNum;
+    let rankMultiplier = 1.0;
+    if (rankDifference > 0) {
+      rankMultiplier = Math.max(Math.pow(0.5, rankDifference), 0.0001);
+    } else if (rankDifference < 0) {
+      rankMultiplier = Math.min(Math.pow(1.2, Math.abs(rankDifference)), 3.0);
+    }
+
+    // Effective damage on target (kept as float for accurate bullet count)
+    const effectiveDamage = Math.max(baseDamage * rankMultiplier, 0.0001);
+    const damagePerBullet = Math.max(Math.floor(effectiveDamage), 1); // display value
+    const bulletsForTarget = Math.ceil(targetHP / effectiveDamage);
+
+    // Guards: rank-neutral; use base damage (or floor 5 like before)
+    const guardDamage = Math.max(baseDamage, 5);
+    const bulletsPerGuard = guardCount > 0 ? Math.ceil(GUARD_HP / guardDamage) : 0;
     const totalBulletsForGuards = bulletsPerGuard * guardCount;
     const guardDetails: {
       type: string; count: number; bulletsPerGuard: number; totalBullets: number;
@@ -123,9 +139,17 @@ router.post("/combat/calculate", requireAuth, async (req, res) => {
       const need = totalBullets - availableAmmo;
       suggestions.push({
         type: "buy_ammo",
-        message: `Buy ${need} more ${weapon.ammoType} bullets`,
-        messageAr: `اشترِ ${need} طلقة ${weapon.ammoType} إضافية`,
+        message: `Buy ${need.toLocaleString("en-US")} more ${weapon.ammoType} bullets`,
+        messageAr: `اشترِ ${need.toLocaleString("en-US")} طلقة ${weapon.ammoType} إضافية`,
         cost: need * bulletPrice,
+      });
+    }
+    if (rankDifference >= 5) {
+      const suggestedRank = Math.max(attackerRankNum + 1, targetRankNum - 2);
+      suggestions.push({
+        type: "level_up",
+        message: `Target is ${rankDifference} ranks higher — level up to rank ${suggestedRank} first to drastically reduce bullets needed.`,
+        messageAr: `الهدف أعلى منك بـ ${rankDifference} رتب — ارفع رتبتك إلى ${suggestedRank} أولاً لتقليل عدد الرصاصات بشكل كبير.`,
       });
     }
 
@@ -143,6 +167,10 @@ router.post("/combat/calculate", requireAuth, async (req, res) => {
         damagePerBullet, bulletsForGuards: totalBulletsForGuards, bulletsForTarget,
         totalBullets, bulletType: weapon.ammoType, bulletPrice, totalCost,
         guards: guardDetails,
+        rankDifference,
+        rankMultiplier: Number(rankMultiplier.toFixed(6)),
+        effectiveDamage: Number(effectiveDamage.toFixed(4)),
+        baseDamage,
       },
       availability: {
         hasEnoughAmmo, hasEnoughMoney, availableAmmo,

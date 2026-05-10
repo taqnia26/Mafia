@@ -19,6 +19,10 @@ interface Calc {
     bulletType: string;
     bulletPrice: number;
     totalCost: number;
+    rankDifference: number;
+    rankMultiplier: number;
+    effectiveDamage: number;
+    baseDamage: number;
   };
   availability: {
     hasEnoughAmmo: boolean; hasEnoughMoney: boolean;
@@ -261,14 +265,36 @@ export default function KillCalculatorPage() {
                 </div>
               </div>
             </div>
+            {/* Rank-gap warning */}
+            {result.calculation.rankDifference >= 5 && (
+              <div className="border border-red-500/60 bg-red-950/40 rounded-lg p-3 space-y-1">
+                <div className="text-red-300 font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  {isAr ? "فجوة رتب كبيرة جداً" : "Extreme rank gap"}
+                </div>
+                <div className="text-sm text-red-100">
+                  {isAr
+                    ? `الهدف أعلى منك بـ ${result.calculation.rankDifference} رتب — كل رتبة فرق تضاعف عدد الرصاصات.`
+                    : `Target is ${result.calculation.rankDifference} ranks higher — each rank gap doubles bullets needed.`}
+                </div>
+                <div className="text-xs text-red-200/80 font-mono">
+                  {isAr ? "ضرر فعّال" : "Effective damage"}: {result.calculation.effectiveDamage} ({(result.calculation.rankMultiplier * 100).toFixed(2)}%)
+                </div>
+              </div>
+            )}
             <div className="border-t border-border pt-4 grid gap-2 md:grid-cols-2 text-sm">
               <div>{t("killCalc.damagePerBullet")}: <span className="font-bold text-emerald-300">{result.calculation.damagePerBullet}</span></div>
-              <div>{t("killCalc.totalBullets")}: <span className="font-bold">{result.calculation.totalBullets}</span> ({result.calculation.bulletType})</div>
+              <div>{t("killCalc.totalBullets")}: <span className="font-bold">{result.calculation.totalBullets.toLocaleString("en-US")}</span> ({result.calculation.bulletType})</div>
               {result.calculation.bulletsForGuards > 0 && (
-                <div>{t("killCalc.bulletsForGuards")}: <span className="font-bold text-amber-300">{result.calculation.bulletsForGuards}</span></div>
+                <div>{t("killCalc.bulletsForGuards")}: <span className="font-bold text-amber-300">{result.calculation.bulletsForGuards.toLocaleString("en-US")}</span></div>
               )}
               <div>{t("killCalc.totalCost")}: <span className="font-bold">{formatMoney(result.calculation.totalCost)}</span></div>
-              <div>{t("killCalc.youHave")}: <span className="font-bold">{result.availability.availableAmmo}</span></div>
+              <div>{t("killCalc.youHave")}: <span className="font-bold">{result.availability.availableAmmo.toLocaleString("en-US")}</span></div>
+              {result.calculation.rankDifference !== 0 && (
+                <div className="md:col-span-2 text-xs text-muted-foreground">
+                  {isAr ? "فرق الرتبة" : "Rank diff"}: {result.calculation.rankDifference > 0 ? "+" : ""}{result.calculation.rankDifference} • {(result.calculation.rankMultiplier * 100).toFixed(2)}%
+                </div>
+              )}
             </div>
             {result.suggestions.length > 0 && (
               <div className="border-t border-border pt-3 space-y-2">
