@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Crosshair, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/format";
-import { Link } from "wouter";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface Calc {
   attacker: { username: string; rank: number; weaponName: string; weaponAtk: number; totalAtk: number; ammoType: string };
@@ -59,13 +58,18 @@ const MAX_BODYGUARDS = 20;
 
 export default function KillCalculatorPage() {
   const { t, language } = useI18n();
-  const { toast } = useToast();
   const [targetRank, setTargetRank] = useState("1");
   const [armorId, setArmorId] = useState("0");
   const [guards, setGuards] = useState("0");
   const [result, setResult] = useState<Calc | null>(null);
-  const [errorInfo, setErrorInfo] = useState<{ message: string; code?: string } | null>(null);
+  const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const isAr = language === "ar";
+
+  useEffect(() => {
+    if (!alertMsg) return;
+    const t = setTimeout(() => setAlertMsg(null), 3000);
+    return () => clearTimeout(t);
+  }, [alertMsg]);
 
   const armorQuery = useQuery<ArmorItem[]>({
     queryKey: ["/api/armor"],
@@ -107,12 +111,12 @@ export default function KillCalculatorPage() {
       return data as Calc;
     },
     onSuccess: (d) => {
-      setErrorInfo(null);
+      setAlertMsg(null);
       setResult(d);
     },
-    onError: (e: Error & { code?: string }) => {
+    onError: (e: Error) => {
       setResult(null);
-      setErrorInfo({ message: e.message, code: e.code });
+      setAlertMsg(e.message);
     },
   });
 
@@ -206,23 +210,25 @@ export default function KillCalculatorPage() {
         </CardContent>
       </Card>
 
-      {errorInfo && (
-        <Card className="border-red-500/40 bg-red-950/30" style={dirStyle} data-testid="kill-calculator-error">
-          <CardContent className="py-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="flex-1 space-y-2">
-              <div className="text-sm text-red-100 font-semibold">{errorInfo.message}</div>
-              {errorInfo.code === "no_weapon" && (
-                <Link href="/weapons">
-                  <Button size="sm" variant="outline" className="border-red-400/50 text-red-100 hover:bg-red-900/30">
-                    {isAr ? "اذهب إلى الأسلحة" : "Go to Weapons"}
-                  </Button>
-                </Link>
-              )}
+      {/* Center-screen auto-dismiss alert */}
+      <AnimatePresence>
+        {alertMsg && (
+          <motion.div
+            key="kc-alert"
+            initial={{ opacity: 0, scale: 0.85, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 22 }}
+            className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none px-4"
+            style={dirStyle}
+          >
+            <div className="pointer-events-auto bg-red-950/90 backdrop-blur-md border-2 border-red-500/70 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] px-6 py-5 flex items-center gap-3 max-w-md">
+              <AlertTriangle className="w-7 h-7 text-red-300 shrink-0" />
+              <div className="text-red-50 font-semibold text-base leading-snug">{alertMsg}</div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {result && (
         <Card data-testid="kill-calculator-result" style={dirStyle}>
