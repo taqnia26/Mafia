@@ -258,3 +258,9 @@ id = "siaCmEqwpHGI57h_1bpIN"
 uri = "file://artifacts/mafia-world/src/assets/dealer-sofia.png"
 type = "image"
 title = "casino dealer sofia"
+
+[[generated]]
+id = "TzYhNeb253cDjTKbiGJlV"
+uri = "file://artifacts/mafia-mobile/assets/images/icon.png"
+type = "image"
+title = "mafia app icon"
