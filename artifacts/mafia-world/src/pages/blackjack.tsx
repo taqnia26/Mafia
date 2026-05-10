@@ -94,11 +94,7 @@ export default function BlackjackPage() {
     onError: (e: Error) => toast({ title: t("common.error"), description: e.message, variant: "destructive" }),
   });
 
-  if (state.isLoading) return <div className="p-6"><Skeleton className="h-96 w-full" /></div>;
-  const s = state.data!;
-  const session = s.session;
-  const betNum = Number(bet) || 0;
-  const commissionPreview = Math.floor(betNum * s.limits.commissionPct);
+  const session = state.data?.session ?? null;
   const actionPending = hit.isPending || stand.isPending;
 
   // Stable seed across the full hand lifecycle (session → result), reset only on next deal.
@@ -123,6 +119,11 @@ export default function BlackjackPage() {
     }
     return "Place your bet, and I'll deal you in.";
   }, [session, lastResult]);
+
+  if (state.isLoading || !state.data) return <div className="p-6"><Skeleton className="h-96 w-full" /></div>;
+  const s = state.data;
+  const betNum = Number(bet) || 0;
+  const commissionPreview = Math.floor(betNum * s.limits.commissionPct);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0a0a] via-[#1a0a0a] to-black p-3 sm:p-6" data-testid="blackjack-page">
