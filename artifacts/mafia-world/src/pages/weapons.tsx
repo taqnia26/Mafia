@@ -80,7 +80,7 @@ export default function Weapons() {
                     <p>{t("weapons.ammoType")}: <span className="text-foreground font-medium">{w.ammoType}</span></p>
                   </CardContent>
                   <CardFooter className="flex items-center justify-between pt-3 border-t border-border/50">
-                    <span className="text-green-500 font-mono font-bold">${w.price.toLocaleString()}</span>
+                    <span className="text-green-500 font-mono font-bold">${w.price.toLocaleString("en-US")}</span>
                     <Button size="sm" className="font-heading uppercase" onClick={() => buyWeapon.mutate({ weaponId: w.id, data: { quantity: 1 } })} disabled={buyWeapon.isPending}>
                       {t("common.buy")}
                     </Button>
@@ -113,7 +113,7 @@ export default function Weapons() {
                     <p>{t("weapons.damageBonus")}: <span className="text-orange-400 font-bold">+{a.damageBonus}</span></p>
                   </CardContent>
                   <CardFooter className="flex items-center justify-between pt-3 border-t border-border/50">
-                    <span className="text-green-500 font-mono font-bold">${a.price.toLocaleString()}</span>
+                    <span className="text-green-500 font-mono font-bold">${a.price.toLocaleString("en-US")}</span>
                     <Button size="sm" className="font-heading uppercase" onClick={() => buyAmmo.mutate({ ammoId: a.id, data: { quantity: 10 } })} disabled={buyAmmo.isPending}>
                       {t("common.buy")}
                     </Button>

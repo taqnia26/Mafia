@@ -42,7 +42,7 @@ export default function Dashboard() {
                   <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{t("common.money")}</p>
                   <DollarSign className="h-4 w-4 text-green-500" />
                 </div>
-                <div className="text-2xl font-bold font-mono text-green-400">${stats.money.toLocaleString()}</div>
+                <div className="text-2xl font-bold font-mono text-green-400">${stats.money.toLocaleString("en-US")}</div>
                 <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                   {t("dashboard.city")}: <span className="text-foreground">{stats.cityName}</span>
                 </p>
@@ -57,7 +57,7 @@ export default function Dashboard() {
                 </div>
                 <div className="space-y-2 mt-2">
                   <Progress value={(stats.xp / (stats.xp + stats.xpToNextLevel)) * 100} className="h-2 bg-secondary" indicatorClassName="bg-primary" />
-                  <p className="text-xs text-muted-foreground text-right">{stats.xp.toLocaleString()} {t("dashboard.xp")}</p>
+                  <p className="text-xs text-muted-foreground text-right">{stats.xp.toLocaleString("en-US")} {t("dashboard.xp")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -71,11 +71,11 @@ export default function Dashboard() {
                 <div className="flex justify-between items-center mt-2">
                   <div className="flex flex-col">
                     <span className="text-xs text-muted-foreground">{t("common.attack")}</span>
-                    <span className="font-mono text-lg">{stats.attackPower.toLocaleString()}</span>
+                    <span className="font-mono text-lg">{stats.attackPower.toLocaleString("en-US")}</span>
                   </div>
                   <div className="flex flex-col text-right">
                     <span className="text-xs text-muted-foreground">{t("common.defense")}</span>
-                    <span className="font-mono text-lg">{stats.defensePower.toLocaleString()}</span>
+                    <span className="font-mono text-lg">{stats.defensePower.toLocaleString("en-US")}</span>
                   </div>
                 </div>
               </CardContent>

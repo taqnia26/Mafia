@@ -17,7 +17,7 @@ export const SAFE_HOUSE = {
 export const BLACKJACK = {
   COMMISSION: 0.15,
   MIN_BET: 5000,
-  MAX_BET: 50000,
+  MAX_BET: 500000,
   PAYOUT_MULTIPLIER: 1.8,
   DAILY_LIMIT: 20,
 };

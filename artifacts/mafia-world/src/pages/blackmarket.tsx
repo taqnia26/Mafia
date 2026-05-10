@@ -209,7 +209,7 @@ export default function BlackMarket() {
                       </div>
                       <div className="flex items-center gap-1 text-green-500">
                         <DollarSign className="w-4 h-4" />
-                        <span className="font-mono font-bold text-lg">{item.price.toLocaleString()}</span>
+                        <span className="font-mono font-bold text-lg">{item.price.toLocaleString("en-US")}</span>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-4 text-right">
@@ -263,7 +263,7 @@ export default function BlackMarket() {
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("common.quantity")} / {t("common.price")}</p>
                           <p className="font-mono text-sm">
-                            <span className="font-bold">x{item.quantity}</span> {t("common.for")} <span className="text-green-500 font-bold">${item.price.toLocaleString()}</span>
+                            <span className="font-bold">x{item.quantity}</span> {t("common.for")} <span className="text-green-500 font-bold">${item.price.toLocaleString("en-US")}</span>
                           </p>
                         </div>
                         <Button 

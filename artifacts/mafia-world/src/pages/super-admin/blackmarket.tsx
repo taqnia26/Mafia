@@ -50,7 +50,7 @@ export default function SuperAdminBlackMarket() {
                 <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded shrink-0">{l.item_type}</span>
               </div>
               <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-400">Qty <span className="text-slate-200 font-mono">{l.quantity}</span> &nbsp;·&nbsp; <span className="text-slate-200 font-mono">${l.price.toLocaleString()}</span></span>
+                <span className="text-slate-400">Qty <span className="text-slate-200 font-mono">{l.quantity}</span> &nbsp;·&nbsp; <span className="text-slate-200 font-mono">${l.price.toLocaleString("en-US")}</span></span>
                 <button onClick={() => removeListing(l.id)} className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded">Remove</button>
               </div>
             </div>
@@ -78,7 +78,7 @@ export default function SuperAdminBlackMarket() {
                   <td className="px-4 py-3 font-medium text-white">{l.item_name}</td>
                   <td className="px-3 py-3"><span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">{l.item_type}</span></td>
                   <td className="px-3 py-3 text-right text-slate-300">{l.quantity}</td>
-                  <td className="px-3 py-3 text-right text-slate-300">${l.price.toLocaleString()}</td>
+                  <td className="px-3 py-3 text-right text-slate-300">${l.price.toLocaleString("en-US")}</td>
                   <td className="px-3 py-3 text-slate-400 text-xs">{l.seller_name}</td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => removeListing(l.id)} className="text-xs bg-red-900/40 hover:bg-red-800/60 text-red-400 px-2 py-1 rounded">Remove</button>

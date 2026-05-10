@@ -43,7 +43,7 @@ interface BankTransaction {
 }
 
 function formatDate(s: string) {
-  return new Date(s).toLocaleString();
+  return new Date(s).toLocaleString("en-US");
 }
 
 function txSign(type: BankTransaction["type"]): 1 | -1 {

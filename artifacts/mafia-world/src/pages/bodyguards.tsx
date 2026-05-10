@@ -121,8 +121,8 @@ export default function Bodyguards() {
                     </div>
                     <div className="bg-secondary/30 p-6 flex flex-col justify-center sm:border-l border-border/50 sm:w-48 gap-3">
                       <div className="text-center font-mono">
-                        <p className="text-green-500 font-bold">${npc.hirePrice.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">${npc.dailyCost.toLocaleString()}/{t("bodyguards.perDay")}</p>
+                        <p className="text-green-500 font-bold">${npc.hirePrice.toLocaleString("en-US")}</p>
+                        <p className="text-xs text-muted-foreground">${npc.dailyCost.toLocaleString("en-US")}/{t("bodyguards.perDay")}</p>
                       </div>
                       <Button
                         className="w-full font-heading uppercase"
@@ -209,7 +209,7 @@ export default function Bodyguards() {
                       <div className="min-w-0">
                         <p className="font-bold font-heading uppercase">{r.fromUsername}</p>
                         {r.offeredMoney > 0 && (
-                          <p className="text-xs text-green-500 font-mono mt-1">{t("bodyguards.offering")}: ${r.offeredMoney.toLocaleString()}</p>
+                          <p className="text-xs text-green-500 font-mono mt-1">{t("bodyguards.offering")}: ${r.offeredMoney.toLocaleString("en-US")}</p>
                         )}
                       </div>
                       <div className="flex gap-2 flex-wrap">

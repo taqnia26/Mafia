@@ -167,7 +167,7 @@ export default function SuperAdminPlayers() {
                 )}
               </div>
               <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-slate-400">
-                <div><span className="text-slate-500">$</span> <span className="text-slate-300 font-mono">{p.money.toLocaleString()}</span></div>
+                <div><span className="text-slate-500">$</span> <span className="text-slate-300 font-mono">{p.money.toLocaleString("en-US")}</span></div>
                 <div><span className="text-slate-500">K/D</span> <span className="text-slate-300 font-mono">{p.killCount}/{p.deathCount}</span></div>
                 <div><span className="text-slate-500">A/D</span> <span className="text-slate-300 font-mono">{p.attackPower}/{p.defensePower}</span></div>
               </div>
@@ -221,7 +221,7 @@ export default function SuperAdminPlayers() {
                     <div className="text-xs text-slate-500">{p.cityName}</div>
                   </td>
                   <td className="px-3 py-3 text-right text-slate-300">{p.level}</td>
-                  <td className="px-3 py-3 text-right text-slate-300">${p.money.toLocaleString()}</td>
+                  <td className="px-3 py-3 text-right text-slate-300">${p.money.toLocaleString("en-US")}</td>
                   <td className="px-3 py-3 text-right text-slate-300">{p.killCount}/{p.deathCount}</td>
                   <td className="px-3 py-3 text-right text-slate-300">{p.attackPower}/{p.defensePower}</td>
                   <td className="px-3 py-3 text-center">
@@ -346,7 +346,7 @@ function AddMoneyDialog({ player, onSave, onClose }: { player: Player; onSave: (
   return (
     <Modal title={`Adjust Money — ${player.username}`} onClose={onClose}>
       <div className="space-y-3">
-        <p className="text-sm text-slate-400">Current: <span className="text-white font-mono">${player.money.toLocaleString()}</span></p>
+        <p className="text-sm text-slate-400">Current: <span className="text-white font-mono">${player.money.toLocaleString("en-US")}</span></p>
 
         <div>
           <label className="text-xs text-slate-400">Amount (negative to deduct)</label>
@@ -381,7 +381,7 @@ function AddMoneyDialog({ player, onSave, onClose }: { player: Player; onSave: (
         </div>
 
         <p className="text-xs text-slate-500">
-          New balance: <span className={preview < 0 ? "text-red-400" : "text-green-400"}>${preview.toLocaleString()}</span>
+          New balance: <span className={preview < 0 ? "text-red-400" : "text-green-400"}>${preview.toLocaleString("en-US")}</span>
         </p>
 
         <button
@@ -393,7 +393,7 @@ function AddMoneyDialog({ player, onSave, onClose }: { player: Player; onSave: (
           }}
           className="w-full bg-[#ef4444] hover:bg-[#dc2626] disabled:opacity-50 text-white rounded-lg py-2 text-sm font-medium"
         >
-          {saving ? "Applying..." : amount >= 0 ? `Add $${amount.toLocaleString()}` : `Deduct $${Math.abs(amount).toLocaleString()}`}
+          {saving ? "Applying..." : amount >= 0 ? `Add $${amount.toLocaleString("en-US")}` : `Deduct $${Math.abs(amount).toLocaleString("en-US")}`}
         </button>
       </div>
     </Modal>

@@ -485,7 +485,7 @@ export default function Admin() {
             { label: t("admin.totalGangs"), value: displayStats.totalGangs, icon: Building2, color: "text-purple-400" },
             { label: "attacksToday" in displayStats ? t("admin.attacksToday") : t("admin.totalAttacks"), value: "attacksToday" in displayStats ? displayStats.attacksToday : (displayStats as { totalAttacks: number }).totalAttacks, icon: Swords, color: "text-red-400" },
             { label: t("admin.prisoners"), value: displayStats.totalPrisoners, icon: Lock, color: "text-orange-400" },
-            { label: t("admin.economy"), value: `$${Number(displayStats.totalMoneyInCirculation).toLocaleString()}`, icon: DollarSign, color: "text-green-400" },
+            { label: t("admin.economy"), value: `$${Number(displayStats.totalMoneyInCirculation).toLocaleString("en-US")}`, icon: DollarSign, color: "text-green-400" },
           ].map(({ label, value, icon: Icon, color }) => (
             <Card key={label} className="bg-card border-border">
               <CardContent className="p-3 flex flex-col items-center text-center">
@@ -547,7 +547,7 @@ export default function Admin() {
                       <Badge variant="outline" className="text-[10px] px-1 py-0">{e.type}</Badge>
                       <p className="text-xs text-muted-foreground truncate">{e.description}</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground/60">{new Date(e.createdAt).toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground/60">{new Date(e.createdAt).toLocaleString("en-US")}</p>
                   </div>
                 ))}
               </div>
@@ -590,7 +590,7 @@ export default function Admin() {
                           )}
                           {player.isInPrison && <Badge variant="outline" className="text-orange-400 border-orange-500 text-[10px] px-1">Jailed</Badge>}
                         </div>
-                        <p className="text-[11px] text-muted-foreground">Lv.{player.level} · ${player.money?.toLocaleString()} · {player.cityName}</p>
+                        <p className="text-[11px] text-muted-foreground">Lv.{player.level} · ${player.money?.toLocaleString("en-US")} · {player.cityName}</p>
                       </div>
                       <div className="flex gap-1 flex-wrap">
                         {canModerate && (
@@ -674,7 +674,7 @@ export default function Admin() {
                             <span className="font-bold">{gang.name}</span>
                             <span className="text-xs text-muted-foreground">Boss: {(gang as { bossName?: string }).bossName}</span>
                           </div>
-                          <p className="text-xs text-muted-foreground">{gang.memberCount} members · ${gang.treasury.toLocaleString()} treasury</p>
+                          <p className="text-xs text-muted-foreground">{gang.memberCount} members · ${gang.treasury.toLocaleString("en-US")} treasury</p>
                         </div>
                         <div className="flex gap-1">
                           <Button size="sm" variant="outline" className="h-7 text-xs px-2"
@@ -761,7 +761,7 @@ export default function Admin() {
                               ATK: <span className="text-foreground">{w.attackPower}</span>
                             </button>
                             <button className="hover:text-primary" onClick={() => startEdit(w.id, "weapon", "price", w.price)}>
-                              ${w.price.toLocaleString()}
+                              ${w.price.toLocaleString("en-US")}
                             </button>
                             {isSuperAdmin && (
                               <Button size="sm" variant="ghost" className="h-6 text-[10px] text-red-400 px-1"
@@ -771,7 +771,7 @@ export default function Admin() {
                             )}
                           </>
                         ) : (
-                          <span>ATK: {w.attackPower} · ${w.price.toLocaleString()}</span>
+                          <span>ATK: {w.attackPower} · ${w.price.toLocaleString("en-US")}</span>
                         )}
                       </div>
                     </div>
@@ -800,10 +800,10 @@ export default function Admin() {
                               DMG: <span className="text-foreground">+{a.damageBonus}</span>
                             </button>
                             <button className="hover:text-primary" onClick={() => startEdit(a.id, "ammo", "price", a.price)}>
-                              ${a.price.toLocaleString()}
+                              ${a.price.toLocaleString("en-US")}
                             </button>
                           </>
-                        ) : <span>DMG: +{a.damageBonus} · ${a.price.toLocaleString()}</span>}
+                        ) : <span>DMG: +{a.damageBonus} · ${a.price.toLocaleString("en-US")}</span>}
                       </div>
                     </div>
                   ))}
@@ -831,10 +831,10 @@ export default function Admin() {
                               DEF: <span className="text-foreground">{a.defenseBonus}</span>
                             </button>
                             <button className="hover:text-primary" onClick={() => startEdit(a.id, "armor", "price", a.price)}>
-                              ${a.price.toLocaleString()}
+                              ${a.price.toLocaleString("en-US")}
                             </button>
                           </>
-                        ) : <span>DEF: {a.defenseBonus} · ${a.price.toLocaleString()}</span>}
+                        ) : <span>DEF: {a.defenseBonus} · ${a.price.toLocaleString("en-US")}</span>}
                       </div>
                     </div>
                   ))}
@@ -894,7 +894,7 @@ export default function Admin() {
                           <span className="text-sm font-bold">{l.itemName}</span>
                           <span className="text-xs text-muted-foreground">x{l.quantity}</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground">${l.price.toLocaleString()} · Seller: {l.sellerUsername}</p>
+                        <p className="text-[11px] text-muted-foreground">${l.price.toLocaleString("en-US")} · Seller: {l.sellerUsername}</p>
                       </div>
                       <Button size="sm" variant="ghost" className="h-6 text-red-400 px-2 text-xs"
                         onClick={() => { if (confirm("Remove this listing?")) deleteListing.mutate(l.id); }}>
@@ -1012,7 +1012,7 @@ export default function Admin() {
                         <span className="text-[11px] text-muted-foreground"> → {log.targetType}{log.targetId ? ` #${log.targetId}` : ""}</span>
                         <p className="text-[11px] text-muted-foreground/80 truncate">{log.description}</p>
                       </div>
-                      <p className="text-[10px] text-muted-foreground/60 shrink-0">{new Date(log.createdAt).toLocaleString()}</p>
+                      <p className="text-[10px] text-muted-foreground/60 shrink-0">{new Date(log.createdAt).toLocaleString("en-US")}</p>
                     </div>
                   ))}
                   {!auditData?.logs.length && <p className="text-center text-muted-foreground text-sm py-6">No admin actions logged</p>}

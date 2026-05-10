@@ -57,7 +57,7 @@ export default function SuperAdminActivityLog() {
             <div key={e.id} className="bg-[#1e293b] rounded-xl border border-slate-700 p-3">
               <div className="flex items-start justify-between gap-2">
                 <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${TYPE_COLORS[e.type] ?? "text-slate-400 bg-slate-700/20"}`}>{e.type}</span>
-                <span className="text-xs text-slate-500 text-right shrink-0">{new Date(e.createdAt).toLocaleString()}</span>
+                <span className="text-xs text-slate-500 text-right shrink-0">{new Date(e.createdAt).toLocaleString("en-US")}</span>
               </div>
               <div className="mt-1.5 text-xs text-slate-300 break-words">{e.description}</div>
               <div className="mt-1 text-xs text-slate-500">{e.username ?? "—"}</div>
@@ -81,7 +81,7 @@ export default function SuperAdminActivityLog() {
                 <tr><td colSpan={4} className="text-center py-8 text-slate-500">Loading...</td></tr>
               ) : events.map(e => (
                 <tr key={e.id} className="border-b border-slate-700/50 hover:bg-slate-700/20">
-                  <td className="px-4 py-2.5 text-right text-slate-500 text-xs whitespace-nowrap">{new Date(e.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-right text-slate-500 text-xs whitespace-nowrap">{new Date(e.createdAt).toLocaleString("en-US")}</td>
                   <td className="px-3 py-2.5 text-slate-300 text-xs">{e.username ?? "—"}</td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs px-2 py-0.5 rounded ${TYPE_COLORS[e.type] ?? "text-slate-400 bg-slate-700/20"}`}>{e.type}</span>

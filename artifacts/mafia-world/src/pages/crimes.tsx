@@ -95,7 +95,7 @@ export default function Crimes() {
         if (result.success) {
           toast({
             title: t("crimes.crimeSuccess"),
-            description: `+$${(result.moneyEarned ?? 0).toLocaleString()} | +${result.xpEarned ?? 0} ${t("common.xpAbbr")}`,
+            description: `+$${(result.moneyEarned ?? 0).toLocaleString("en-US")} | +${result.xpEarned ?? 0} ${t("common.xpAbbr")}`,
             className: "bg-green-900 border-green-500 text-white",
           });
 
@@ -205,7 +205,7 @@ export default function Crimes() {
                       <div className="flex flex-wrap gap-3 text-sm pt-1">
                         <div className="flex items-center gap-1.5 text-green-400">
                           <DollarSign className="w-3.5 h-3.5" />
-                          <span className="font-mono text-xs">${crime.minReward.toLocaleString()} – ${crime.maxReward.toLocaleString()}</span>
+                          <span className="font-mono text-xs">${crime.minReward.toLocaleString("en-US")} – ${crime.maxReward.toLocaleString("en-US")}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-blue-400">
                           <Star className="w-3.5 h-3.5" />
@@ -299,7 +299,7 @@ export default function Crimes() {
                         <p className="text-sm font-medium truncate">{record.crimeName}</p>
                         {record.success ? (
                           <p className="text-xs text-green-400 mt-1 font-mono">
-                            +${(record.moneyEarned ?? 0).toLocaleString()} &bull; +{record.xpEarned ?? 0} {t("common.xpAbbr")}
+                            +${(record.moneyEarned ?? 0).toLocaleString("en-US")} &bull; +{record.xpEarned ?? 0} {t("common.xpAbbr")}
                           </p>
                         ) : record.caught ? (
                           <p className="text-xs text-destructive mt-1">{t("crimes.caughtByCops")}</p>

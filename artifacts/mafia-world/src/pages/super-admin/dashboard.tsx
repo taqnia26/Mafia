@@ -20,7 +20,7 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   return (
     <div className="bg-[#1e293b] rounded-xl border border-slate-700 p-5">
       <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</div>
-      <div className="text-2xl font-bold text-white">{typeof value === "number" ? value.toLocaleString() : value}</div>
+      <div className="text-2xl font-bold text-white">{typeof value === "number" ? value.toLocaleString("en-US") : value}</div>
       {sub && <div className="text-xs text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
@@ -123,7 +123,7 @@ export default function SuperAdminDashboard() {
                         <td className="py-2 text-white font-medium">{p.username}</td>
                         <td className="py-2 text-right text-slate-300">{p.level}</td>
                         <td className="py-2 text-right text-slate-300">{p.killCount}</td>
-                        <td className="py-2 text-right text-slate-300">${p.money.toLocaleString()}</td>
+                        <td className="py-2 text-right text-slate-300">${p.money.toLocaleString("en-US")}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -140,7 +140,7 @@ export default function Profile() {
             <div className="w-full pt-4 border-t border-border/50">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">{t("common.level")} {profile.level}</span>
-                <span className="text-sm text-muted-foreground">{profile.xp.toLocaleString()} {t("dashboard.xp")}</span>
+                <span className="text-sm text-muted-foreground">{profile.xp.toLocaleString("en-US")} {t("dashboard.xp")}</span>
               </div>
               <Progress value={75} className="h-2 bg-secondary" indicatorClassName="bg-primary" />
             </div>
@@ -166,7 +166,7 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground uppercase tracking-wider">{t("profile.attackPower")}</p>
-                  <p className="text-2xl font-mono font-bold">{profile.attackPower.toLocaleString()}</p>
+                  <p className="text-2xl font-mono font-bold">{profile.attackPower.toLocaleString("en-US")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -178,7 +178,7 @@ export default function Profile() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground uppercase tracking-wider">{t("profile.defensePower")}</p>
-                  <p className="text-2xl font-mono font-bold">{profile.defensePower.toLocaleString()}</p>
+                  <p className="text-2xl font-mono font-bold">{profile.defensePower.toLocaleString("en-US")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -277,7 +277,7 @@ export default function Profile() {
                       >
                         <span className="text-base font-heading font-bold uppercase">{t(plan.labelKey)}</span>
                         <span className="text-lg font-mono font-bold text-primary">
-                          ${plan.price.toLocaleString()}
+                          ${plan.price.toLocaleString("en-US")}
                         </span>
                         {!canAfford && (
                           <span className="text-xs text-destructive">{t("properties.cannotAfford")}</span>

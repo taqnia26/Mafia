@@ -56,7 +56,7 @@ export default function GangDetail() {
               <CardContent className="p-4 flex flex-col items-center justify-center text-center">
                 <Coins className="w-8 h-8 text-yellow-500 mb-2" />
                 <span className="text-xs text-muted-foreground uppercase">{t("gangs.treasury")}</span>
-                <span className="font-mono text-xl font-bold">${gang.treasury.toLocaleString()}</span>
+                <span className="font-mono text-xl font-bold">${gang.treasury.toLocaleString("en-US")}</span>
               </CardContent>
             </Card>
             <Card className="bg-card border-border min-w-[150px]">

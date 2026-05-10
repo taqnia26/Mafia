@@ -102,7 +102,7 @@ export default function SuperAdminGangs() {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right text-slate-300">{g.memberCount}</td>
-                  <td className="px-3 py-3 text-right text-slate-300">${g.treasury.toLocaleString()}</td>
+                  <td className="px-3 py-3 text-right text-slate-300">${g.treasury.toLocaleString("en-US")}</td>
                   <td className="px-3 py-3 text-slate-300">{g.bossName}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">

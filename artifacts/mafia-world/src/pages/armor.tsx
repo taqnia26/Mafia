@@ -65,7 +65,7 @@ export default function Armor() {
                   <p>{t("armor.defenseBonus")}: <span className="text-blue-400 font-bold">+{a.defenseBonus}</span></p>
                 </CardContent>
                 <CardFooter className="flex items-center justify-between pt-3 border-t border-border/50">
-                  <span className="text-green-500 font-mono font-bold">${a.price.toLocaleString()}</span>
+                  <span className="text-green-500 font-mono font-bold">${a.price.toLocaleString("en-US")}</span>
                   <Button size="sm" className="font-heading uppercase" onClick={() => buyArmor.mutate({ armorId: a.id, data: { quantity: 1 } })} disabled={buyArmor.isPending}>
                     {t("common.buy")}
                   </Button>

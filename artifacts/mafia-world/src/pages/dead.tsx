@@ -104,7 +104,7 @@ export default function Dead() {
               </div>
               <div className="bg-secondary/50 rounded-lg p-3 text-center">
                 <p className="text-xs text-muted-foreground mt-3">$</p>
-                <p className="font-mono font-bold text-xs">${profile.money.toLocaleString()}</p>
+                <p className="font-mono font-bold text-xs">${profile.money.toLocaleString("en-US")}</p>
               </div>
             </div>
           </div>

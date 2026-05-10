@@ -48,7 +48,7 @@ export default function SuperAdminCrimes() {
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{c.description}</p>
                   <div className="flex flex-wrap gap-4 mt-2 text-xs text-slate-400">
-                    <span>💰 ${c.minReward.toLocaleString()}–${c.maxReward.toLocaleString()}</span>
+                    <span>💰 ${c.minReward.toLocaleString("en-US")}–${c.maxReward.toLocaleString("en-US")}</span>
                     <span>⭐ {c.xpReward} XP</span>
                     <span>✅ {(c.successRate * 100).toFixed(0)}%</span>
                     <span>⏱ {c.cooldownMinutes}min CD</span>

@@ -116,7 +116,7 @@ export default function SuperAdminItems() {
                     <td className="px-4 py-3 font-medium text-white">{w.name}</td>
                     <td className="px-3 py-3"><span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">{w.type}</span></td>
                     <td className="px-3 py-3 text-right text-slate-300">{w.attackPower}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">${w.price.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right text-slate-300">${w.price.toLocaleString("en-US")}</td>
                     <td className="px-3 py-3 text-slate-400 text-xs">{w.ammoType}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => setEditWeapon(w)} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded">Edit</button>
@@ -144,7 +144,7 @@ export default function SuperAdminItems() {
                     <td className="px-4 py-3 font-medium text-white">{a.name}</td>
                     <td className="px-3 py-3"><span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">{a.type}</span></td>
                     <td className="px-3 py-3 text-right text-slate-300">+{a.defenseBonus}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">${a.price.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right text-slate-300">${a.price.toLocaleString("en-US")}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => setEditArmor(a)} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded">Edit</button>
                     </td>
@@ -171,7 +171,7 @@ export default function SuperAdminItems() {
                     <td className="px-4 py-3 font-medium text-white">{a.name}</td>
                     <td className="px-3 py-3"><span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded">{a.type}</span></td>
                     <td className="px-3 py-3 text-right text-slate-300">+{a.damageBonus}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">${a.price.toLocaleString()}</td>
+                    <td className="px-3 py-3 text-right text-slate-300">${a.price.toLocaleString("en-US")}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => setEditAmmo(a)} className="text-xs bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded">Edit</button>
                     </td>

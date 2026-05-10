@@ -106,7 +106,7 @@ export default function SuperAdminAttacks() {
                     )}
                   </td>
                   <td className="px-3 py-3 text-right text-slate-500 text-xs whitespace-nowrap">
-                    {a.travel_arrival_at ? new Date(a.travel_arrival_at).toLocaleString() : "—"}
+                    {a.travel_arrival_at ? new Date(a.travel_arrival_at).toLocaleString("en-US") : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {a.status === "traveling" && (
