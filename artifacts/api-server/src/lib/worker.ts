@@ -16,6 +16,7 @@ import { logger } from "./logger";
 import { REACTOR } from "./reactor";
 import { BANK_CONFIG, applyHourlyInterest } from "./bank";
 import { checkCapoKillPromotion } from "./phase1";
+import { processBotActions } from "./botsAI";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -1048,6 +1049,7 @@ async function tick(): Promise<void> {
       cleanupOldEvents(),
       cleanupOldChatMessages(),
       cleanupOldInboxMessages(),
+      processBotActions(),
     ]);
   } catch (err) {
     logger.error({ err }, "worker: tick error");
