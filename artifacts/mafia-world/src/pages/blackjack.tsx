@@ -144,7 +144,7 @@ export default function BlackjackPage() {
 
         {/* Casino Table */}
         <div
-          className="relative rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 border-[6px] sm:border-8 border-[#3b1d0f] shadow-[0_25px_60px_rgba(0,0,0,0.7)]"
+          className="relative overflow-hidden rounded-[2rem] sm:rounded-[3rem] p-5 sm:p-10 border-[6px] sm:border-8 border-[#3b1d0f] shadow-[0_25px_60px_rgba(0,0,0,0.7)]"
           style={{
             background:
               "radial-gradient(ellipse at center, #166534 0%, #14532d 50%, #052e16 100%)",
@@ -306,36 +306,57 @@ export default function BlackjackPage() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Result banner */}
-        <AnimatePresence>
-          {lastResult && !session && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.4 }}
-              className={`mt-4 rounded-2xl p-4 text-center border ${
-                lastResult.netProfit > 0
-                  ? "bg-emerald-900/30 border-emerald-500/40"
-                  : "bg-red-900/30 border-red-500/40"
-              }`}
-            >
-              <div className="text-xs uppercase tracking-widest opacity-70">
-                {lastResult.outcome}
-              </div>
-              <div
-                className={`text-3xl font-bold ${
-                  lastResult.netProfit > 0 ? "text-emerald-300" : "text-red-300"
-                }`}
+          {/* Result banner — overlays the center of the table */}
+          <AnimatePresence>
+            {lastResult && !session && (
+              <motion.div
+                key="result-banner"
+                initial={{ opacity: 0, scale: 0.4, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.6, rotate: 4 }}
+                transition={{ type: "spring", stiffness: 260, damping: 18 }}
+                className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
               >
-                {lastResult.netProfit >= 0 ? "+" : ""}
-                {formatMoney(lastResult.netProfit)}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div
+                  className={`pointer-events-auto px-8 sm:px-12 py-5 sm:py-7 rounded-3xl text-center backdrop-blur-md border-4 shadow-[0_15px_50px_rgba(0,0,0,0.7)] ${
+                    lastResult.netProfit > 0
+                      ? "bg-emerald-950/70 border-amber-300"
+                      : "bg-red-950/70 border-red-400"
+                  }`}
+                >
+                  <div
+                    className={`text-xs sm:text-sm uppercase tracking-[0.4em] font-bold mb-1 ${
+                      lastResult.netProfit > 0 ? "text-amber-300" : "text-red-300"
+                    }`}
+                  >
+                    {lastResult.outcome === "blackjack"
+                      ? "★ BLACKJACK ★"
+                      : lastResult.outcome === "win"
+                      ? "YOU WIN"
+                      : lastResult.outcome === "bust"
+                      ? "BUST"
+                      : "DEALER WINS"}
+                  </div>
+                  <div
+                    className={`text-4xl sm:text-5xl font-extrabold drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] ${
+                      lastResult.netProfit > 0 ? "text-emerald-200" : "text-red-200"
+                    }`}
+                  >
+                    {lastResult.netProfit >= 0 ? "+" : ""}
+                    {formatMoney(lastResult.netProfit)}
+                  </div>
+                  <button
+                    onClick={() => setLastResult(null)}
+                    className="mt-3 text-[11px] uppercase tracking-widest text-white/70 hover:text-white underline"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );

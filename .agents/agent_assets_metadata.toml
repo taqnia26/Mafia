@@ -252,3 +252,9 @@ id = "MfIa0JY0-GAWRubRWKd1v"
 uri = "file://artifacts/mafia-world/public/favicon.png"
 type = "image"
 title = "mafia favicon"
+
+[[generated]]
+id = "siaCmEqwpHGI57h_1bpIN"
+uri = "file://artifacts/mafia-world/src/assets/dealer-sofia.png"
+type = "image"
+title = "casino dealer sofia"

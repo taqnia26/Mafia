@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import dealerSofia from "@/assets/dealer-sofia.png";
 
 interface DealerProps {
   message: string;
@@ -12,17 +13,22 @@ export function Dealer({ message, active = true }: DealerProps) {
         animate={{
           boxShadow: active
             ? [
-                "0 0 14px rgba(212,175,55,0.4)",
-                "0 0 26px rgba(212,175,55,0.85)",
-                "0 0 14px rgba(212,175,55,0.4)",
+                "0 0 16px rgba(212,175,55,0.45)",
+                "0 0 32px rgba(212,175,55,0.9)",
+                "0 0 16px rgba(212,175,55,0.45)",
               ]
-            : "0 0 10px rgba(212,175,55,0.3)",
+            : "0 0 12px rgba(212,175,55,0.3)",
         }}
         transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-        className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-amber-400 bg-gradient-to-br from-rose-400 via-pink-500 to-purple-600 flex items-center justify-center overflow-hidden"
+        className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-amber-400 overflow-hidden bg-black"
       >
-        <span className="text-4xl sm:text-5xl drop-shadow-md">👩‍💼</span>
-        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider">
+        <img
+          src={dealerSofia}
+          alt="Sofia, casino dealer"
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-amber-400 text-black text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wider shadow-md">
           DEALER
         </span>
       </motion.div>
